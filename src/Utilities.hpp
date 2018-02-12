@@ -29,44 +29,23 @@
 namespace smoothg
 {
 
-template <typename T = int>
-linalgcpp::SparseMatrix<T> MakeAggVertex(const std::vector<int>& part)
+template <typename T = double>
+linalgcpp::SparseMatrix<T> MakeAggVertex(const std::vector<int>& partition)
 {
-    int nparts = *std::max(std::begin(part), std::end(part)) + 1;
-    int nvertices = part.size();
-    std::vector<int> indptr(nparts + 1);
-    std::vector<int> indices(nvertices);
-    std::vector<T> data(nvertices, 1.0);
+    const int num_parts = *std::max_element(std::begin(partition), std::end(partition)) + 1;
+    const int num_vert = partition.size();
 
-    for (int i = 0; i < nvertices; ++i)
-    {
-        indptr[part[i] + 1]++;
-    }
+    std::vector<int> indptr(num_vert + 1);
+    std::vector<T> data(num_vert, 1);
 
-    for (int i = 1; i < nparts; ++i)
-    {
-        indptr[i + 1] += indptr[i];
-    }
+    std::iota(std::begin(indptr), std::end(indptr), 0);
 
-    for (int i = 0; i < nvertices; ++i)
-    {
-        indices[indptr[part[i]]++] = i;
-    }
+    linalgcpp::SparseMatrix<T> vertex_agg(std::move(indptr), partition, std::move(data), num_vert, num_parts);
 
-    assert(indptr[nparts - 1] == indptr[nparts]);
-
-    for (int i = nparts - 1; i > 0; --i)
-    {
-        indptr[i] = indptr[i - 1];
-    }
-
-    indptr[0] = 0;
-
-    return linalgcpp::SparseMatrix<T>(std::move(indptr), std::move(indices), std::move(data),
-                                      nparts, nvertices);
+    return vertex_agg.Transpose();
 }
 
-template <typename T = int>
+template <typename T = double>
 linalgcpp::SparseMatrix<T> MakeProcAgg(int num_procs, int num_aggs_global)
 {
     int num_aggs_local = num_aggs_global / num_procs;
@@ -92,8 +71,23 @@ linalgcpp::SparseMatrix<T> MakeProcAgg(int num_procs, int num_aggs_global)
                                       num_procs, num_aggs_global);
 }
 
-parlinalgcpp::ParMatrix MakeEdgeTrueEdge(MPI_Comm comm, const linalgcpp::SparseMatrix<int>& proc_edge, 
+parlinalgcpp::ParMatrix MakeEdgeTrueEdge(MPI_Comm comm, const linalgcpp::SparseMatrix<double>& proc_edge, 
                                          const std::vector<int>& edge_map);
+
+linalgcpp::SparseMatrix<double> RestrictInterior(const linalgcpp::SparseMatrix<double>& mat);
+parlinalgcpp::ParMatrix RestrictInterior(const parlinalgcpp::ParMatrix& mat);
+
+linalgcpp::SparseMatrix<double> MakeFaceAggInt(const parlinalgcpp::ParMatrix& agg_agg);
+
+linalgcpp::SparseMatrix<double> MakeFaceEdge(const parlinalgcpp::ParMatrix& agg_agg,
+                                          const parlinalgcpp::ParMatrix& edge_edge,
+                                          const linalgcpp::SparseMatrix<double>& agg_edge_ext,
+                                          const linalgcpp::SparseMatrix<double>& face_edge_ext);
+
+linalgcpp::SparseMatrix<double> ExtendFaceAgg(const parlinalgcpp::ParMatrix& agg_agg,
+                                           const linalgcpp::SparseMatrix<double>& face_agg_int);
+
+parlinalgcpp::ParMatrix MakeFaceTrueEdge(const parlinalgcpp::ParMatrix& face_face);
 
 } //namespace smoothg
 

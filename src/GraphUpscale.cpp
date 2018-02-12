@@ -20,12 +20,18 @@
 
 #include "GraphUpscale.hpp"
 
+using Vector = linalgcpp::Vector<double>;
+using VectorView = linalgcpp::VectorView<double>;
+using BlockVector = linalgcpp::BlockVector<double>;
+using SparseMatrix = linalgcpp::SparseMatrix<double>;
+using BlockMatrix = linalgcpp::BlockMatrix<double>;
+using ParMatrix = parlinalgcpp::ParMatrix;
 
 namespace smoothg
 {
 
 GraphUpscale::GraphUpscale(MPI_Comm comm,
-                 const linalgcpp::SparseMatrix<int>& vertex_edge_global,
+                 const linalgcpp::SparseMatrix<double>& vertex_edge_global,
                  const std::vector<int>& partitioning_global,
                  double spect_tol, int max_evects,
                  const std::vector<double>& weight_global)
@@ -37,7 +43,7 @@ GraphUpscale::GraphUpscale(MPI_Comm comm,
 }
 
 GraphUpscale::GraphUpscale(MPI_Comm comm,
-                 const linalgcpp::SparseMatrix<int>& vertex_edge_global,
+                 const SparseMatrix& vertex_edge_global,
                  double coarse_factor,
                  double spect_tol, int max_evects,
                  const std::vector<double>& weight_global)
@@ -55,7 +61,7 @@ GraphUpscale::GraphUpscale(MPI_Comm comm,
          weight_global, spect_tol, max_evects);
 }
 
-void GraphUpscale::Init(const linalgcpp::SparseMatrix<int>& vertex_edge,
+void GraphUpscale::Init(const SparseMatrix& vertex_edge,
               const std::vector<int>& global_partitioning,
               const std::vector<double>& weight,
               double spect_tol, int max_evects)
@@ -63,12 +69,12 @@ void GraphUpscale::Init(const linalgcpp::SparseMatrix<int>& vertex_edge,
     DistributeGraph(vertex_edge, global_partitioning);
     MakeFineLevel(weight);
 
+    MakeTopology();
 }
 
-void GraphUpscale::DistributeGraph(const linalgcpp::SparseMatrix<int>& vertex_edge,
-                                   const std::vector<int>& global_part)
+void GraphUpscale::DistributeGraph(const SparseMatrix& vertex_edge, const std::vector<int>& global_part)
 {
-    int num_aggs_global = *std::max(std::begin(global_part), std::end(global_part)) + 1;
+    int num_aggs_global = *std::max_element(std::begin(global_part), std::end(global_part)) + 1;
 
     SparseMatrix agg_vert = MakeAggVertex(global_part);
     SparseMatrix proc_agg = MakeProcAgg(num_procs_, num_aggs_global);
@@ -76,7 +82,7 @@ void GraphUpscale::DistributeGraph(const linalgcpp::SparseMatrix<int>& vertex_ed
     SparseMatrix proc_vert = proc_agg.Mult(agg_vert);
     SparseMatrix proc_edge = proc_vert.Mult(vertex_edge);
 
-    // TODO(gelever1): Check if this sort has to go before the transpose
+    // TODO(gelever1): Check if this must go before the transpose
     proc_edge.SortIndices();
 
     vertex_map_ = proc_vert.GetIndices(myid_);
@@ -85,8 +91,8 @@ void GraphUpscale::DistributeGraph(const linalgcpp::SparseMatrix<int>& vertex_ed
     vertex_edge_local_ = vertex_edge.GetSubMatrix(vertex_map_, edge_map_);
 
     int nvertices_local = proc_vert.RowSize(myid_);
-
     part_local_.resize(nvertices_local);
+
     const int agg_begin = proc_agg.GetIndptr()[myid_];
 
     for (int i = 0; i < nvertices_local; ++i)
@@ -117,9 +123,9 @@ void GraphUpscale::MakeFineLevel(const std::vector<double>& global_weight)
     }
 
     ParMatrix edge_true_edge_T = edge_true_edge_.Transpose();
-    ParMatrix edge_edge = edge_true_edge_.Mult(edge_true_edge_T);
+    edge_edge_ = edge_true_edge_.Mult(edge_true_edge_T);
 
-    const auto& offd = edge_edge.GetOffd();
+    const auto& offd = edge_edge_.GetOffd();
 
     assert(offd.Rows() == local_weight.size());
 
@@ -158,9 +164,9 @@ void GraphUpscale::MakeFineLevel(const std::vector<double>& global_weight)
         }
     }
 
-    linalgcpp::SparseMatrix<double> M(std::move(local_weight));
-    linalgcpp::SparseMatrix<double> D(DT.Transpose());
-    linalgcpp::SparseMatrix<double> W(std::vector<double>(num_vertices, 0.0));
+    SparseMatrix M(std::move(local_weight));
+    SparseMatrix D(DT.Transpose());
+    SparseMatrix W(std::vector<double>(num_vertices, 0.0));
 
     std::vector<size_t> offsets(3);
     offsets[0] = 0;
@@ -173,6 +179,86 @@ void GraphUpscale::MakeFineLevel(const std::vector<double>& global_weight)
     fine_level_.SetBlock(0, 1, std::move(DT));
     fine_level_.SetBlock(1, 0, std::move(D));
     fine_level_.SetBlock(1, 1, std::move(W));
+}
+
+void GraphUpscale::MakeTopology()
+{
+    agg_vertex_local_ = MakeAggVertex(part_local_);
+
+    agg_vertex_local_ = 1;
+    vertex_edge_local_ = 1;
+
+    SparseMatrix agg_edge_ext = agg_vertex_local_.Mult(vertex_edge_local_);
+    agg_edge_ext.SortIndices();
+
+    agg_edge_local_ = RestrictInterior(agg_edge_ext);
+
+    auto edge_ext_agg = agg_edge_ext.Transpose<double>();
+
+    size_t num_vertices = vertex_edge_local_.Rows();
+    size_t num_edges = vertex_edge_local_.Cols();
+    size_t num_aggs = agg_edge_local_.Rows();
+
+    auto starts3 = parlinalgcpp::GenerateOffsets(comm_, {num_vertices, num_edges, num_aggs});
+    const auto& vertex_starts = starts3[0];
+    const auto& edge_starts = starts3[1];
+    const auto& agg_starts = starts3[2];
+
+    ParMatrix edge_agg_d(comm_, edge_starts, agg_starts, edge_ext_agg);
+    ParMatrix agg_edge_d = edge_agg_d.Transpose();
+
+    ParMatrix edge_agg_ext = edge_edge_.Mult(edge_agg_d);
+    ParMatrix agg_agg = agg_edge_d.Mult(edge_agg_ext);
+
+    SparseMatrix face_agg_int = MakeFaceAggInt(agg_agg);
+    SparseMatrix face_edge_ext = face_agg_int.Mult(agg_edge_ext);
+
+    face_edge_local_ = MakeFaceEdge(agg_agg, edge_edge_,
+                                    agg_edge_ext, face_edge_ext);
+
+    face_agg_local_ = ExtendFaceAgg(agg_agg, face_agg_int);
+
+    auto face_starts = parlinalgcpp::GenerateOffsets(comm_, face_agg_local_.Rows());
+
+    auto edge_face = face_edge_local_.Transpose();
+    ParMatrix edge_face_d(comm_, edge_starts, face_starts, edge_face);
+
+    face_face_ = parlinalgcpp::RAP(edge_edge_, edge_face_d);
+    face_face_ = 1;
+
+    face_true_edge_ = MakeFaceTrueEdge(face_face_);
+
+    ParMatrix vertex_edge_d(comm_, vertex_starts, edge_starts, vertex_edge_local_);
+    ParMatrix vertex_edge = vertex_edge_d.Mult(edge_true_edge_);
+    ParMatrix edge_vertex = vertex_edge.Transpose();
+    ParMatrix agg_edge = agg_edge_d.Mult(edge_true_edge_);
+
+    agg_ext_vertex_ = agg_edge.Mult(edge_vertex);
+    agg_ext_vertex_ = 1.0;
+
+    ParMatrix agg_ext_edge_ext = agg_ext_vertex_.Mult(vertex_edge);
+    agg_ext_edge_ = RestrictInterior(agg_ext_edge_ext);
+}
+
+Vector GraphUpscale::ReadVertexVector(const std::string& filename) const
+{
+    return ReadVector(filename, vertex_map_);
+}
+
+Vector GraphUpscale::ReadVector(const std::string& filename, const std::vector<int>& local_to_global) const
+{
+    auto global_vect = linalgcpp::ReadText<double>(filename);
+
+    size_t size = local_to_global.size();
+
+    Vector local_vect(size);
+
+    for (size_t i = 0; i < size; ++i)
+    {
+        local_vect[i] = global_vect[local_to_global[i]];
+    }
+
+    return local_vect;
 }
 
 } // namespace smoothg

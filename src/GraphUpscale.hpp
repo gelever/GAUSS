@@ -40,7 +40,7 @@ class GraphUpscale : public Upscale
     using Vector = linalgcpp::Vector<double>;
     using VectorView = linalgcpp::VectorView<double>;
     using BlockVector = linalgcpp::BlockVector<double>;
-    using SparseMatrix = linalgcpp::SparseMatrix<int>;
+    using SparseMatrix = linalgcpp::SparseMatrix<double>;
     using BlockMatrix = linalgcpp::BlockMatrix<double>;
     using ParMatrix = parlinalgcpp::ParMatrix;
 
@@ -105,13 +105,13 @@ private:
               const std::vector<double>& weight_global,
               double spect_tol, int max_evects);
 
-    void DistributeGraph(const linalgcpp::SparseMatrix<int>& vertex_edge,
+    void DistributeGraph(const SparseMatrix& vertex_edge,
               const std::vector<int>& global_partitioning);
     void MakeFineLevel(const std::vector<double>& global_weight);
     void MakeD(const std::vector<double>& global_weight);
+    void MakeTopology();
 
-    Vector ReadVector(const std::string& filename, int global_size,
-                                         const std::vector<int>& local_to_global) const;
+    Vector ReadVector(const std::string& filename, const std::vector<int>& local_to_global) const;
 
     void WriteVector(const VectorView& vect, const std::string& filename, int global_size,
                      const std::vector<int>& local_to_global) const;
@@ -126,10 +126,21 @@ private:
 
     SparseMatrix vertex_edge_local_;
     ParMatrix edge_true_edge_;
+    ParMatrix edge_edge_;
 
     // Mixed Matrix stuff
     BlockMatrix fine_level_;
     BlockMatrix coarse_level_;
+
+    // GraphTopology stuff
+    SparseMatrix agg_vertex_local_;
+    SparseMatrix agg_edge_local_;
+    SparseMatrix face_edge_local_;
+    SparseMatrix face_agg_local_;
+    ParMatrix face_face_;
+    ParMatrix face_true_edge_;
+    ParMatrix agg_ext_vertex_;
+    ParMatrix agg_ext_edge_;
 };
 
 } // namespace smoothg
