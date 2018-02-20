@@ -25,8 +25,13 @@
 #include "parlinalgcpp.hpp"
 #include "partition.hpp"
 
-#include "Upscale.hpp"
+#include "Graph.hpp"
+#include "MixedMatrix.hpp"
+#include "GraphTopology.hpp"
+#include "GraphCoarsen.hpp"
+#include "SharedEntityComm.hpp"
 #include "Utilities.hpp"
+#include "Upscale.hpp"
 
 namespace smoothg
 {
@@ -37,13 +42,6 @@ namespace smoothg
 
 class GraphUpscale : public Upscale
 {
-    using Vector = linalgcpp::Vector<double>;
-    using VectorView = linalgcpp::VectorView<double>;
-    using BlockVector = linalgcpp::BlockVector<double>;
-    using SparseMatrix = linalgcpp::SparseMatrix<double>;
-    using BlockMatrix = linalgcpp::BlockMatrix<double>;
-    using ParMatrix = parlinalgcpp::ParMatrix;
-
 public:
     /**
        @brief Constructor
@@ -102,14 +100,7 @@ public:
 private:
     void Init(const SparseMatrix& vertex_edge_global,
               const std::vector<int>& partitioning_global,
-              const std::vector<double>& weight_global,
-              double spect_tol, int max_evects);
-
-    void DistributeGraph(const SparseMatrix& vertex_edge,
-              const std::vector<int>& global_partitioning);
-    void MakeFineLevel(const std::vector<double>& global_weight);
-    void MakeD(const std::vector<double>& global_weight);
-    void MakeTopology();
+              const std::vector<double>& weight_global);
 
     Vector ReadVector(const std::string& filename, const std::vector<int>& local_to_global) const;
 
@@ -119,28 +110,15 @@ private:
     const int global_edges_;
     const int global_vertices_;
 
-    // ParGraph Stuff
-    std::vector<int> edge_map_;
-    std::vector<int> vertex_map_;
-    std::vector<int> part_local_;
+    double spect_tol_;
+    int max_evects_;
 
-    SparseMatrix vertex_edge_local_;
-    ParMatrix edge_true_edge_;
-    ParMatrix edge_edge_;
+    Graph graph_;
 
-    // Mixed Matrix stuff
-    BlockMatrix fine_level_;
-    BlockMatrix coarse_level_;
+    MixedMatrix mixed_mat_fine_;
 
-    // GraphTopology stuff
-    SparseMatrix agg_vertex_local_;
-    SparseMatrix agg_edge_local_;
-    SparseMatrix face_edge_local_;
-    SparseMatrix face_agg_local_;
-    ParMatrix face_face_;
-    ParMatrix face_true_edge_;
-    ParMatrix agg_ext_vertex_;
-    ParMatrix agg_ext_edge_;
+    GraphTopology gt_;
+    GraphCoarsen coarsener_;
 };
 
 } // namespace smoothg

@@ -29,6 +29,59 @@
 namespace smoothg
 {
 
+using Vector = linalgcpp::Vector<double>;
+using VectorView = linalgcpp::VectorView<double>;
+using BlockVector = linalgcpp::BlockVector<double>;
+using SparseMatrix = linalgcpp::SparseMatrix<double>;
+using DenseMatrix = linalgcpp::DenseMatrix;
+using BlockMatrix = linalgcpp::BlockMatrix<double>;
+using ParMatrix = parlinalgcpp::ParMatrix;
+
+SparseMatrix MakeLocalM(const ParMatrix& edge_true_edge,
+                        const ParMatrix& edge_edge,
+                        const std::vector<int>& edge_map,
+                        const std::vector<double>& global_weight);
+
+SparseMatrix MakeLocalD(const ParMatrix& edge_true_edge,
+                        const SparseMatrix& vertex_edge);
+
+ParMatrix MakeEdgeTrueEdge(MPI_Comm comm, const SparseMatrix& proc_edge,
+                                         const std::vector<int>& edge_map);
+
+SparseMatrix RestrictInterior(const SparseMatrix& mat);
+ParMatrix RestrictInterior(const ParMatrix& mat);
+
+SparseMatrix MakeFaceAggInt(const ParMatrix& agg_agg);
+
+SparseMatrix MakeFaceEdge(const ParMatrix& agg_agg,
+                                  const ParMatrix& edge_edge,
+                                  const SparseMatrix& agg_edge_ext,
+                                  const SparseMatrix& face_edge_ext);
+
+SparseMatrix ExtendFaceAgg(const ParMatrix& agg_agg,
+                           const SparseMatrix& face_agg_int);
+
+ParMatrix MakeEntityTrueEntity(const ParMatrix& face_face);
+ParMatrix MakeExtPermutation(const ParMatrix& parmat);
+
+SparseMatrix SparseIdentity(int size);
+SparseMatrix SparseIdentity(int rows, int cols, int row_offset = 0, int col_offset = 0);
+
+std::vector<int> GetExtDofs(const ParMatrix& mat_ext, int row);
+
+void SetMarker(std::vector<int>& marker, const std::vector<int>& indices);
+void ClearMarker(std::vector<int>& marker, const std::vector<int>& indices);
+
+DenseMatrix Orthogonalize(DenseMatrix& mat);
+DenseMatrix Orthogonalize(DenseMatrix& mat, Vector& vect);
+
+void Deflate(DenseMatrix& A, const VectorView& vect);
+
+DenseMatrix RestrictLocal(const DenseMatrix& ext_mat,
+                          std::vector<int>& global_marker,
+                          const std::vector<int>& ext_indices,
+                          const std::vector<int>& local_indices);
+
 template <typename T = double>
 linalgcpp::SparseMatrix<T> MakeAggVertex(const std::vector<int>& partition)
 {
@@ -70,24 +123,6 @@ linalgcpp::SparseMatrix<T> MakeProcAgg(int num_procs, int num_aggs_global)
     return linalgcpp::SparseMatrix<T>(std::move(indptr), std::move(indices), std::move(data),
                                       num_procs, num_aggs_global);
 }
-
-parlinalgcpp::ParMatrix MakeEdgeTrueEdge(MPI_Comm comm, const linalgcpp::SparseMatrix<double>& proc_edge, 
-                                         const std::vector<int>& edge_map);
-
-linalgcpp::SparseMatrix<double> RestrictInterior(const linalgcpp::SparseMatrix<double>& mat);
-parlinalgcpp::ParMatrix RestrictInterior(const parlinalgcpp::ParMatrix& mat);
-
-linalgcpp::SparseMatrix<double> MakeFaceAggInt(const parlinalgcpp::ParMatrix& agg_agg);
-
-linalgcpp::SparseMatrix<double> MakeFaceEdge(const parlinalgcpp::ParMatrix& agg_agg,
-                                          const parlinalgcpp::ParMatrix& edge_edge,
-                                          const linalgcpp::SparseMatrix<double>& agg_edge_ext,
-                                          const linalgcpp::SparseMatrix<double>& face_edge_ext);
-
-linalgcpp::SparseMatrix<double> ExtendFaceAgg(const parlinalgcpp::ParMatrix& agg_agg,
-                                           const linalgcpp::SparseMatrix<double>& face_agg_int);
-
-parlinalgcpp::ParMatrix MakeFaceTrueEdge(const parlinalgcpp::ParMatrix& face_face);
 
 } //namespace smoothg
 
