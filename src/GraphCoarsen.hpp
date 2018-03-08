@@ -25,6 +25,7 @@
 #include "MixedMatrix.hpp"
 #include "SharedEntityComm.hpp"
 #include "GraphTopology.hpp"
+#include "GraphEdgeSolver.hpp"
 
 namespace smoothg
 {
@@ -49,11 +50,27 @@ class GraphCoarsen
         friend void swap(GraphCoarsen& lhs, GraphCoarsen& rhs) noexcept;
 
     private:
-        void ComputeVertexTargets(const GraphTopology& gt, const SparseMatrix& M_ext, const SparseMatrix& D_ext);
+        template <class T>
+        using Vect2D = std::vector<std::vector<T>>;
 
-        std::vector<std::vector<DenseMatrix>> CollectSigma(const GraphTopology& gt, const SparseMatrix& face_edge);
-        std::vector<std::vector<SparseMatrix>> CollectD(const GraphTopology& gt, const SparseMatrix& D_local);
-        std::vector<std::vector<Vector>> CollectM(const GraphTopology& gt, const SparseMatrix& M_local);
+        void ComputeVertexTargets(const GraphTopology& gt, const ParMatrix& M_ext, const ParMatrix& D_ext);
+        void ComputeEdgeTargets(const GraphTopology& gt,
+                                const SparseMatrix& face_edge,
+                                const Vect2D<DenseMatrix>& shared_sigma,
+                                const Vect2D<std::vector<double>>& shared_M,
+                                const Vect2D<SparseMatrix>& shared_D);
+
+
+        Vect2D<DenseMatrix> CollectSigma(const GraphTopology& gt, const SparseMatrix& face_edge);
+        Vect2D<SparseMatrix> CollectD(const GraphTopology& gt, const SparseMatrix& D_local);
+        Vect2D<std::vector<double>> CollectM(const GraphTopology& gt, const SparseMatrix& M_local);
+
+        std::vector<double> Combine(const std::vector<std::vector<double>>& face_M, int num_face_edges) const;
+        SparseMatrix Combine(const std::vector<SparseMatrix>& face_D, int num_face_edges) const;
+
+        Vector MakeOneNegOne(int size, int split) const;
+
+        int GetSplit(const GraphTopology& gt, int face) const;
 
         int max_evects_;
         double spect_tol_;

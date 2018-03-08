@@ -35,6 +35,8 @@ class SharedEntityComm
 
         void ReduceSend(int entity, T mat);
 
+        bool IsOwnedByMe(int entity) const;
+
         int GetTrueEntity(int entity) const;
 
         std::vector<std::vector<T>> Collect();
@@ -88,7 +90,9 @@ SharedEntityComm<T>::SharedEntityComm(const ParMatrix& entity_true_entity)
     : entity_true_entity_(entity_true_entity),
       entity_diag_T_(entity_true_entity_.GetDiag().Transpose()),
       entity_offd_T_(entity_true_entity_.GetOffd().Transpose()),
+      comm_pkg_(entity_true_entity_.MakeCommPkg()),
       comm_(entity_true_entity_.GetComm()),
+      myid_(entity_true_entity_.GetMyId()),
       num_entities_(entity_true_entity_.Rows()),
       size_specifier_(0),
       send_counter_(0),
@@ -98,10 +102,6 @@ SharedEntityComm<T>::SharedEntityComm(const ParMatrix& entity_true_entity)
       num_slave_comms_(0),
       recv_buffer_(num_entities_)
 {
-    MPI_Comm_rank(comm_, &myid_);
-
-    comm_pkg_ = entity_true_entity_.MakeCommPkg();
-
     MakeEntityProc();
 
     for (int i = 0; i < num_entities_; ++i)
@@ -267,6 +267,15 @@ int SharedEntityComm<T>::GetTrueEntity(int entity) const
 
         return ete_colmap[ete_offd_indices[ete_offd_indptr[entity]]];
     }
+}
+
+template <class T>
+bool SharedEntityComm<T>::IsOwnedByMe(int entity) const
+{
+    assert(entity >= 0);
+    assert(entity < static_cast<int>(entity_master_.size()));
+
+    return (entity_master_[entity] == myid_);
 }
 
 template <typename T>

@@ -34,8 +34,11 @@ using VectorView = linalgcpp::VectorView<double>;
 using BlockVector = linalgcpp::BlockVector<double>;
 using SparseMatrix = linalgcpp::SparseMatrix<double>;
 using DenseMatrix = linalgcpp::DenseMatrix;
+using CooMatrix = linalgcpp::CooMatrix<double>;
 using BlockMatrix = linalgcpp::BlockMatrix<double>;
 using ParMatrix = parlinalgcpp::ParMatrix;
+
+int MyId(MPI_Comm comm = MPI_COMM_WORLD);
 
 SparseMatrix MakeLocalM(const ParMatrix& edge_true_edge,
                         const ParMatrix& edge_edge,
@@ -72,8 +75,8 @@ std::vector<int> GetExtDofs(const ParMatrix& mat_ext, int row);
 void SetMarker(std::vector<int>& marker, const std::vector<int>& indices);
 void ClearMarker(std::vector<int>& marker, const std::vector<int>& indices);
 
-DenseMatrix Orthogonalize(DenseMatrix& mat);
-DenseMatrix Orthogonalize(DenseMatrix& mat, Vector& vect);
+DenseMatrix Orthogonalize(DenseMatrix& mat, int max_keep = -1);
+DenseMatrix Orthogonalize(DenseMatrix& mat, const VectorView& vect, int max_keep = -1);
 
 void Deflate(DenseMatrix& A, const VectorView& vect);
 

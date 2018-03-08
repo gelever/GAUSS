@@ -24,6 +24,15 @@
 
 namespace smoothg
 {
+
+int MyId(MPI_Comm comm)
+{
+    int myid;
+    MPI_Comm_rank(comm, &myid);
+
+    return myid;
+}
+
 SparseMatrix MakeLocalM(const ParMatrix& edge_true_edge,
                         const ParMatrix& edge_edge,
                         const std::vector<int>& edge_map,
@@ -513,7 +522,7 @@ ParMatrix MakeEntityTrueEntity(const ParMatrix& entity_entity)
     MPI_Comm comm = entity_entity.GetComm();
     auto true_starts = parlinalgcpp::GenerateOffsets(comm, num_true_entities);
 
-    ParMatrix select_d(comm, entity_entity.GetRowStarts(), true_starts, select);
+    ParMatrix select_d(comm, entity_entity.GetRowStarts(), true_starts, std::move(select));
 
     return entity_entity.Mult(select_d);
 }
@@ -613,20 +622,23 @@ void ClearMarker(std::vector<int>& marker, const std::vector<int>& indices)
     }
 }
 
-DenseMatrix Orthogonalize(DenseMatrix& mat)
+DenseMatrix Orthogonalize(DenseMatrix& mat, int max_keep)
 {
-    Vector vect = mat.GetCol(0);
+    VectorView vect = mat.GetColView(0);
 
-    return Orthogonalize(mat, vect);
+    return Orthogonalize(mat, vect, max_keep);
 }
 
-DenseMatrix Orthogonalize(DenseMatrix& mat, Vector& vect)
+DenseMatrix Orthogonalize(DenseMatrix& mat, const VectorView& vect_view, int max_keep)
 {
     if (mat.Rows() == 0 || mat.Cols() == 0)
     {
         return mat;
     }
 
+    // If the view is of mat, deflate will destroy it,
+    // so copy is needed
+    Vector vect(vect_view);
     Normalize(vect);
 
     Deflate(mat, vect);
@@ -636,7 +648,14 @@ DenseMatrix Orthogonalize(DenseMatrix& mat, Vector& vect)
     const double tol = singular_values.front() * 1e-8;
     int keep = 0;
 
-    while (keep < mat.Cols() && singular_values[keep] > tol)
+    if (max_keep < 0)
+    {
+        max_keep = mat.Cols();
+    }
+
+    max_keep -= 1;
+
+    while (keep < max_keep && singular_values[keep] > tol)
     {
         keep++;
     }
