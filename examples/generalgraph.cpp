@@ -57,7 +57,7 @@ int main(int argc, char* argv[])
 
     int num_partitions = 25;
     std::string graphFileName = "ve.txt";
-    std::string FiedlerFileName = "../../graphdata/fiedler_sample.txt";
+    std::string FiedlerFileName = "rhs.txt";
     std::string partition_filename = "part.part";
 
     //int num_partitions = 2;
@@ -116,7 +116,6 @@ int main(int argc, char* argv[])
         /// [Upscale]
 
         /// [Right Hand Side]
-        /*
         Vector rhs_u_fine = upscale.ReadVertexVector(FiedlerFileName);
 
         BlockVector fine_rhs(upscale.GetFineBlockVector());
@@ -135,8 +134,6 @@ int main(int argc, char* argv[])
         /// [Check Error]
         upscale.ShowErrors(upscaled_sol, fine_sol);
         /// [Check Error]
-
-        */
     }
 
     MPI_Finalize();

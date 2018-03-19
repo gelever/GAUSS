@@ -26,6 +26,7 @@
 #include "SharedEntityComm.hpp"
 #include "GraphTopology.hpp"
 #include "GraphEdgeSolver.hpp"
+#include "MinresBlockSolver.hpp"
 
 namespace smoothg
 {
@@ -52,10 +53,10 @@ class GraphCoarsen
         MixedMatrix Coarsen(const GraphTopology& gt, const MixedMatrix& mgl) const;
 
         Vector Interpolate(const VectorView& coarse_vect) const;
-        void Interpolate(const VectorView& coarse_vect, VectorView& fine_vect) const;
+        void Interpolate(const VectorView& coarse_vect, VectorView fine_vect) const;
 
         Vector Restrict(const VectorView& fine_vect) const;
-        void Restrict(const VectorView& fine_vect, VectorView& coarse_vect) const;
+        void Restrict(const VectorView& fine_vect, VectorView coarse_vect) const;
 
         BlockVector Interpolate(const BlockVector& coarse_vect) const;
         void Interpolate(const BlockVector& coarse_vect, BlockVector& fine_vect) const;
