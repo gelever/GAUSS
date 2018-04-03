@@ -18,10 +18,6 @@ matrix:
           - MATRIX_EVAL="CC=gcc-7 && CXX=g++-7"
       cache:
         directories:
-          - $TRAVIS_BUILD_DIR/../linalgcpp-install
-          - $TRAVIS_BUILD_DIR/../parlinalgcpp-install
-          - $TRAVIS_BUILD_DIR/../partition-install
-          - $TRAVIS_BUILD_DIR/../sparsesolve-install
           - $TRAVIS_BUILD_DIR/../metis-install
           - $TRAVIS_BUILD_DIR/../SuiteSparse-install
           - $TRAVIS_BUILD_DIR/../mpich-install
