@@ -114,7 +114,7 @@ install:
         git clone https://github.com/gelever/partition.git partition-code;
         cd partition-code;
         mkdir build && cd build;
-        cmake -DCMAKE_INSTALL_PREFIX=$TRAVIS_BUILD_DIR/../partition-install -DMETIS_DIR=$TRAVIS_BUILD_DIR/metis-install ..;
+        cmake -DCMAKE_INSTALL_PREFIX=$TRAVIS_BUILD_DIR/../partition-install -DMETIS_DIR=$TRAVIS_BUILD_DIR/../metis-install ..;
         make -j3 install;
      else
         echo "Reusing cached partition";
