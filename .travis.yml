@@ -86,52 +86,35 @@ install:
 
     # linalgcpp
     - cd $TRAVIS_BUILD_DIR/..;
-    - if [ ! -e linalgcpp-install/lib64/liblinalgcpp.a ]; then
-        git clone https://github.com/gelever/linalgcpp.git linalg-code;
-        cd linalg-code;
-        mkdir build && cd build;
-        cmake -DCMAKE_INSTALL_PREFIX=$TRAVIS_BUILD_DIR/../linalgcpp-install ..;
-        make -j3 install;
-     else
-        echo "Reusing cached linalgcpp";
-     fi;
+    - git clone https://github.com/gelever/linalgcpp.git linalg-code;
+    - cd linalg-code;
+    - mkdir build && cd build;
+    - cmake -DCMAKE_INSTALL_PREFIX=$TRAVIS_BUILD_DIR/../linalgcpp-install ..;
+    - make -j3 install;
 
     # parlinalgcpp
     - cd $TRAVIS_BUILD_DIR/..;
-    - if [ ! -e parlinalgcpp-install/lib64/libparlinalgcpp.a ]; then
-        git clone https://github.com/gelever/parlinalgcpp.git parlinalg-code;
-        cd parlinalg-code;
-        mkdir build && cd build;
-        CC=mpicc CXX=mpic++ cmake .. -DHypre_INC_DIR=$TRAVIS_BUILD_DIR/../hypre-install/include -DHypre_LIB_DIR=$TRAVIS_BUILD_DIR/../hypre-install/lib -DCMAKE_INSTALL_PREFIX=$TRAVIS_BUILD_DIR/../parlinalgcpp-install;
-        make -j3 install;
-     else
-        echo "Reusing cached parlinalgcpp";
-     fi;
+    - git clone https://github.com/gelever/parlinalgcpp.git parlinalg-code;
+    - cd parlinalg-code;
+    - mkdir build && cd build;
+    - CC=mpicc CXX=mpic++ cmake .. -DHypre_INC_DIR=$TRAVIS_BUILD_DIR/../hypre-install/include -DHypre_LIB_DIR=$TRAVIS_BUILD_DIR/../hypre-install/lib -DCMAKE_INSTALL_PREFIX=$TRAVIS_BUILD_DIR/../parlinalgcpp-install;
+    - make -j3 install;
 
     # partition
     - cd $TRAVIS_BUILD_DIR/..;
-    - if [ ! -e partition-install/include/partition.hpp ]; then
-        git clone https://github.com/gelever/partition.git partition-code;
-        cd partition-code;
-        mkdir build && cd build;
-        cmake -DCMAKE_INSTALL_PREFIX=$TRAVIS_BUILD_DIR/../partition-install -DMETIS_DIR=$TRAVIS_BUILD_DIR/../metis-install ..;
-        make -j3 install;
-     else
-        echo "Reusing cached partition";
-     fi;
+    - git clone https://github.com/gelever/partition.git partition-code;
+    - cd partition-code;
+    - mkdir build && cd build;
+    - cmake -DCMAKE_INSTALL_PREFIX=$TRAVIS_BUILD_DIR/../partition-install -DMETIS_DIR=$TRAVIS_BUILD_DIR/../metis-install ..;
+    - make -j3 install;
 
     # sparsesolve
     - cd $TRAVIS_BUILD_DIR/..;
-    - if [ ! -e sparsesolve-install/lib64/libsparsesolve.a ]; then
-        git clone https://github.com/gelever/sparsesolver.git sparsesolve-code;
-        cd sparsesolve-code;
-        mkdir build && cd build;
-        cmake .. -DSUITESPARSE_INCLUDE_DIR_HINTS=$TRAVIS_BUILD_DIR/../SuiteSparse-install/include -DSUITESPARSE_LIBRARY_DIR_HINTS=$TRAVIS_BUILD_DIR/../SuiteSparse-install/lib -DCMAKE_INSTALL_PREFIX=$TRAVIS_BUILD_DIR/../sparsesolve-install;
-        make -j3 install;
-     else
-        echo "Reusing cached sparsesolve";
-     fi;
-
+    - git clone https://github.com/gelever/sparsesolver.git sparsesolve-code;
+    - cd sparsesolve-code;
+    - mkdir build && cd build;
+    - cmake .. -DSUITESPARSE_INCLUDE_DIR_HINTS=$TRAVIS_BUILD_DIR/../SuiteSparse-install/include -DSUITESPARSE_LIBRARY_DIR_HINTS=$TRAVIS_BUILD_DIR/../SuiteSparse-install/lib -DCMAKE_INSTALL_PREFIX=$TRAVIS_BUILD_DIR/../sparsesolve-install;
+    - make -j3 install;
 
 script:
    # Set some variables
