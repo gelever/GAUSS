@@ -105,7 +105,6 @@ install:
     - make -j3 install;
 
 script:
-   # Set some variables
    - cd $TRAVIS_BUILD_DIR;
 
    # Configure the library
