@@ -110,10 +110,10 @@ script:
    # Configure the library
    - mkdir build;
    - cd build;
-   - CC=mpicc CXX=mpic++ cmake .. -DMETIS_DIR=$TRAVIS_BUILD_DIR/../metis-install -DHypre_INC_DIR=$TRAVIS_BUILD_DIR/../hypre-install/include -DHypre_LIB_DIR=$TRAVIS_BUILD_DIR/../hypre-install/lib -DSUITESPARSE_INCLUDE_DIR_HINTS=$TRAVIS_BUILD_DIR/../SuiteSparse-install/include -DSUITESPARSE_LIBRARY_DIR_HINTS=$TRAVIS_BUILD_DIR/../SuiteSparse-install/lib;
+   - CC=mpicc CXX=mpic++ cmake .. -DMETIS_DIR=$TRAVIS_BUILD_DIR/../metis-install -DHypre_INC_DIR=$TRAVIS_BUILD_DIR/../hypre-install/include -DHypre_LIB_DIR=$TRAVIS_BUILD_DIR/../hypre-install/lib -DSUITESPARSE_INCLUDE_DIR_HINTS=$TRAVIS_BUILD_DIR/../SuiteSparse-install/include -DSUITESPARSE_LIBRARY_DIR_HINTS=$TRAVIS_BUILD_DIR/../SuiteSparse-install/lib -DSMOOTHG_TEST_PROCS=2;
 
    # Build the library
    - make -j3;
 
    # Run tests
-   - mpirun -np 2 ./examples/generalgraph  -f ../graphdata/fiedler_sample.txt -g ../graphdata/vertex_edge_sample.txt -ma -np 10 -m 2 -t 1.0
+   - CTEST_OUTPUT_ON_FAILURE=1 make test;
