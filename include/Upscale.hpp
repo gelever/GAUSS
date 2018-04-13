@@ -23,6 +23,7 @@
 
 #include "linalgcpp.hpp"
 #include "parlinalgcpp.hpp"
+
 #include "Utilities.hpp"
 #include "MixedMatrix.hpp"
 #include "GraphCoarsen.hpp"
@@ -173,7 +174,8 @@ public:
                     const BlockVector& fine_sol) const;
 
 protected:
-    Upscale(MPI_Comm comm);
+    Upscale(MPI_Comm comm, const SparseMatrix& vertex_edge_global,
+            bool hybridization = false);
 
     void MakeCoarseVectors();
 
@@ -190,6 +192,11 @@ protected:
     MPI_Comm comm_;
     int myid_;
     int num_procs_;
+
+    int global_edges_;
+    int global_vertices_;
+
+    bool hybridization_;
 
     double setup_time_;
 

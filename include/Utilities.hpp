@@ -39,7 +39,6 @@ std::unique_ptr<T> make_unique(Ts&& ... params)
 {
     return std::unique_ptr<T>(new T(std::forward<Ts>(params)...));
 }
-
 #endif
 
 namespace smoothg
@@ -107,6 +106,14 @@ double PowerIterate(MPI_Comm comm, const linalgcpp::Operator& A, VectorView resu
                     int max_iter = 1000, double tol = 1e-8, bool verbose = false);
 
 void BroadCast(MPI_Comm comm, SparseMatrix& mat);
+
+void ExtractSubMatrix(const SparseMatrix& A, const std::vector<int>& rows,
+                      const std::vector<int>& cols, const std::vector<int>& colMapper,
+                      DenseMatrix& A_sub);
+
+void MultScalarVVt(double a, const VectorView& v, DenseMatrix& aVVt);
+
+SparseMatrix AssembleElemMat(const SparseMatrix& elem_dof, const std::vector<DenseMatrix>& elems);
 
 } //namespace smoothg
 

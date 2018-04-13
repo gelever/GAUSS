@@ -30,6 +30,9 @@
 #include "GraphTopology.hpp"
 #include "SharedEntityComm.hpp"
 
+#include "MinresBlockSolver.hpp"
+#include "HybridSolver.hpp"
+
 namespace smoothg
 {
 
@@ -55,6 +58,7 @@ public:
                  const SparseMatrix& vertex_edge_global,
                  const std::vector<int>& partitioning_global,
                  double spect_tol = 0.001, int max_evects = 4,
+                 bool hybridization = false,
                  const std::vector<double>& weight_global = {});
     /**
        @brief Constructor
@@ -69,8 +73,8 @@ public:
     */
     GraphUpscale(MPI_Comm comm,
                  const SparseMatrix& vertex_edge_global,
-                 double coarse_factor,
-                 double spect_tol = 0.001, int max_evects = 4,
+                 double coarse_factor, double spect_tol = 0.001,
+                 int max_evects = 4, bool hybridization = false,
                  const std::vector<double>& weight_global = {});
 
     /// Read permuted vertex vector
@@ -98,9 +102,6 @@ private:
     void Init(const SparseMatrix& vertex_edge_global,
               const std::vector<int>& partitioning_global,
               const std::vector<double>& weight_global);
-
-    const int global_edges_;
-    const int global_vertices_;
 
     double spect_tol_;
     int max_evects_;
