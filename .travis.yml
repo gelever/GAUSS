@@ -92,10 +92,10 @@ install:
     - cd parlinalg-code;
     - mkdir build && cd build;
     - |
-        CC=mpicc CXX=mpic++ cmake .. \
-        -D Hypre_INC_DIR=$TRAVIS_BUILD_DIR/../hypre-install/include \
-        -D Hypre_LIB_DIR=$TRAVIS_BUILD_DIR/../hypre-install/lib \
-        -D CMAKE_INSTALL_PREFIX=$TRAVIS_BUILD_DIR/../parlinalgcpp-install;
+        CC=mpicc CXX=mpic++ cmake \
+        -DHypre_INC_DIR=$TRAVIS_BUILD_DIR/../hypre-install/include \
+        -DHypre_LIB_DIR=$TRAVIS_BUILD_DIR/../hypre-install/lib \
+        -DCMAKE_INSTALL_PREFIX=$TRAVIS_BUILD_DIR/../parlinalgcpp-install ..;
     - make -j3 install;
 
     # partition
@@ -105,8 +105,8 @@ install:
     - mkdir build && cd build;
     - |
         cmake .. \
-        -D CMAKE_INSTALL_PREFIX=$TRAVIS_BUILD_DIR/../partition-install \
-        -D METIS_DIR=$TRAVIS_BUILD_DIR/../metis-install;
+        -DCMAKE_INSTALL_PREFIX=$TRAVIS_BUILD_DIR/../partition-install \
+        -DMETIS_DIR=$TRAVIS_BUILD_DIR/../metis-install;
     - make -j3 install;
 
     # sparsesolve
@@ -115,10 +115,10 @@ install:
     - cd sparsesolve-code;
     - mkdir build && cd build;
     - |
-        cmake .. \
-        -D SUITESPARSE_INCLUDE_DIR_HINTS=$TRAVIS_BUILD_DIR/../SuiteSparse-install/include \
-        -D SUITESPARSE_LIBRARY_DIR_HINTS=$TRAVIS_BUILD_DIR/../SuiteSparse-install/lib \
-        -D CMAKE_INSTALL_PREFIX=$TRAVIS_BUILD_DIR/../sparsesolve-install;
+        cmake \
+        -DSUITESPARSE_INCLUDE_DIR_HINTS=$TRAVIS_BUILD_DIR/../SuiteSparse-install/include \
+        -DSUITESPARSE_LIBRARY_DIR_HINTS=$TRAVIS_BUILD_DIR/../SuiteSparse-install/lib \
+        -DCMAKE_INSTALL_PREFIX=$TRAVIS_BUILD_DIR/../sparsesolve-install ..;
     - make -j3 install;
 
 script:
@@ -128,14 +128,14 @@ script:
    - mkdir build;
    - cd build;
    - |
-       CC=mpicc CXX=mpic++ cmake .. \
-       -D METIS_DIR=$TRAVIS_BUILD_DIR/../metis-install \
-       -D Hypre_INC_DIR=$TRAVIS_BUILD_DIR/../hypre-install/include \
-       -D Hypre_LIB_DIR=$TRAVIS_BUILD_DIR/../hypre-install/lib \
-       -D SUITESPARSE_INCLUDE_DIR_HINTS=$TRAVIS_BUILD_DIR/../SuiteSparse-install/include \
-       -D SUITESPARSE_LIBRARY_DIR_HINTS=$TRAVIS_BUILD_DIR/../SuiteSparse-install/lib \
-       -D SMOOTHG_TEST_TOL=1e-2 \
-       -D SMOOTHG_TEST_PROCS=2;
+       CC=mpicc CXX=mpic++ cmake \
+       -DMETIS_DIR=$TRAVIS_BUILD_DIR/../metis-install \
+       -DHypre_INC_DIR=$TRAVIS_BUILD_DIR/../hypre-install/include \
+       -DHypre_LIB_DIR=$TRAVIS_BUILD_DIR/../hypre-install/lib \
+       -DSUITESPARSE_INCLUDE_DIR_HINTS=$TRAVIS_BUILD_DIR/../SuiteSparse-install/include \
+       -DSUITESPARSE_LIBRARY_DIR_HINTS=$TRAVIS_BUILD_DIR/../SuiteSparse-install/lib \
+       -DSMOOTHG_TEST_TOL=1e-2 \
+       -DSMOOTHG_TEST_PROCS=2 ..;
 
    # Build the library
    - make -j3;
