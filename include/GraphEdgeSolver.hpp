@@ -99,10 +99,72 @@ public:
     void Mult(const DenseMatrix& input, DenseMatrix& output) const;
     void Mult(const DenseMatrix& input, DenseMatrix& sigma_sol, DenseMatrix& u_sol) const;
 
-    void OffsetMult(int offset, const DenseMatrix& input, DenseMatrix& output) const;
-    void OffsetMult(int offset, const DenseMatrix& input, DenseMatrix& sigma_sol, DenseMatrix& u_sol) const;
-    void OffsetMult(int start, int end, const DenseMatrix& input, DenseMatrix& output) const;
-    void OffsetMult(int start, int end, const DenseMatrix& input, DenseMatrix& sigma_sol, DenseMatrix& u_sol) const;
+    /**
+       @brief Solves \f$ (D M^{-1} D^T) u = g\f$, \f$ \sigma = M^{-1} D^T u \f$.
+
+       Dense block version
+
+       @param rhs \f$ g \f$ in the formula above
+       @param sigma_sol \f$ \sigma \f$ in the formula above
+    */
+    void Mult(const DenseMatrix& rhs, DenseMatrix& sigma_sol) const;
+
+    /**
+       @brief Solves \f$ (D M^{-1} D^T) u = g\f$, \f$ \sigma = M^{-1} D^T u \f$.
+
+       Dense block version
+
+       @param rhs \f$ g \f$ in the formula above
+       @param sigma_sol \f$ \sigma \f$ in the formula above
+       @param u_sol \f$ \u \f$ in the formula above
+    */
+    void Mult(const DenseMatrix& rhs, DenseMatrix& sigma_sol, DenseMatrix& u_sol) const;
+
+    /**
+       @brief Solves \f$ (D M^{-1} D^T) u = g\f$, \f$ \sigma = M^{-1} D^T u \f$.
+              Offsets the right hand side by set amount.
+
+       @param offset which vector to start with in rhs
+       @param rhs \f$ g \f$ in the formula above
+       @param sigma_sol \f$ \sigma \f$ in the formula above
+    */
+    void OffsetMult(int offset, const DenseMatrix& rhs, DenseMatrix& sigma_sol) const;
+
+    /**
+       @brief Solves \f$ (D M^{-1} D^T) u = g\f$, \f$ \sigma = M^{-1} D^T u \f$.
+              Offsets the right hand side by set amount.
+
+       @param offset which vector to start with in rhs
+       @param rhs \f$ g \f$ in the formula above
+       @param sigma_sol \f$ \sigma \f$ in the formula above
+       @param u_sol \f$ \u \f$ in the formula above
+    */
+    void OffsetMult(int offset, const DenseMatrix& rhs, DenseMatrix& sigma_sol,
+                    DenseMatrix& u_sol) const;
+
+    /**
+       @brief Solves \f$ (D M^{-1} D^T) u = g\f$, \f$ \sigma = M^{-1} D^T u \f$.
+              Considers only part of the right hand side
+
+       @param start start of vectors in rhs
+       @param end end of vectors in rhs
+       @param rhs \f$ g \f$ in the formula above
+       @param sigma_sol \f$ \sigma \f$ in the formula above
+    */
+    void OffsetMult(int start, int end, const DenseMatrix& rhs, DenseMatrix& sigma_sol) const;
+
+    /**
+       @brief Solves \f$ (D M^{-1} D^T) u = g\f$, \f$ \sigma = M^{-1} D^T u \f$.
+              Considers only part of the right hand side
+
+       @param start start of vectors in rhs
+       @param end end of vectors in rhs
+       @param rhs \f$ g \f$ in the formula above
+       @param sigma_sol \f$ \sigma \f$ in the formula above
+       @param u_sol \f$ \u \f$ in the formula above
+    */
+    void OffsetMult(int start, int end, const DenseMatrix& rhs, DenseMatrix& sigma_sol,
+                    DenseMatrix& u_sol) const;
 
 private:
     SparseMatrix MinvDT_;

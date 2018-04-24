@@ -24,13 +24,13 @@
 namespace smoothg
 {
 
-std::vector<Vector>
+std::vector<std::vector<double>>
 HybridSolver::BuildFineLevelLocalMassMatrix(const SparseMatrix& vertex_edge,
                                             const SparseMatrix& M)
 {
     const int num_vertices = vertex_edge.Rows();
 
-    std::vector<Vector> M_el(num_vertices);
+    std::vector<std::vector<double>> M_el(num_vertices);
 
     SparseMatrix edge_vertex = vertex_edge.Transpose();
 
@@ -42,7 +42,7 @@ HybridSolver::BuildFineLevelLocalMassMatrix(const SparseMatrix& vertex_edge,
 
         int num_dofs = edge_dofs.size();
 
-        M_el[i] = Vector(num_dofs);
+        M_el[i].resize(num_dofs);
 
         for (int j = 0; j < num_dofs; ++j)
         {
@@ -76,7 +76,7 @@ HybridSolver::HybridSolver(MPI_Comm comm, const MixedMatrix& mgl)
     Ainv_f_(num_aggs_),
     use_w_(mgl.CheckW())
 {
-    std::vector<Vector> M_el = BuildFineLevelLocalMassMatrix(mgl.D_local_, mgl.M_local_);
+    auto M_el = BuildFineLevelLocalMassMatrix(mgl.D_local_, mgl.M_local_);
     std::vector<int> j_multiplier_edgedof(num_edge_dofs_);
     std::iota(std::begin(j_multiplier_edgedof), std::end(j_multiplier_edgedof), 0);
 
@@ -132,7 +132,11 @@ void HybridSolver::InitSolver(SparseMatrix local_hybrid)
     nnz_ = pHybridSystem_.nnz();
 
     cg_ = linalgcpp::PCGSolver(pHybridSystem_, max_num_iter_, rtol_,
-                               atol_, print_level_, parlinalgcpp::ParMult);
+                               atol_, 0, parlinalgcpp::ParMult);
+    if (myid_ == 0)
+    {
+        SetPrintLevel(print_level_);
+    }
 
     // HypreBoomerAMG is broken if local size is zero
     int local_size = pHybridSystem_.Rows();
@@ -179,9 +183,9 @@ SparseMatrix HybridSolver::MakeEdgeDofMultiplier(const MixedMatrix& mgl,
 }
 
 SparseMatrix HybridSolver::AssembleHybridSystem(
-        const MixedMatrix& mgl,
-        const std::vector<DenseMatrix>& M_el,
-        const std::vector<int>& j_multiplier_edgedof)
+    const MixedMatrix& mgl,
+    const std::vector<DenseMatrix>& M_el,
+    const std::vector<int>& j_multiplier_edgedof)
 {
     const auto& edgedof_IsOwned = mgl.edge_true_edge_.GetDiag();
 
@@ -307,9 +311,9 @@ SparseMatrix HybridSolver::AssembleHybridSystem(
 }
 
 SparseMatrix HybridSolver::AssembleHybridSystem(
-        const MixedMatrix& mgl,
-        const std::vector<Vector>& M_el,
-        const std::vector<int>& j_multiplier_edgedof)
+    const MixedMatrix& mgl,
+    const std::vector<std::vector<double>>& M_el,
+    const std::vector<int>& j_multiplier_edgedof)
 {
     const auto& edgedof_IsOwned = mgl.edge_true_edge_.GetDiag();
 
@@ -361,7 +365,7 @@ SparseMatrix HybridSolver::AssembleHybridSystem(
         std::vector<int> Cloc_j(nlocal_multiplier);
         std::vector<double> Cloc_data(nlocal_multiplier);
 
-        const Vector& M_diag(M_el[agg]);
+        const auto& M_diag(M_el[agg]);
         Vector CMinvCT(nlocal_multiplier);
 
         for (int i = 0; i < nlocal_multiplier; ++i)
@@ -444,7 +448,7 @@ void HybridSolver::Solve(const BlockVector& Rhs, BlockVector& Sol) const
 
     if (!use_w_ && myid_ == 0)
     {
-            Hrhs_[0] = 0.0;
+        Hrhs_[0] = 0.0;
     }
 
     // assemble true right hand side
@@ -593,7 +597,10 @@ void HybridSolver::SetPrintLevel(int print_level)
 {
     MGLSolver::SetPrintLevel(print_level);
 
-    cg_.SetVerbose(print_level_);
+    if (myid_ == 0)
+    {
+        cg_.SetVerbose(print_level_);
+    }
 }
 
 void HybridSolver::SetMaxIter(int max_num_iter)
@@ -605,7 +612,7 @@ void HybridSolver::SetMaxIter(int max_num_iter)
 
 void HybridSolver::SetRelTol(double rtol)
 {
-    MGLSolver::SetMaxIter(rtol);
+    MGLSolver::SetRelTol(rtol);
 
     cg_.SetRelTol(rtol_);
 }

@@ -82,7 +82,7 @@ set_target_properties(smoothG PROPERTIES
         CXX_EXTENSIONS NO
 )
 
-target_compile_options(smoothG PRIVATE $<$<CXX_COMPILER_ID:GNU>:-Wall>)
+target_compile_options(smoothG PRIVATE $<$<CXX_COMPILER_ID:GNU>:-Wall -O2>)
 
 target_link_libraries(smoothG
     PUBLIC
@@ -107,6 +107,15 @@ add_custom_target(style
     WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
     COMMENT "Formating source code" VERBATIM
     )
+
+# Valgrind
+find_program(MEMORYCHECK_COMMAND valgrind)
+set(MEMORYCHECK_COMMAND_OPTIONS "")
+list(APPEND MEMORYCHECK_COMMAND_OPTIONS "--leak-check=full")
+list(APPEND MEMORYCHECK_COMMAND_OPTIONS "--error-exitcode=1")
+function(add_valgrind_test name binary)
+  add_test(${name} ${MEMORYCHECK_COMMAND} ${MEMORYCHECK_COMMAND_OPTIONS} ./${binary})
+endfunction(add_valgrind_test)
 
 # Installation
 include(GNUInstallDirs)
@@ -163,4 +172,4 @@ export(PACKAGE smoothG)
 
 # Sub Directories
 add_subdirectory(examples)
-#add_subdirectory(testcode)
+add_subdirectory(testcode)

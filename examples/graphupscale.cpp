@@ -39,10 +39,10 @@ using linalgcpp::ReadCSR;
 int main(int argc, char* argv[])
 {
     // Initialize MPI
-    int myid;
-    MPI_Init(&argc, &argv);
-    MPI_Comm comm = MPI_COMM_WORLD;
-    MPI_Comm_rank(comm, &myid);
+    MpiSession mpi_info(argc, argv);
+    MPI_Comm comm = mpi_info.comm_;
+    int myid = mpi_info.myid_;
+    int num_procs = mpi_info.num_procs_;
 
     std::string ve_filename = "../../graphdata/vertex_edge_sample.txt";
     std::string rhs_filename = "../../graphdata/fiedler_sample.txt";
@@ -138,7 +138,7 @@ int main(int argc, char* argv[])
         bool use_hybridization = true;
 
         GraphUpscale hb_upscale(comm, vertex_edge, coarse_factor,
-                             spect_tol, max_evects, use_hybridization);
+                                spect_tol, max_evects, use_hybridization);
 
         GraphUpscale minres_upscale(comm, vertex_edge, coarse_factor,
                                     spect_tol, max_evects, !use_hybridization);
@@ -158,8 +158,6 @@ int main(int argc, char* argv[])
             std::cout.precision(3);
         }
     }
-
-    MPI_Finalize();
 
     return EXIT_SUCCESS;
 }
