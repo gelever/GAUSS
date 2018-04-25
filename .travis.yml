@@ -20,15 +20,36 @@ matrix:
           - $TRAVIS_BUILD_DIR/extern/hypre
 
 install:
-    - sh config/build_scripts/build_metis.sh;
-    - sh config/build_scripts/build_suitesparse.sh;
-    - sh config/build_scripts/build_mpich.sh;
-    - export PATH=extern/mpich/bin:$PATH;
-    - PATH=extern/mpich/bin:$PATH;
+    - if [ ! -e extern/metis/lib/libmetis.a ]; then
+        sh config/build_scripts/build_metis.sh;
+     else
+        echo "Reusing cached metis";
+     fi;
+
+    - if [ ! -e extern/SuiteSparse/lib/libumfpack.so ]; then
+        sh config/build_scripts/build_suitesparse.sh;
+     else
+        echo "Reusing cached SuiteSparse-4.5.4";
+     fi;
+
+    - if [ ! -e extern/mpich/bin/mpirun ]; then
+        sh config/build_scripts/build_mpich.sh;
+        export PATH=extern/mpich/bin:$PATH;
+     else
+        export PATH=extern/mpich/bin:$PATH;
+        echo "Reusing cached mpich";
+     fi;
+
     - which mpic++;
     - which mpicc;
     - ls extern/mpich/bin;
-    - sh config/build_scripts/build_hypre.sh;
+
+    - if [ ! -e extern/hypre/lib/libHYPRE.a ]; then
+        sh config/build_scripts/build_hypre.sh;
+     else
+        echo "Reusing cached hypre-2.10.0b";
+     fi;
+
     - sh config/build_scripts/build_linalg.sh;
 
 script:
