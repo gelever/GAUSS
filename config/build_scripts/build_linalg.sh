@@ -14,13 +14,16 @@
 #
 #################################################################### EHEADER #
 
-# Downloads and builds SuiteSparse
+# Downloads and builds Linear algebra libraries
 if [ -z "$INSTALL_DIR" ]; then INSTALL_DIR=${PWD}/extern; fi
 if [ -z "$METIS_DIR" ]; then METIS_DIR=$INSTALL_DIR/metis; fi
 if [ -z "$SUITESPARSE_DIR" ]; then SUITESPARSE_DIR=$INSTALL_DIR/SuiteSparse; fi
 if [ -z "$HYPRE_DIR" ]; then HYPRE_DIR=$INSTALL_DIR/hypre; fi
 
-# Linalgcpp
+#############
+# Linalgcpp #
+#############
+
 cd $INSTALL_DIR
 git clone -b develop https://github.com/gelever/linalgcpp.git linalgcpp
 cd linalgcpp
@@ -28,7 +31,10 @@ mkdir -p build && cd build
 cmake .. -DCMAKE_INSTALL_PREFIX=$INSTALL_DIR/linalgcpp
 make -j3 install
 
-# ParLinalgcpp
+################
+# ParLinalgcpp #
+################
+
 cd $INSTALL_DIR
 git clone https://github.com/gelever/parlinalgcpp.git parlinalgcpp
 cd parlinalgcpp
@@ -39,7 +45,10 @@ CC=mpicc CXX=mpic++ cmake .. \
     -DCMAKE_INSTALL_PREFIX=$INSTALL_DIR/parlinalgcpp
 make -j3 install
 
-# Partition
+#############
+# Partition #
+#############
+
 cd $INSTALL_DIR
 git clone https://github.com/gelever/partition.git partition
 cd partition
@@ -49,7 +58,10 @@ cmake .. \
     -DCMAKE_INSTALL_PREFIX=$INSTALL_DIR/partition
 make -j3 install
 
-# SparseSolve
+###############
+# SparseSolve #
+###############
+
 cd $INSTALL_DIR
 git clone https://github.com/gelever/sparsesolver.git sparsesolve
 cd sparsesolve
