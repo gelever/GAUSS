@@ -55,4 +55,5 @@ script:
    - sh config/extern_build.sh;
 
    # Run tests
+   - cd build;
    - CTEST_OUTPUT_ON_FAILURE=1 make test;

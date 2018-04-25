@@ -63,5 +63,4 @@ CC=mpicc CXX=mpic++ cmake \
     $BASE_DIR \
     $EXTRA_ARGS
 
-cd build
 make -j 3
