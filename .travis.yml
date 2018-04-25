@@ -24,6 +24,10 @@ install:
     - sh config/build_scripts/build_suitesparse.sh;
     - sh config/build_scripts/build_mpich.sh;
     - export PATH=extern/mpich/bin:$PATH;
+    - PATH=extern/mpich/bin:$PATH;
+    - which mpic++;
+    - which mpicc;
+    - ls extern/mpich/bin;
     - sh config/build_scripts/build_hypre.sh;
     - sh config/build_scripts/build_linalg.sh;
 
