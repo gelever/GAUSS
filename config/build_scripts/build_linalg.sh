@@ -33,10 +33,6 @@ cd $INSTALL_DIR
 git clone https://github.com/gelever/parlinalgcpp.git parlinalgcpp
 cd parlinalgcpp
 mkdir -p build && cd build
-which mpic++
-which mpicc
-echo $PATH
-echo ${PATH}
 CC=mpicc CXX=mpic++ cmake .. \
     -DHypre_INC_DIR=$HYPRE_DIR/include \
     -DHypre_LIB_DIR=$HYPRE_DIR/lib \

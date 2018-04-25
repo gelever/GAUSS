@@ -34,15 +34,11 @@ install:
 
     - if [ ! -e extern/mpich/bin/mpirun ]; then
         sh config/build_scripts/build_mpich.sh;
-        export PATH=extern/mpich/bin:$PATH;
+        export PATH=$TRAVIS_BUILD_DIR/extern/mpich/bin:$PATH;
      else
-        export PATH=extern/mpich/bin:$PATH;
+        export PATH=$TRAVIS_BUILD_DIR/extern/mpich/bin:$PATH;
         echo "Reusing cached mpich";
      fi;
-
-    - which mpic++;
-    - which mpicc;
-    - ls extern/mpich/bin;
 
     - if [ ! -e extern/hypre/lib/libHYPRE.a ]; then
         sh config/build_scripts/build_hypre.sh;
