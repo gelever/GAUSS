@@ -301,6 +301,26 @@ struct MpiSession
 */
 std::vector<int> PartitionAAT(const SparseMatrix& A, double coarsening_factor);
 
+
+/** @brief Read serial vector from file and extract local portion
+
+    @param filename name of vector file
+    @param local_to_global set of local indices to extract
+    @returns local vector
+*/
+Vector ReadVector(const std::string& filename,
+                  const std::vector<int>& local_to_global);
+
+/** @brief Write a serial vector to file, combining local vectors from all processors
+
+    @param vect vector to write
+    @param filename name of vector file
+    @param global_size global size of vector
+    @param local_to_global map of local indices to global indices
+*/
+void WriteVector(MPI_Comm comm, const VectorView& vect, const std::string& filename,
+                 int global_size, const std::vector<int>& local_to_global);
+
 } //namespace smoothg
 
 #endif // __UTILITIES_HPP__

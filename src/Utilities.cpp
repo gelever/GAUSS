@@ -777,4 +777,51 @@ std::vector<int> PartitionAAT(const SparseMatrix& A, double coarsening_factor)
     return Partition(AA_T, num_parts, ubal);
 }
 
+Vector ReadVector(const std::string& filename,
+                  const std::vector<int>& local_to_global)
+{
+    std::vector<double> global_vect = linalgcpp::ReadText(filename);
+
+    int local_size = local_to_global.size();
+
+    Vector local_vect(local_size);
+
+    for (int i = 0; i < local_size; ++i)
+    {
+        local_vect[i] = global_vect[local_to_global[i]];
+    }
+
+    return local_vect;
+}
+
+void WriteVector(MPI_Comm comm, const VectorView& vect, const std::string& filename, int global_size,
+                          const std::vector<int>& local_to_global)
+{
+    assert(global_size > 0);
+    assert(vect.size() <= global_size);
+
+    int myid;
+    int num_procs;
+    MPI_Comm_size(comm, &num_procs);
+    MPI_Comm_rank(comm, &myid);
+
+    std::vector<double> global_global(global_size, 0.0);
+    std::vector<double> global_local(global_size, 0.0);
+
+    int local_size = local_to_global.size();
+
+    for (int i = 0; i < local_size; ++i)
+    {
+        global_local[local_to_global[i]] = vect[i];
+    }
+
+    MPI_Scan(global_local.data(), global_global.data(), global_size,
+             MPI_DOUBLE, MPI_SUM, comm);
+
+    if (myid == num_procs - 1)
+    {
+        linalgcpp::WriteText(global_global, filename);
+    }
+}
+
 } // namespace smoothg
