@@ -93,8 +93,8 @@ int main(int argc, char* argv[])
     Graph graph(comm, vertex_edge, partition);
     MixedMatrix mgl(graph, weight, W_block);
 
-    BlockVector sol(mgl.offsets_);
-    BlockVector rhs(mgl.offsets_);
+    BlockVector sol(mgl.Offsets());
+    BlockVector rhs(mgl.Offsets());
     rhs.GetBlock(0) = 0.0;
     rhs.GetBlock(1) = 1.0;
 

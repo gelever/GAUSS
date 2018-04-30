@@ -101,20 +101,17 @@ public:
     */
     ParMatrix ToPrimal() const;
 
-    // Local blocks
-    SparseMatrix M_local_;
-    SparseMatrix D_local_;
-    SparseMatrix W_local_;
+    const SparseMatrix& LocalM() const { return M_local_; }
+    const SparseMatrix& LocalD() const { return D_local_; }
+    const SparseMatrix& LocalW() const { return W_local_; }
 
-    // Global blocks
-    ParMatrix M_global_;
-    ParMatrix D_global_;
-    ParMatrix W_global_;
+    const ParMatrix& GlobalM() const { return M_global_; }
+    const ParMatrix& GlobalD() const { return D_global_; }
+    const ParMatrix& GlobalW() const { return W_global_; }
 
-    ParMatrix edge_true_edge_;
-
-    std::vector<int> offsets_;
-    std::vector<int> true_offsets_;
+    const ParMatrix& EdgeTrueEdge() const { return edge_true_edge_; }
+    const std::vector<int>& Offsets() const { return offsets_; }
+    const std::vector<int>& TrueOffsets() const { return true_offsets_; }
 
 private:
     void Init();
@@ -129,6 +126,21 @@ private:
 
     SparseMatrix MakeLocalW(const Graph& graph,
                             const SparseMatrix& W_global);
+
+    // Local blocks
+    SparseMatrix M_local_;
+    SparseMatrix D_local_;
+    SparseMatrix W_local_;
+
+    // Global blocks
+    ParMatrix M_global_;
+    ParMatrix D_global_;
+    ParMatrix W_global_;
+
+    ParMatrix edge_true_edge_;
+
+    std::vector<int> offsets_;
+    std::vector<int> true_offsets_;
 
 
 };
