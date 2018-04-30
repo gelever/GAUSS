@@ -321,7 +321,7 @@ Vector ReadVector(const std::string& filename,
 */
 template <typename T = VectorView>
 void WriteVector(MPI_Comm comm, const T& vect, const std::string& filename, int global_size,
-                          const std::vector<int>& local_to_global)
+                 const std::vector<int>& local_to_global)
 {
     assert(global_size > 0);
     assert(vect.size() <= global_size);

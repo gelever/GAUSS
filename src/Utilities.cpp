@@ -766,7 +766,8 @@ SparseMatrix Add(double alpha, const SparseMatrix& A, double beta, const SparseM
     return coo.ToSparse();
 }
 
-std::vector<int> PartitionAAT(const SparseMatrix& A, double coarsening_factor, bool ubal, bool contig)
+std::vector<int> PartitionAAT(const SparseMatrix& A, double coarsening_factor, bool ubal,
+                              bool contig)
 {
     SparseMatrix A_T = A.Transpose();
     SparseMatrix AA_T = A.Mult(A_T);
