@@ -119,25 +119,41 @@ int main(int argc, char* argv[])
 
     if (save_output)
     {
-        auto Output = [&](int level, const std::vector<int>& part)
+        for (int i = 0; i < topos.size(); ++i)
         {
+            SparseMatrix agg_vertex = topos[0].agg_vertex_local_;
+
+            for (int j = 1; j < i + 1; ++j)
+            {
+                agg_vertex = topos[j].agg_vertex_local_.Mult(agg_vertex);
+            }
+
+            SparseMatrix vertex_agg = agg_vertex.Transpose();
+
+            const SparseMatrix& agg_face = topos[i].agg_face_local_;
+            const SparseMatrix& face_agg = topos[i].face_agg_local_;
+            SparseMatrix agg_agg = agg_face.Mult(face_agg);
+
+            std::vector<int> color = GetElementColoring(agg_agg);
+            std::vector<int> part_colored(vertex_agg.Rows(), -1);
+
+            int num_aggs = vertex_agg.Cols();
+
+            for (int j = 0; j < num_aggs; ++j)
+            {
+                std::vector<int> indices = agg_vertex.GetIndices(j);
+
+                for (auto&& index : indices)
+                {
+                    part_colored[index] = color[j];
+                }
+            }
+
             std::stringstream ss;
-            ss << "topo_part_" << std::setw(5) << std::setfill('0') << level << ".txt";
+            ss << "topo_part_" << std::setw(5) << std::setfill('0') << i << ".txt";
 
-            WriteVector(comm, part, ss.str(),
+            WriteVector(comm, part_colored, ss.str(),
                         nvertices_global, fine_graph.vertex_map_);
-        };
-
-        SparseMatrix vertex_agg = topos[0].agg_vertex_local_.Transpose();
-
-        Output(0, vertex_agg.GetIndices());
-
-        for (int i = 1; i < topos.size(); ++i)
-        {
-            SparseMatrix vertex_agg_i = topos[i].agg_vertex_local_.Transpose();
-            vertex_agg = vertex_agg.Mult(vertex_agg_i);
-
-            Output(i, vertex_agg.GetIndices());
         }
     }
 

@@ -350,6 +350,16 @@ void WriteVector(MPI_Comm comm, const T& vect, const std::string& filename, int 
     }
 }
 
+/**
+   @brief A SERIAL coloring algorithm marking distinct colors for adjacent elements
+
+   This function is modified from mfem::Mesh::GetElementColoring.
+
+   @param el_el element connectivity matrix (assuming nonzero diagonal)
+   @returns colors contains colors of all elements
+*/
+std::vector<int> GetElementColoring(const SparseMatrix& el_el);
+
 } //namespace smoothg
 
 #endif // __UTILITIES_HPP__

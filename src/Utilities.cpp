@@ -794,4 +794,87 @@ Vector ReadVector(const std::string& filename,
     return local_vect;
 }
 
+std::vector<int> GetElementColoring(const SparseMatrix& el_el)
+{
+    int num_el = el_el.Rows();
+    int stack_p = 0;
+    int stack_top_p = 0;
+    int max_num_colors = 1;
+
+    std::vector<int> el_stack(num_el);
+
+    const auto& i_el_el = el_el.GetIndptr();
+    const auto& j_el_el = el_el.GetIndices();
+
+    std::vector<int> colors(num_el, -2);
+
+    for (int el = 0; stack_top_p < num_el; el = (el + 1) % num_el)
+    {
+        if (colors[el] != -2)
+        {
+            continue;
+        }
+
+        colors[el] = -1;
+        el_stack[stack_top_p++] = el;
+
+        for ( ; stack_p < stack_top_p; stack_p++)
+        {
+            int i = el_stack[stack_p];
+            int num_nb = i_el_el[i + 1] - i_el_el[i] - 1; // assume nonzero diagonal
+            max_num_colors = std::max(max_num_colors, num_nb + 1);
+
+            for (int j = i_el_el[i]; j < i_el_el[i + 1]; j++)
+            {
+                int k = j_el_el[j];
+
+                if (j == i)
+                {
+                    continue; // skip self-interaction
+                }
+
+                if (colors[k] == -2)
+                {
+                    colors[k] = -1;
+                    el_stack[stack_top_p++] = k;
+                }
+            }
+        }
+    }
+
+    std::vector<int> color_marker(max_num_colors);
+
+    for (int stack_p = 0; stack_p < stack_top_p; stack_p++)
+    {
+        int i = el_stack[stack_p];
+        std::fill(std::begin(color_marker), std::end(color_marker), 0);
+
+        for (int j = i_el_el[i]; j < i_el_el[i + 1]; j++)
+        {
+            if (j_el_el[j] == i)
+            {
+                continue;          // skip self-interaction
+            }
+
+            int color = colors[j_el_el[j]];
+
+            if (color != -1)
+            {
+                color_marker[color] = 1;
+            }
+        }
+
+        int color = 0;
+
+        while (color < max_num_colors && color_marker[color] != 0)
+        {
+            color++;
+        }
+
+        colors[i] = color;
+    }
+
+    return colors;
+}
+
 } // namespace smoothg
