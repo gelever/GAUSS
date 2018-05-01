@@ -213,9 +213,9 @@ template <typename T>
 ElemMixedMatrix<T>::ElemMixedMatrix(std::vector<T> M_elem, SparseMatrix elem_dof,
                                     SparseMatrix D_local, SparseMatrix W_local,
                                     ParMatrix edge_true_edge)
-: MixedMatrix(SparseMatrix(), std::move(D_local),
-              std::move(W_local), std::move(edge_true_edge)),
-  M_elem_(std::move(M_elem)), elem_dof_(std::move(elem_dof))
+    : MixedMatrix(SparseMatrix(), std::move(D_local),
+                  std::move(W_local), std::move(edge_true_edge)),
+      M_elem_(std::move(M_elem)), elem_dof_(std::move(elem_dof))
 {
 }
 

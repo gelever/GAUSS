@@ -166,14 +166,13 @@ int main(int argc, char* argv[])
     {
         fine_rhs.GetBlock(1) = upscale.ReadVertexVector(fiedler_filename);
     }
-
     /// [Right Hand Side]
 
     /// [Solve]
     int num_aggs = upscale.NumAggs();
     std::vector<double> fine_weights(upscale.Rows());
     std::vector<double> coarse_weights(num_aggs);
-                                        
+
     BlockVector fine_sol = upscale.GetFineBlockVector();
     BlockVector upscaled_sol = upscale.GetFineBlockVector();
 

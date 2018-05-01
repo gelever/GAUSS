@@ -64,15 +64,18 @@ void GraphUpscale::Init(const SparseMatrix& vertex_edge,
     graph_ = Graph(comm_, vertex_edge, global_partitioning);
     gt_ = GraphTopology(graph_);
 
-    auto fine_mm = make_unique<ElemMixedMatrix<std::vector<double>>>(graph_, weight);
-    fine_mm->AssembleM(); // Coarsening requires assembled M, for now
-    mgl_.push_back(std::move(fine_mm));
+    using VectorElemMM = ElemMixedMatrix<std::vector<double>>;
+    using DenseElemMM = ElemMixedMatrix<DenseMatrix>;
 
-    coarsener_ = GraphCoarsen(GetFineMatrix(), gt_,
-                              max_evects_, spect_tol_);
+    VectorElemMM fine_mm(graph_, weight);
+    fine_mm.AssembleM(); // Coarsening requires assembled M, for now
 
-    auto coarse_mm = coarsener_.Coarsen(gt_, GetFineMatrix());
-    mgl_.push_back(make_unique<ElemMixedMatrix<DenseMatrix>>(std::move(coarse_mm)));
+    coarsener_ = GraphCoarsen(fine_mm, gt_, max_evects_, spect_tol_);
+
+    DenseElemMM coarse_mm = coarsener_.Coarsen(gt_, fine_mm);
+
+    mgl_.push_back(make_unique<VectorElemMM>(std::move(fine_mm)));
+    mgl_.push_back(make_unique<DenseElemMM>(std::move(coarse_mm)));
 
     Operator::rows_ = graph_.vertex_edge_local_.Rows();
     Operator::cols_ = graph_.vertex_edge_local_.Rows();
