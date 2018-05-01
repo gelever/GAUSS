@@ -261,15 +261,17 @@ BlockVector Upscale::GetFineTrueBlockVector() const
 MixedMatrix& Upscale::GetMatrix(int level)
 {
     assert(level >= 0 && level < static_cast<int>(mgl_.size()));
+    assert(mgl_[level]);
 
-    return mgl_[level];
+    return *mgl_[level];
 }
 
 const MixedMatrix& Upscale::GetMatrix(int level) const
 {
     assert(level >= 0 && level < static_cast<int>(mgl_.size()));
+    assert(mgl_[level]);
 
-    return mgl_[level];
+    return *mgl_[level];
 }
 
 MixedMatrix& Upscale::GetFineMatrix()

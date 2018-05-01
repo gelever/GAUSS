@@ -68,44 +68,52 @@ void GraphUpscale::Init(const SparseMatrix& vertex_edge,
                         const std::vector<double>& weight)
 {
     graph_ = Graph(comm_, vertex_edge, global_partitioning);
-    mgl_.emplace_back(graph_, weight);
     gt_ = GraphTopology(graph_);
+
+    auto mm = make_unique<ElemMixedMatrix<std::vector<double>>>(graph_, weight);
+    mm->AssembleM(); // Coarsening requires assembled M, for now
+    mgl_.push_back(std::move(mm));
 
     coarsener_ = GraphCoarsen(GetFineMatrix(), gt_,
                               max_evects_, spect_tol_);
 
-    mgl_.push_back(coarsener_.Coarsen(gt_, GetFineMatrix(), hybridization_));
-
-    if (hybridization_)
-    {
-        coarse_solver_ = make_unique<HybridSolver>(GetCoarseMatrix(), coarsener_);
-    }
-    else
-    {
-        coarse_solver_ = make_unique<MinresBlockSolver>(GetCoarseMatrix());
-    }
-
-    MakeCoarseVectors();
+    mgl_.push_back(coarsener_.Coarsen2(gt_, GetFineMatrix()));
 
     Operator::rows_ = graph_.vertex_edge_local_.Rows();
     Operator::cols_ = graph_.vertex_edge_local_.Rows();
 
-    // TODO(gelever1): Set for now, should be unset and user can determine if they need a fine solver.
-    MakeFineSolver();
+    MakeCoarseVectors();
+    MakeCoarseSolver();
+    MakeFineSolver(); // TODO(gelever1): unset and let user make
 }
 
-void GraphUpscale::MakeFineSolver() const
+void GraphUpscale::MakeCoarseSolver()
 {
-    if (!fine_solver_)
+    auto& mm = dynamic_cast<ElemMixedMatrix<DenseMatrix>&>(GetCoarseMatrix());
+
+    if (hybridization_)
     {
-        if (hybridization_)
-        {
-            fine_solver_ = make_unique<HybridSolver>(GetFineMatrix());
-        }
-        else
-        {
-            fine_solver_ = make_unique<MinresBlockSolver>(GetFineMatrix());
-        }
+        coarse_solver_ = make_unique<HybridSolver>(mm, coarsener_);
+    }
+    else
+    {
+        mm.AssembleM();
+        coarse_solver_ = make_unique<MinresBlockSolver>(mm);
+    }
+}
+
+void GraphUpscale::MakeFineSolver()
+{
+    auto& mm = dynamic_cast<ElemMixedMatrix<std::vector<double>>&>(GetFineMatrix());
+
+    if (hybridization_)
+    {
+        fine_solver_ = make_unique<HybridSolver>(mm);
+    }
+    else
+    {
+        mm.AssembleM();
+        fine_solver_ = make_unique<MinresBlockSolver>(mm);
     }
 }
 

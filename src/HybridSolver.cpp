@@ -24,44 +24,7 @@
 namespace smoothg
 {
 
-std::vector<std::vector<double>>
-HybridSolver::BuildFineLevelLocalMassMatrix(const SparseMatrix& vertex_edge,
-                                            const SparseMatrix& M)
-{
-    const int num_vertices = vertex_edge.Rows();
-
-    std::vector<std::vector<double>> M_el(num_vertices);
-
-    SparseMatrix edge_vertex = vertex_edge.Transpose();
-
-    const auto& M_data = M.GetData();
-
-    for (int i = 0; i < num_vertices; ++i)
-    {
-        std::vector<int> edge_dofs = vertex_edge.GetIndices(i);
-
-        int num_dofs = edge_dofs.size();
-
-        M_el[i].resize(num_dofs);
-
-        for (int j = 0; j < num_dofs; ++j)
-        {
-            if (edge_vertex.RowSize(edge_dofs[j]) == 2)
-            {
-                M_el[i][j] = M_data[edge_dofs[j]] / 2.0;
-            }
-            else
-            {
-                M_el[i][j] = M_data[edge_dofs[j]];
-            }
-        }
-    }
-
-    return M_el;
-}
-
-
-HybridSolver::HybridSolver(const MixedMatrix& mgl)
+HybridSolver::HybridSolver(const ElemMixedMatrix<std::vector<double>>& mgl)
     :
     MGLSolver(mgl.Offsets()), comm_(mgl.GlobalD().GetComm()), myid_(mgl.GlobalD().GetMyId()),
     agg_vertexdof_(SparseIdentity(mgl.LocalD().Rows())),
@@ -76,7 +39,7 @@ HybridSolver::HybridSolver(const MixedMatrix& mgl)
     Ainv_f_(num_aggs_),
     use_w_(mgl.CheckW())
 {
-    auto M_el = BuildFineLevelLocalMassMatrix(mgl.LocalD(), mgl.LocalM());
+    const std::vector<std::vector<double>>& M_el = mgl.GetElemM();
     std::vector<int> j_multiplier_edgedof(num_edge_dofs_);
     std::iota(std::begin(j_multiplier_edgedof), std::end(j_multiplier_edgedof), 0);
 
@@ -86,7 +49,7 @@ HybridSolver::HybridSolver(const MixedMatrix& mgl)
 }
 
 
-HybridSolver::HybridSolver(const MixedMatrix& mgl,
+HybridSolver::HybridSolver(const ElemMixedMatrix<DenseMatrix>& mgl,
                            const GraphCoarsen& coarsener)
     :
     MGLSolver(mgl.Offsets()), comm_(mgl.GlobalD().GetComm()), myid_(mgl.GlobalD().GetMyId()),
@@ -113,7 +76,7 @@ HybridSolver::HybridSolver(const MixedMatrix& mgl,
 
     multiplier_d_td_ = MakeEntityTrueEntity(multiplier_d_td_d);
 
-    const std::vector<DenseMatrix>& M_el = coarsener.GetMelem();
+    const std::vector<DenseMatrix>& M_el = mgl.GetElemM();
     SparseMatrix local_hybrid = AssembleHybridSystem(mgl, M_el, j_multiplier_edgedof);
 
     InitSolver(std::move(local_hybrid));

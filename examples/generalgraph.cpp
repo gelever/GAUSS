@@ -70,24 +70,24 @@ int main(int argc, char* argv[])
 
     linalgcpp::ArgParser arg_parser(argc, argv);
 
-    arg_parser.Parse(graph_filename, "-g", "Graph connection data.");
-    arg_parser.Parse(fiedler_filename, "-f", "Fiedler vector data.");
-    arg_parser.Parse(partition_filename, "-p", "Partition data.");
-    arg_parser.Parse(weight_filename, "-w", "Edge weight data.");
-    arg_parser.Parse(w_block_filename, "-wb", "W block data.");
-    arg_parser.Parse(isolate, "-isolate", "Isolate a single vertex.");
-    arg_parser.Parse(max_evects, "-m", "Maximum eigenvectors per aggregate.");
-    arg_parser.Parse(spect_tol, "-t", "Spectral tolerance for eigenvalue problem.");
-    arg_parser.Parse(num_partitions, "-np", "Number of partitions to generate.");
-    arg_parser.Parse(hybridization, "-hb", "Enable hybridization.");
-    arg_parser.Parse(metis_agglomeration, "-ma", "Enable Metis partitioning.");
-    arg_parser.Parse(generate_fiedler, "-gf", "Generate Fiedler vector.");
-    arg_parser.Parse(save_fiedler, "-sf", "Save a generated Fiedler vector.");
-    arg_parser.Parse(generate_graph, "-gg", "Generate a graph.");
-    arg_parser.Parse(gen_vertices, "-nv", "Number of vertices of generated graph.");
-    arg_parser.Parse(mean_degree, "-md", "Average vertex degree of generated graph.");
-    arg_parser.Parse(beta, "-b", "Probability of rewiring in the Watts-Strogatz model.");
-    arg_parser.Parse(seed, "-s", "Seed for random number generator.");
+    arg_parser.Parse(graph_filename, "--g", "Graph connection data.");
+    arg_parser.Parse(fiedler_filename, "--f", "Fiedler vector data.");
+    arg_parser.Parse(partition_filename, "--p", "Partition data.");
+    arg_parser.Parse(weight_filename, "--w", "Edge weight data.");
+    arg_parser.Parse(w_block_filename, "--wb", "W block data.");
+    arg_parser.Parse(isolate, "--isolate", "Isolate a single vertex.");
+    arg_parser.Parse(max_evects, "--m", "Maximum eigenvectors per aggregate.");
+    arg_parser.Parse(spect_tol, "--t", "Spectral tolerance for eigenvalue problem.");
+    arg_parser.Parse(num_partitions, "--np", "Number of partitions to generate.");
+    arg_parser.Parse(hybridization, "--hb", "Enable hybridization.");
+    arg_parser.Parse(metis_agglomeration, "--ma", "Enable Metis partitioning.");
+    arg_parser.Parse(generate_fiedler, "--gf", "Generate Fiedler vector.");
+    arg_parser.Parse(save_fiedler, "--sf", "Save a generated Fiedler vector.");
+    arg_parser.Parse(generate_graph, "--gg", "Generate a graph.");
+    arg_parser.Parse(gen_vertices, "--nv", "Number of vertices of generated graph.");
+    arg_parser.Parse(mean_degree, "--md", "Average vertex degree of generated graph.");
+    arg_parser.Parse(beta, "--b", "Probability of rewiring in the Watts-Strogatz model.");
+    arg_parser.Parse(seed, "--s", "Seed for random number generator.");
 
     if (!arg_parser.IsGood())
     {

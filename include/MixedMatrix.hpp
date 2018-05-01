@@ -59,7 +59,7 @@ public:
                 ParMatrix edge_true_edge);
 
     /** @brief Default Destructor */
-    ~MixedMatrix() noexcept = default;
+    virtual ~MixedMatrix() noexcept = default;
 
     /** @brief Copy Constructor */
     MixedMatrix(const MixedMatrix& other) noexcept;
@@ -113,19 +113,20 @@ public:
     const std::vector<int>& Offsets() const { return offsets_; }
     const std::vector<int>& TrueOffsets() const { return true_offsets_; }
 
-private:
-    void Init();
+protected:
 
-    SparseMatrix MakeLocalM(const ParMatrix& edge_true_edge,
-                            const ParMatrix& edge_edge,
-                            const std::vector<int>& edge_map,
-                            const std::vector<double>& global_weight);
+    std::vector<double> MakeLocalWeight(const ParMatrix& edge_true_edge,
+                                        const ParMatrix& edge_edge,
+                                        const std::vector<int>& edge_map,
+                                        const std::vector<double>& global_weight);
 
     SparseMatrix MakeLocalD(const ParMatrix& edge_true_edge,
                             const SparseMatrix& vertex_edge);
 
     SparseMatrix MakeLocalW(const Graph& graph,
                             const SparseMatrix& W_global);
+
+    void Init();
 
     // Local blocks
     SparseMatrix M_local_;
@@ -141,9 +142,37 @@ private:
 
     std::vector<int> offsets_;
     std::vector<int> true_offsets_;
-
-
 };
+
+template <typename T>
+class ElemMixedMatrix : public MixedMatrix
+{
+    public:
+
+        ElemMixedMatrix(const Graph& graph, const std::vector<double>& global_weight,
+                        const SparseMatrix& W_global = SparseMatrix());
+
+        ElemMixedMatrix(std::vector<T> M_elem, SparseMatrix elem_dof,
+                        SparseMatrix D_local, SparseMatrix W_local,
+                        ParMatrix edge_true_edge)
+            : MixedMatrix(SparseMatrix(), std::move(D_local),
+                          std::move(W_local), std::move(edge_true_edge)),
+              M_elem_(std::move(M_elem)), elem_dof_(std::move(elem_dof))
+        {
+        }
+
+        void AssembleM();
+        void AssembleM(const std::vector<double>& agg_weight);
+
+        const std::vector<T>& GetElemM() const { return M_elem_; }
+        const SparseMatrix& GetElemDof() const { return elem_dof_; }
+
+    private:
+        std::vector<T> M_elem_;
+        SparseMatrix elem_dof_;
+};
+
+
 
 } // namespace smoothg
 

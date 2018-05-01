@@ -98,12 +98,15 @@ public:
     void WriteEdgeVector(const VectorView& vect, const std::string& filename) const;
 
     // Create Fine Level Solver
-    void MakeFineSolver() const;
+    void MakeFineSolver();
 
 private:
     void Init(const SparseMatrix& vertex_edge_global,
               const std::vector<int>& partitioning_global,
               const std::vector<double>& weight_global);
+
+    // Create Coarse Level Solver
+    void MakeCoarseSolver();
 
     double spect_tol_;
     int max_evects_;

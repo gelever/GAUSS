@@ -81,6 +81,9 @@ public:
     MixedMatrix Coarsen(const GraphTopology& gt, const MixedMatrix& mgl,
                         bool hybridization) const;
 
+    std::unique_ptr<MixedMatrix> Coarsen2(const GraphTopology& gt,
+                                          const MixedMatrix& mgl) const;
+
     /** @brief Interpolate a coarse vertex vector to the fine level
         @param coarse_vect vertex vector to interpolate
         @returns fine_vect interpolated fine level vertex vector
