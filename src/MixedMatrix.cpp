@@ -27,7 +27,8 @@ MixedMatrix::MixedMatrix(const Graph& graph, const std::vector<double>& global_w
                          const SparseMatrix& W_global)
     : edge_true_edge_(graph.edge_true_edge_)
 {
-    M_local_ = SparseMatrix(MakeLocalWeight(edge_true_edge_, graph.edge_edge_, graph.edge_map_, global_weight));
+    M_local_ = SparseMatrix(MakeLocalWeight(edge_true_edge_, graph.edge_edge_, graph.edge_map_,
+                                            global_weight));
     D_local_ = MakeLocalD(edge_true_edge_, graph.vertex_edge_local_);
     W_local_ = MakeLocalW(graph, W_global);
 
@@ -111,9 +112,9 @@ void swap(MixedMatrix& lhs, MixedMatrix& rhs) noexcept
 }
 
 std::vector<double> MixedMatrix::MakeLocalWeight(const ParMatrix& edge_true_edge,
-                                     const ParMatrix& edge_edge,
-                                     const std::vector<int>& edge_map,
-                                     const std::vector<double>& global_weight)
+                                                 const ParMatrix& edge_edge,
+                                                 const std::vector<int>& edge_map,
+                                                 const std::vector<double>& global_weight)
 {
     int size = edge_map.size();
 
@@ -261,8 +262,9 @@ ParMatrix MixedMatrix::ToPrimal() const
 }
 
 template <>
-ElemMixedMatrix<std::vector<double>>::ElemMixedMatrix(const Graph& graph, const std::vector<double>& global_weight,
-                                                  const SparseMatrix& W_global)
+ElemMixedMatrix<std::vector<double>>::ElemMixedMatrix(const Graph& graph,
+                                                      const std::vector<double>& global_weight,
+                                                      const SparseMatrix& W_global)
 {
     edge_true_edge_ = graph.edge_true_edge_;
 

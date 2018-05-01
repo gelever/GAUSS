@@ -965,37 +965,11 @@ ParMatrix GraphCoarsen::MakeExtPermutation(const ParMatrix& parmat) const
     return ParMatrix(comm, ext_starts, mat_starts, std::move(perm_diag), std::move(perm_offd), colmap);
 }
 
-MixedMatrix GraphCoarsen::Coarsen(const GraphTopology& gt, const MixedMatrix& mgl,
-                                  bool hybridization) const
-{
-    M_elem_ = BuildElemM(mgl, gt);
-    SparseMatrix D_c = BuildCoarseD(gt);
-    SparseMatrix M_c;
-    SparseMatrix W_c;
-
-    if (!hybridization)
-    {
-        M_c = AssembleElemMat(agg_cdof_edge_, M_elem_);
-    }
-
-    if (mgl.LocalW().Rows() == P_vertex_.Rows())
-    {
-        SparseMatrix P_vertex_T = P_vertex_.Transpose();
-        W_c = P_vertex_T.Mult(mgl.LocalW().Mult(P_vertex_));
-    }
-
-    ParMatrix edge_true_edge = BuildEdgeTrueEdge(gt);
-
-    return MixedMatrix(std::move(M_c), std::move(D_c), std::move(W_c),
-                       std::move(edge_true_edge));
-}
-
-std::unique_ptr<MixedMatrix> GraphCoarsen::Coarsen2(const GraphTopology& gt,
-                                                    const MixedMatrix& mgl) const
+ElemMixedMatrix<DenseMatrix> GraphCoarsen::Coarsen(const GraphTopology& gt,
+                                                   const MixedMatrix& mgl) const
 {
     auto M_elem = BuildElemM(mgl, gt);
     SparseMatrix D_c = BuildCoarseD(gt);
-    SparseMatrix M_c;
     SparseMatrix W_c;
 
     if (mgl.LocalW().Rows() == P_vertex_.Rows())
@@ -1006,8 +980,9 @@ std::unique_ptr<MixedMatrix> GraphCoarsen::Coarsen2(const GraphTopology& gt,
 
     ParMatrix edge_true_edge = BuildEdgeTrueEdge(gt);
 
-    return make_unique<ElemMixedMatrix<DenseMatrix>>(std::move(M_elem), agg_cdof_edge_, std::move(D_c), std::move(W_c),
-                       std::move(edge_true_edge));
+    return ElemMixedMatrix<DenseMatrix>(std::move(M_elem), agg_cdof_edge_,
+                                        std::move(D_c), std::move(W_c),
+                                        std::move(edge_true_edge));
 }
 
 Vector GraphCoarsen::Interpolate(const VectorView& coarse_vect) const

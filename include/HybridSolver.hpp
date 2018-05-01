@@ -77,14 +77,6 @@ namespace smoothg
 class HybridSolver : public MGLSolver
 {
 public:
-    /// Construct local mass matrix for the fine level edge space
-    /*
-    static std::vector<std::vector<double>>
-    BuildFineLevelLocalMassMatrix(const SparseMatrix& vertex_edge,
-                                  const SparseMatrix& M);
-                                  */
-
-public:
     /**
        @brief Constructor for fine-level hybridiziation solver.
 

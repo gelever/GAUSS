@@ -49,15 +49,9 @@ GraphUpscale::GraphUpscale(MPI_Comm comm,
 {
     Timer timer(Timer::Start::True);
 
-    SparseMatrix edge_vertex = vertex_edge_global.Transpose();
-    SparseMatrix vertex_vertex = vertex_edge_global.Mult(edge_vertex);
+    std::vector<int> part = PartitionAAT(vertex_edge_global, coarse_factor);
 
-    int num_parts = std::max(1.0, (global_vertices_ / (double)(coarse_factor)) + 0.5);
-
-    double ubal = 2.0;
-    std::vector<int> partitioning_global = Partition(vertex_vertex, num_parts, ubal);
-
-    Init(vertex_edge_global, partitioning_global, weight_global);
+    Init(vertex_edge_global, part, weight_global);
 
     timer.Click();
     setup_time_ += timer.TotalTime();
@@ -70,14 +64,16 @@ void GraphUpscale::Init(const SparseMatrix& vertex_edge,
     graph_ = Graph(comm_, vertex_edge, global_partitioning);
     gt_ = GraphTopology(graph_);
 
-    auto mm = make_unique<ElemMixedMatrix<std::vector<double>>>(graph_, weight);
-    mm->AssembleM(); // Coarsening requires assembled M, for now
-    mgl_.push_back(std::move(mm));
+    auto fine_mm = make_unique<ElemMixedMatrix<std::vector<double>>>(graph_, weight);
+    fine_mm->AssembleM(); // Coarsening requires assembled M, for now
+    mgl_.push_back(std::move(fine_mm));
 
     coarsener_ = GraphCoarsen(GetFineMatrix(), gt_,
                               max_evects_, spect_tol_);
 
-    mgl_.push_back(coarsener_.Coarsen2(gt_, GetFineMatrix()));
+    auto coarse_mm = make_unique<ElemMixedMatrix<DenseMatrix>>(coarsener_.Coarsen(gt_,
+                                                                                  GetFineMatrix()));
+    mgl_.push_back(std::move(coarse_mm));
 
     Operator::rows_ = graph_.vertex_edge_local_.Rows();
     Operator::cols_ = graph_.vertex_edge_local_.Rows();

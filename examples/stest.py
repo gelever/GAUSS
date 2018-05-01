@@ -250,7 +250,7 @@ def make_tests():
           "operator-complexity": 1.1666666666666667}]
 
     tests["pareigenvector1"] = \
-        [["mpirun", "--n", num_procs, "./generalgraph",
+        [["mpirun", "-n", num_procs, "./generalgraph",
           "--g", graph_data + "/fe_vertex_edge.txt",
           "--w", graph_data + "/fe_weight_0.txt",
           "--p", graph_data + "/fe_part.txt",

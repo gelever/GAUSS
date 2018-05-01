@@ -144,33 +144,107 @@ protected:
     std::vector<int> true_offsets_;
 };
 
+/**
+   @brief Mixed matrix such that M is kept as element matrices,
+          with the option to assemble.
+
+          Two types are supported, vector for when M is diagonal
+          and dense matrix otherwise.
+*/
 template <typename T>
 class ElemMixedMatrix : public MixedMatrix
 {
-    public:
+public:
+    /** @brief Generates local matrices given global graph information
+        @param graph Global graph information
+        @param global_weight Global edge weights
+        @param W_global optional global W block
+    */
+    ElemMixedMatrix(const Graph& graph, const std::vector<double>& global_weight,
+                    const SparseMatrix& W_global = SparseMatrix());
 
-        ElemMixedMatrix(const Graph& graph, const std::vector<double>& global_weight,
-                        const SparseMatrix& W_global = SparseMatrix());
+    /** @brief Constructor with given local matrices
+        @param M_elem Local M element matrices
+        @param elem_dof element to dof relationship
+        @param D_local Local D
+        @param W_local Local W
+        @param edge_true_edge Edge to true edge relationship
+    */
+    ElemMixedMatrix(std::vector<T> M_elem, SparseMatrix elem_dof,
+                    SparseMatrix D_local, SparseMatrix W_local,
+                    ParMatrix edge_true_edge)
+        : MixedMatrix(SparseMatrix(), std::move(D_local),
+                      std::move(W_local), std::move(edge_true_edge)),
+          M_elem_(std::move(M_elem)), elem_dof_(std::move(elem_dof))
+    {
+    }
 
-        ElemMixedMatrix(std::vector<T> M_elem, SparseMatrix elem_dof,
-                        SparseMatrix D_local, SparseMatrix W_local,
-                        ParMatrix edge_true_edge)
-            : MixedMatrix(SparseMatrix(), std::move(D_local),
-                          std::move(W_local), std::move(edge_true_edge)),
-              M_elem_(std::move(M_elem)), elem_dof_(std::move(elem_dof))
-        {
-        }
+    /** @brief Default Destructor */
+    virtual ~ElemMixedMatrix() noexcept = default;
 
-        void AssembleM();
-        void AssembleM(const std::vector<double>& agg_weight);
+    /** @brief Copy Constructor */
+    ElemMixedMatrix(const ElemMixedMatrix& other) noexcept;
 
-        const std::vector<T>& GetElemM() const { return M_elem_; }
-        const SparseMatrix& GetElemDof() const { return elem_dof_; }
+    /** @brief Move Constructor */
+    ElemMixedMatrix(ElemMixedMatrix&& other) noexcept;
 
-    private:
-        std::vector<T> M_elem_;
-        SparseMatrix elem_dof_;
+    /** @brief Assignment Operator */
+    ElemMixedMatrix& operator=(ElemMixedMatrix other) noexcept;
+
+    /** @brief Swap two mixed matrices */
+    template <typename U>
+    friend void swap(ElemMixedMatrix<U>& lhs, ElemMixedMatrix<U>& rhs) noexcept;
+
+    /** @brief Assemble M from element matrices */
+    void AssembleM();
+
+    /** @brief Assemble scaled M from element matrices
+        @param agg_weight weights per aggregate
+    */
+    void AssembleM(const std::vector<double>& agg_weight);
+
+    /** @brief Access element matrices */
+    const std::vector<T>& GetElemM() const { return M_elem_; }
+
+    /** @brief Access element to dof relationship */
+    const SparseMatrix& GetElemDof() const { return elem_dof_; }
+
+private:
+    std::vector<T> M_elem_;
+    SparseMatrix elem_dof_;
 };
+
+
+template <typename T>
+ElemMixedMatrix<T>::ElemMixedMatrix(const ElemMixedMatrix<T>& other) noexcept
+    : MixedMatrix(other), M_elem_(other.M_elem_), elem_dof_(other.elem_dof_)
+{
+
+}
+
+template <typename T>
+ElemMixedMatrix<T>::ElemMixedMatrix(ElemMixedMatrix<T>&& other) noexcept
+{
+    swap(*this, other);
+}
+
+template <typename T>
+ElemMixedMatrix<T>& ElemMixedMatrix<T>::operator=(ElemMixedMatrix<T> other) noexcept
+{
+    swap(*this, other);
+
+    return *this;
+}
+
+template <typename T>
+void swap(ElemMixedMatrix<T>& lhs, ElemMixedMatrix<T>& rhs) noexcept
+{
+    swap(static_cast<MixedMatrix&>(lhs), static_cast<MixedMatrix&>(rhs));
+
+    swap(lhs.M_elem_, rhs.M_elem_);
+    swap(lhs.elem_dof_, rhs.elem_dof_);
+}
+
 
 
 
