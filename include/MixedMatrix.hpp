@@ -148,8 +148,8 @@ protected:
    @brief Mixed matrix such that M is kept as element matrices,
           with the option to assemble.
 
-          Two types are supported, vector for when M is diagonal
-          and dense matrix otherwise.
+          Two types of element matrices are supported:
+          vector for when M is diagonal and dense matrix otherwise.
 */
 template <typename T>
 class ElemMixedMatrix : public MixedMatrix
@@ -172,12 +172,7 @@ public:
     */
     ElemMixedMatrix(std::vector<T> M_elem, SparseMatrix elem_dof,
                     SparseMatrix D_local, SparseMatrix W_local,
-                    ParMatrix edge_true_edge)
-        : MixedMatrix(SparseMatrix(), std::move(D_local),
-                      std::move(W_local), std::move(edge_true_edge)),
-          M_elem_(std::move(M_elem)), elem_dof_(std::move(elem_dof))
-    {
-    }
+                    ParMatrix edge_true_edge);
 
     /** @brief Default Destructor */
     virtual ~ElemMixedMatrix() noexcept = default;
@@ -214,6 +209,15 @@ private:
     SparseMatrix elem_dof_;
 };
 
+template <typename T>
+ElemMixedMatrix<T>::ElemMixedMatrix(std::vector<T> M_elem, SparseMatrix elem_dof,
+                                    SparseMatrix D_local, SparseMatrix W_local,
+                                    ParMatrix edge_true_edge)
+: MixedMatrix(SparseMatrix(), std::move(D_local),
+              std::move(W_local), std::move(edge_true_edge)),
+  M_elem_(std::move(M_elem)), elem_dof_(std::move(elem_dof))
+{
+}
 
 template <typename T>
 ElemMixedMatrix<T>::ElemMixedMatrix(const ElemMixedMatrix<T>& other) noexcept
@@ -244,9 +248,6 @@ void swap(ElemMixedMatrix<T>& lhs, ElemMixedMatrix<T>& rhs) noexcept
     swap(lhs.M_elem_, rhs.M_elem_);
     swap(lhs.elem_dof_, rhs.elem_dof_);
 }
-
-
-
 
 } // namespace smoothg
 

@@ -120,6 +120,14 @@ public:
     void RecoverOriginalSolution(const VectorView& HybridSol,
                                  BlockVector& RecoveredSol) const;
 
+    /**
+       @brief Update weights of local M matrices on aggregates
+       @param agg_weights weights per aggregate
+
+       @todo when W is non-zero, Aloc and Hybrid_el need to be recomputed
+    */
+    void UpdateAggScaling(const std::vector<double>& agg_weight);
+
     ///@name Set solver parameters
     ///@{
     virtual void SetPrintLevel(int print_level) override;
@@ -168,8 +176,11 @@ private:
     std::vector<DenseMatrix> MinvCT_;
     std::vector<DenseMatrix> AinvDMinvCT_;
     std::vector<DenseMatrix> Ainv_;
+    std::vector<DenseMatrix> hybrid_elem_;
 
     mutable std::vector<Vector> Ainv_f_;
+
+    std::vector<double> agg_weights_;
 
     mutable Vector trueHrhs_;
     mutable Vector trueMu_;

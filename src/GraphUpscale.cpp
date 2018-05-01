@@ -71,9 +71,8 @@ void GraphUpscale::Init(const SparseMatrix& vertex_edge,
     coarsener_ = GraphCoarsen(GetFineMatrix(), gt_,
                               max_evects_, spect_tol_);
 
-    auto coarse_mm = make_unique<ElemMixedMatrix<DenseMatrix>>(coarsener_.Coarsen(gt_,
-                                                                                  GetFineMatrix()));
-    mgl_.push_back(std::move(coarse_mm));
+    auto coarse_mm = coarsener_.Coarsen(gt_, GetFineMatrix());
+    mgl_.push_back(make_unique<ElemMixedMatrix<DenseMatrix>>(std::move(coarse_mm)));
 
     Operator::rows_ = graph_.vertex_edge_local_.Rows();
     Operator::cols_ = graph_.vertex_edge_local_.Rows();
@@ -109,6 +108,45 @@ void GraphUpscale::MakeFineSolver()
     else
     {
         mm.AssembleM();
+        fine_solver_ = make_unique<MinresBlockSolver>(mm);
+    }
+}
+
+void GraphUpscale::MakeCoarseSolver(const std::vector<double>& agg_weights)
+{
+    auto& mm = dynamic_cast<ElemMixedMatrix<DenseMatrix>&>(GetCoarseMatrix());
+
+    if (hybridization_)
+    {
+        assert(coarse_solver_);
+
+        auto& hb = dynamic_cast<HybridSolver&>(*coarse_solver_);
+        hb.UpdateAggScaling(agg_weights);
+    }
+    else
+    {
+        mm.AssembleM(agg_weights);
+        coarse_solver_ = make_unique<MinresBlockSolver>(mm);
+    }
+}
+
+void GraphUpscale::MakeFineSolver(const std::vector<double>& agg_weights)
+{
+    auto& mm = dynamic_cast<ElemMixedMatrix<std::vector<double>>&>(GetFineMatrix());
+
+    if (hybridization_)
+    {
+        if (!fine_solver_)
+        {
+            fine_solver_ = make_unique<HybridSolver>(mm);
+        }
+
+        auto& hb = dynamic_cast<HybridSolver&>(*fine_solver_);
+        hb.UpdateAggScaling(agg_weights);
+    }
+    else
+    {
+        mm.AssembleM(agg_weights);
         fine_solver_ = make_unique<MinresBlockSolver>(mm);
     }
 }

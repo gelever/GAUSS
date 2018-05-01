@@ -97,16 +97,25 @@ public:
     /// Write permuted edge vector
     void WriteEdgeVector(const VectorView& vect, const std::string& filename) const;
 
-    // Create Fine Level Solver
+    /// Create Fine Level Solver
     void MakeFineSolver();
+
+    /// Create Coarse Level Solver
+    void MakeCoarseSolver();
+
+    /// Create Weighted Fine Level Solver
+    void MakeFineSolver(const std::vector<double>& agg_weights);
+
+    /// Create Weighted Coarse Level Solver
+    void MakeCoarseSolver(const std::vector<double>& agg_weights);
+
+    /// Get number of aggregates
+    int NumAggs() const { return gt_.agg_vertex_local_.Rows(); }
 
 private:
     void Init(const SparseMatrix& vertex_edge_global,
               const std::vector<int>& partitioning_global,
               const std::vector<double>& weight_global);
-
-    // Create Coarse Level Solver
-    void MakeCoarseSolver();
 
     double spect_tol_;
     int max_evects_;
