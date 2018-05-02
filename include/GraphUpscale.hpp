@@ -62,7 +62,8 @@ public:
                  const SparseMatrix& vertex_edge_global,
                  double coarse_factor, double spect_tol = 0.001,
                  int max_evects = 4, bool hybridization = false,
-                 const std::vector<double>& weight_global = {});
+                 const std::vector<double>& weight_global = {},
+                 const SparseMatrix& W_block_global = SparseMatrix());
 
     /**
        @brief Constructor
@@ -81,7 +82,16 @@ public:
                  const std::vector<int>& partitioning_global,
                  double spect_tol = 0.001, int max_evects = 4,
                  bool hybridization = false,
-                 const std::vector<double>& weight_global = {});
+                 const std::vector<double>& weight_global = {},
+                 const SparseMatrix& W_block_global = SparseMatrix());
+
+    /// Extract a local fine vertex space vector from global vector
+    template <typename T = VectorView>
+    T GetVertexVector(const T& global_vect) const;
+
+    /// Extract a local fine edge space vector from global vector
+    template <typename T = VectorView>
+    T GetEdgeVector(const T& global_vect) const;
 
     /// Read permuted vertex vector
     Vector ReadVertexVector(const std::string& filename) const;
@@ -123,6 +133,34 @@ private:
     Graph graph_;
     GraphTopology gt_;
 };
+
+template <typename T = VectorView>
+T GetSubVector(const T& global_vect, const std::vector<int>& map)
+{
+    int size = map.size();
+
+    T local_vect(size);
+
+    for (int i = 0; i < size; ++i)
+    {
+        local_vect[i] = global_vect[map[i]];
+    }
+
+    return local_vect;
+
+}
+
+template <typename T = VectorView>
+T GraphUpscale::GetVertexVector(const T& global_vect) const
+{
+    return GetSubVector(global_vect, graph_.vertex_map_);
+}
+
+template <typename T = VectorView>
+T GraphUpscale::GetEdgeVector(const T& global_vect) const
+{
+    return GetSubVector(global_vect, graph_.vertex_map_);
+}
 
 } // namespace smoothg
 
