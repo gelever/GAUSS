@@ -64,9 +64,6 @@ void GraphUpscale::Init(const SparseMatrix& vertex_edge,
     graph_ = Graph(comm_, vertex_edge, global_partitioning);
     gt_ = GraphTopology(graph_);
 
-    using VectorElemMM = ElemMixedMatrix<std::vector<double>>;
-    using DenseElemMM = ElemMixedMatrix<DenseMatrix>;
-
     VectorElemMM fine_mm(graph_, weight);
     fine_mm.AssembleM(); // Coarsening requires assembled M, for now
 
@@ -87,7 +84,7 @@ void GraphUpscale::Init(const SparseMatrix& vertex_edge,
 
 void GraphUpscale::MakeCoarseSolver()
 {
-    auto& mm = dynamic_cast<ElemMixedMatrix<DenseMatrix>&>(GetCoarseMatrix());
+    auto& mm = dynamic_cast<DenseElemMM&>(GetCoarseMatrix());
 
     if (hybridization_)
     {
@@ -102,7 +99,7 @@ void GraphUpscale::MakeCoarseSolver()
 
 void GraphUpscale::MakeFineSolver()
 {
-    auto& mm = dynamic_cast<ElemMixedMatrix<std::vector<double>>&>(GetFineMatrix());
+    auto& mm = dynamic_cast<VectorElemMM&>(GetFineMatrix());
 
     if (hybridization_)
     {
@@ -117,7 +114,7 @@ void GraphUpscale::MakeFineSolver()
 
 void GraphUpscale::MakeCoarseSolver(const std::vector<double>& agg_weights)
 {
-    auto& mm = dynamic_cast<ElemMixedMatrix<DenseMatrix>&>(GetCoarseMatrix());
+    auto& mm = dynamic_cast<DenseElemMM&>(GetCoarseMatrix());
 
     if (hybridization_)
     {
@@ -135,7 +132,7 @@ void GraphUpscale::MakeCoarseSolver(const std::vector<double>& agg_weights)
 
 void GraphUpscale::MakeFineSolver(const std::vector<double>& agg_weights)
 {
-    auto& mm = dynamic_cast<ElemMixedMatrix<std::vector<double>>&>(GetFineMatrix());
+    auto& mm = dynamic_cast<VectorElemMM&>(GetFineMatrix());
 
     if (hybridization_)
     {

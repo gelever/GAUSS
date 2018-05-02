@@ -42,6 +42,9 @@ namespace smoothg
 
 class GraphUpscale : public Upscale
 {
+    using VectorElemMM = ElemMixedMatrix<std::vector<double>>;
+    using DenseElemMM = ElemMixedMatrix<DenseMatrix>;
+
 public:
     /**
        @brief Constructor
