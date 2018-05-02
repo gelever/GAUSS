@@ -5,7 +5,9 @@ language: cpp
 matrix:
   include:
     - os: linux
-      compiler: gcc
+      compiler:
+          - gcc
+          - clang
       addons:
         apt:
           packages:
