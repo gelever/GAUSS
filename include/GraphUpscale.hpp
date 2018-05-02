@@ -86,11 +86,11 @@ public:
                  const SparseMatrix& W_block_global = SparseMatrix());
 
     /// Extract a local fine vertex space vector from global vector
-    template <typename T = VectorView>
+    template <typename T>
     T GetVertexVector(const T& global_vect) const;
 
     /// Extract a local fine edge space vector from global vector
-    template <typename T = VectorView>
+    template <typename T>
     T GetEdgeVector(const T& global_vect) const;
 
     /// Read permuted vertex vector
@@ -150,13 +150,13 @@ T GetSubVector(const T& global_vect, const std::vector<int>& map)
 
 }
 
-template <typename T = VectorView>
+template <typename T>
 T GraphUpscale::GetVertexVector(const T& global_vect) const
 {
     return GetSubVector(global_vect, graph_.vertex_map_);
 }
 
-template <typename T = VectorView>
+template <typename T>
 T GraphUpscale::GetEdgeVector(const T& global_vect) const
 {
     return GetSubVector(global_vect, graph_.vertex_map_);

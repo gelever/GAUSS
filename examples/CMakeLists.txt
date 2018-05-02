@@ -22,20 +22,20 @@ set(CMAKE_CXX_EXTENSIONS NO)
 add_executable(generalgraph generalgraph.cpp)
 target_link_libraries(generalgraph smoothG)
 
-add_executable(poweriter poweriter.cpp)
-target_link_libraries(poweriter smoothG)
+add_executable(timestep timestep.cpp)
+target_link_libraries(timestep smoothG)
 
 add_executable(graphupscale graphupscale.cpp)
 target_link_libraries(graphupscale smoothG)
+
+add_executable(poweriter poweriter.cpp)
+target_link_libraries(poweriter smoothG)
 
 add_executable(mltopo mltopo.cpp)
 target_link_libraries(mltopo smoothG)
 
 add_executable(mlmc mlmc.cpp)
 target_link_libraries(mlmc smoothG)
-
-add_executable(timestep timestep.cpp)
-target_link_libraries(timestep smoothG)
 
 if (NOT DEFINED SMOOTHG_TEST_TOL)
     set(SMOOTHG_TEST_TOL 1e-4)
@@ -57,6 +57,7 @@ add_test(samplegraph4 python stest.py samplegraph4)
 add_test(graph-hybridization python stest.py graph-hybridization)
 add_test(poweriter python stest.py poweriter)
 add_test(graph-weight python stest.py graph-weight)
+add_test(timestep python stest.py timestep)
 add_test(graphupscale graphupscale)
 add_test(mltopo mltopo)
 add_test(mlmc mlmc)

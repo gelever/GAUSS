@@ -14,7 +14,6 @@
  ***********************************************************************EHEADER*/
 
 /**
-   @example
    @file timestep.cpp
    @brief Visualized pressure over time of a simple reservior model.
 */
@@ -126,8 +125,8 @@ int main(int argc, char* argv[])
     // Set up GraphUpscale
     /// [Upscale]
     GraphUpscale upscale(comm, vertex_edge_global, global_partitioning,
-            spect_tol, max_evects, hybridization,
-            weight, W_block);
+                         spect_tol, max_evects, hybridization,
+                         weight, W_block);
 
     upscale.PrintInfo();
     upscale.ShowSetupTime();
@@ -233,7 +232,6 @@ int main(int argc, char* argv[])
 
         chrono.Click();
     }
-
 
     ParPrint(myid, std::cout << "Total Time: " << chrono.TotalTime() << "\n");
 
