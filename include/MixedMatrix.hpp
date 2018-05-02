@@ -249,6 +249,49 @@ void swap(ElemMixedMatrix<T>& lhs, ElemMixedMatrix<T>& rhs) noexcept
     swap(lhs.elem_dof_, rhs.elem_dof_);
 }
 
+template <typename T>
+void ElemMixedMatrix<T>::AssembleM()
+{
+    int M_size = D_local_.Cols();
+    CooMatrix M_coo(M_size, M_size);
+
+    int num_aggs = M_elem_.size();
+
+    for (int i = 0; i < num_aggs; ++i)
+    {
+        std::vector<int> dofs = elem_dof_.GetIndices(i);
+
+        M_coo.Add(dofs, dofs, M_elem_[i]);
+    }
+
+    M_local_ = M_coo.ToSparse();
+    ParMatrix M_d(edge_true_edge_.GetComm(), edge_true_edge_.GetRowStarts(), M_local_);
+    M_global_ = parlinalgcpp::RAP(M_d, edge_true_edge_);
+}
+
+template <typename T>
+void ElemMixedMatrix<T>::AssembleM(const std::vector<double>& agg_weight)
+{
+    assert(agg_weight.size() == M_elem_.size());
+
+    int M_size = D_local_.Cols();
+    CooMatrix M_coo(M_size, M_size);
+
+    int num_aggs = M_elem_.size();
+
+    for (int i = 0; i < num_aggs; ++i)
+    {
+        double scale = 1.0 / agg_weight[i];
+        std::vector<int> dofs = elem_dof_.GetIndices(i);
+
+        M_coo.Add(dofs, dofs, scale, M_elem_[i]);
+    }
+
+    M_local_ = M_coo.ToSparse();
+    ParMatrix M_d(edge_true_edge_.GetComm(), edge_true_edge_.GetRowStarts(), M_local_);
+    M_global_ = parlinalgcpp::RAP(M_d, edge_true_edge_);
+}
+
 } // namespace smoothg
 
 #endif /* __MIXEDMATRIX_HPP__ */
