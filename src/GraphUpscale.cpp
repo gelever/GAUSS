@@ -35,7 +35,7 @@ GraphUpscale::GraphUpscale(MPI_Comm comm,
 }
 
 GraphUpscale::GraphUpscale(MPI_Comm comm,
-                           const linalgcpp::SparseMatrix<double>& vertex_edge_global,
+                           const SparseMatrix& vertex_edge_global,
                            const std::vector<int>& partitioning_global,
                            double spect_tol, int max_evects, bool hybridization,
                            const std::vector<double>& weight_global)
