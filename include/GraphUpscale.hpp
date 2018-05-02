@@ -51,6 +51,24 @@ public:
 
        @param comm MPI communicator
        @param vertex_edge relationship between vertices and edge
+       @param coarse_factor how coarse to partition the graph
+       @param spect_tol spectral tolerance determines how many eigenvectors to
+                        keep per aggregate
+       @param max_evects maximum number of eigenvectors to keep per aggregate
+       @param hybridization use hybridization as solver
+       @param weight edge weights. if not provided, set to all ones
+    */
+    GraphUpscale(MPI_Comm comm,
+                 const SparseMatrix& vertex_edge_global,
+                 double coarse_factor, double spect_tol = 0.001,
+                 int max_evects = 4, bool hybridization = false,
+                 const std::vector<double>& weight_global = {});
+
+    /**
+       @brief Constructor
+
+       @param comm MPI communicator
+       @param vertex_edge relationship between vertices and edge
        @param global_partitioning partition of global vertices
        @param spect_tol spectral tolerance determines how many eigenvectors to
                         keep per aggregate
@@ -63,23 +81,6 @@ public:
                  const std::vector<int>& partitioning_global,
                  double spect_tol = 0.001, int max_evects = 4,
                  bool hybridization = false,
-                 const std::vector<double>& weight_global = {});
-    /**
-       @brief Constructor
-
-       @param comm MPI communicator
-       @param vertex_edge relationship between vertices and edge
-       @param coarse_factor how coarse to partition the graph
-       @param spect_tol spectral tolerance determines how many eigenvectors to
-                        keep per aggregate
-       @param max_evects maximum number of eigenvectors to keep per aggregate
-       @param hybridization use hybridization as solver
-       @param weight edge weights. if not provided, set to all ones
-    */
-    GraphUpscale(MPI_Comm comm,
-                 const SparseMatrix& vertex_edge_global,
-                 double coarse_factor, double spect_tol = 0.001,
-                 int max_evects = 4, bool hybridization = false,
                  const std::vector<double>& weight_global = {});
 
     /// Read permuted vertex vector
@@ -116,10 +117,6 @@ public:
     int NumAggs() const { return gt_.agg_vertex_local_.Rows(); }
 
 private:
-    void Init(const SparseMatrix& vertex_edge_global,
-              const std::vector<int>& partitioning_global,
-              const std::vector<double>& weight_global);
-
     double spect_tol_;
     int max_evects_;
 

@@ -24,6 +24,17 @@ namespace smoothg
 {
 
 GraphUpscale::GraphUpscale(MPI_Comm comm,
+                           const SparseMatrix& vertex_edge_global,
+                           double coarse_factor, double spect_tol,
+                           int max_evects, bool hybridization,
+                           const std::vector<double>& weight_global)
+    : GraphUpscale(comm, vertex_edge_global, PartitionAAT(vertex_edge_global, coarse_factor),
+                   spect_tol, max_evects, hybridization, weight_global)
+{
+
+}
+
+GraphUpscale::GraphUpscale(MPI_Comm comm,
                            const linalgcpp::SparseMatrix<double>& vertex_edge_global,
                            const std::vector<int>& partitioning_global,
                            double spect_tol, int max_evects, bool hybridization,
@@ -33,38 +44,10 @@ GraphUpscale::GraphUpscale(MPI_Comm comm,
 {
     Timer timer(Timer::Start::True);
 
-    Init(vertex_edge_global, partitioning_global, weight_global);
-
-    timer.Click();
-    setup_time_ += timer.TotalTime();
-}
-
-GraphUpscale::GraphUpscale(MPI_Comm comm,
-                           const SparseMatrix& vertex_edge_global,
-                           double coarse_factor,
-                           double spect_tol, int max_evects, bool hybridization,
-                           const std::vector<double>& weight_global)
-    : Upscale(comm, vertex_edge_global, hybridization),
-      spect_tol_(spect_tol), max_evects_(max_evects)
-{
-    Timer timer(Timer::Start::True);
-
-    std::vector<int> part = PartitionAAT(vertex_edge_global, coarse_factor);
-
-    Init(vertex_edge_global, part, weight_global);
-
-    timer.Click();
-    setup_time_ += timer.TotalTime();
-}
-
-void GraphUpscale::Init(const SparseMatrix& vertex_edge,
-                        const std::vector<int>& global_partitioning,
-                        const std::vector<double>& weight)
-{
-    graph_ = Graph(comm_, vertex_edge, global_partitioning);
+    graph_ = Graph(comm_, vertex_edge_global, partitioning_global);
     gt_ = GraphTopology(graph_);
 
-    VectorElemMM fine_mm(graph_, weight);
+    VectorElemMM fine_mm(graph_, weight_global);
     fine_mm.AssembleM(); // Coarsening requires assembled M, for now
 
     coarsener_ = GraphCoarsen(fine_mm, gt_, max_evects_, spect_tol_);
@@ -80,6 +63,9 @@ void GraphUpscale::Init(const SparseMatrix& vertex_edge,
     MakeCoarseVectors();
     MakeCoarseSolver();
     MakeFineSolver(); // TODO(gelever1): unset and let user make
+
+    timer.Click();
+    setup_time_ += timer.TotalTime();
 }
 
 void GraphUpscale::MakeCoarseSolver()
