@@ -134,22 +134,6 @@ private:
     GraphTopology gt_;
 };
 
-template <typename T = VectorView>
-T GetSubVector(const T& global_vect, const std::vector<int>& map)
-{
-    int size = map.size();
-
-    T local_vect(size);
-
-    for (int i = 0; i < size; ++i)
-    {
-        local_vect[i] = global_vect[map[i]];
-    }
-
-    return local_vect;
-
-}
-
 template <typename T>
 T GraphUpscale::GetVertexVector(const T& global_vect) const
 {
