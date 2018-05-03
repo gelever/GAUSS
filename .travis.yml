@@ -53,10 +53,6 @@ install:
      else
         echo "Reusing cached metis";
      fi;
-    - ls extern;
-    - ls extern/metis;
-    - ls extern/metis/lib;
-    - ls extern/metis/include;
 
     - if [ ! -e extern/SuiteSparse/lib/libumfpack.so ]; then
         sh config/build_scripts/build_suitesparse.sh;

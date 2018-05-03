@@ -32,7 +32,7 @@ cd SuiteSparse
 make -j3 install \
 INSTALL=$INSTALL_DIR/SuiteSparse \
 BLAS=$BLAS_LIB \
-MY_METIS_LIB=$METIS_DIR/lib/libmetis.so \
+MY_METIS_LIB=$METIS_DIR/lib/libmetis.a \
 MY_METIS_INC=$METIS_DIR/include/
 
 rm -r $TMP_DIR
