@@ -48,17 +48,6 @@ matrix:
           - $TRAVIS_BUILD_DIR/extern/hypre
 
 install:
-    - cd $TRAVIS_BUILD_DIR;
-    - wget ftp://sourceware.org/pub/valgrind/valgrind-3.13.0.tar.bz2;
-    - tar -xvf valgrind-3.13.0.tar.bz2;
-    - cd valgrind-3.13.0;
-    - ./configure --prefix=$TRAVIS_BUILD_DIR/valgrind;
-    - make;
-    - make install;
-    - ls $TRAVIS_BUILD_DIR/valgrind;
-    - export PATH=$TRAVIS_BUILD_DIR/valgrind/bin:$PATH;
-    - which valgrind;
-
     - if [ ! -e extern/metis/lib/libmetis.a ]; then
         sh config/build_scripts/build_metis.sh;
      else
@@ -86,6 +75,22 @@ install:
      fi;
 
     - sh config/build_scripts/build_linalg.sh;
+
+    - if [ ! -e $TRAVIS_BUILD_DIR/valgrind/bin/valgrind ]; then
+        cd $TRAVIS_BUILD_DIR;
+        wget ftp://sourceware.org/pub/valgrind/valgrind-3.13.0.tar.bz2;
+        tar -xvf valgrind-3.13.0.tar.bz2;
+        cd valgrind-3.13.0;
+        ./configure --prefix=$TRAVIS_BUILD_DIR/valgrind;
+        make;
+        make install;
+        ls $TRAVIS_BUILD_DIR/valgrind;
+        export PATH=$TRAVIS_BUILD_DIR/valgrind/bin:$PATH;
+        which valgrind;
+     else
+        echo "Reusing cached valgrind";
+     fi;
+
 
 script:
    - cd $TRAVIS_BUILD_DIR;
