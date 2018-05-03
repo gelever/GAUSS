@@ -18,7 +18,21 @@ matrix:
           - $TRAVIS_BUILD_DIR/extern/SuiteSparse
           - $TRAVIS_BUILD_DIR/extern/mpich
           - $TRAVIS_BUILD_DIR/extern/hypre
-    - os: linux
+    - os: osx
+      compiler: gcc
+      addons:
+        apt:
+          packages:
+            - liblapack-dev
+            - libblas-dev
+            - valgrind
+      cache:
+        directories:
+          - $TRAVIS_BUILD_DIR/extern/metis
+          - $TRAVIS_BUILD_DIR/extern/SuiteSparse
+          - $TRAVIS_BUILD_DIR/extern/mpich
+          - $TRAVIS_BUILD_DIR/extern/hypre
+    - os: osx
       compiler: clang
       addons:
         apt:
