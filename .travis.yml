@@ -18,7 +18,6 @@ matrix:
           - $TRAVIS_BUILD_DIR/extern/SuiteSparse
           - $TRAVIS_BUILD_DIR/extern/mpich
           - $TRAVIS_BUILD_DIR/extern/hypre
-          - $TRAVIS_BUILD_DIR/valgrind
     - os: osx
       compiler: gcc
       addons:
@@ -33,7 +32,6 @@ matrix:
           - $TRAVIS_BUILD_DIR/extern/SuiteSparse
           - $TRAVIS_BUILD_DIR/extern/mpich
           - $TRAVIS_BUILD_DIR/extern/hypre
-          - $TRAVIS_BUILD_DIR/valgrind
     - os: osx
       compiler: clang
       addons:
@@ -48,7 +46,6 @@ matrix:
           - $TRAVIS_BUILD_DIR/extern/SuiteSparse
           - $TRAVIS_BUILD_DIR/extern/mpich
           - $TRAVIS_BUILD_DIR/extern/hypre
-          - $TRAVIS_BUILD_DIR/valgrind
 
 install:
     - if [ ! -e extern/metis/lib/libmetis.a ]; then
@@ -79,23 +76,6 @@ install:
 
     - sh config/build_scripts/build_linalg.sh;
 
-    - if [ ! -e $TRAVIS_BUILD_DIR/valgrind/bin/valgrind ]; then
-        cd $TRAVIS_BUILD_DIR;
-        wget ftp://sourceware.org/pub/valgrind/valgrind-3.13.0.tar.bz2;
-        tar -xvf valgrind-3.13.0.tar.bz2;
-        cd valgrind-3.13.0;
-        ./configure --prefix=$TRAVIS_BUILD_DIR/valgrind;
-        make;
-        make install;
-        ls $TRAVIS_BUILD_DIR/valgrind;
-        export PATH=$TRAVIS_BUILD_DIR/valgrind/bin:$PATH;
-        which valgrind;
-     else
-        export PATH=$TRAVIS_BUILD_DIR/valgrind/bin:$PATH;
-        echo "Reusing cached valgrind";
-     fi;
-
-
 script:
    - cd $TRAVIS_BUILD_DIR;
 
@@ -103,8 +83,5 @@ script:
    - sh config/extern_build.sh;
 
    # Run tests
-   - cd build/examples;
-   - valgrind --leak-check=full --track-origins=yes ./generalgraph;
-
-    #- cd build;
-    #- CTEST_OUTPUT_ON_FAILURE=1 make test;
+   - cd build;
+   - CTEST_OUTPUT_ON_FAILURE=1 make test;
