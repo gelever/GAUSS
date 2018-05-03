@@ -136,6 +136,8 @@ public:
 
     /** @brief Get the aggregate to coarse edge dof relationship */
     const SparseMatrix& GetAggCDofEdge() const { return agg_cdof_edge_; }
+
+    /** @brief Get the element matrices for coarse M*/
     const std::vector<DenseMatrix>& GetMelem() const { return M_elem_; }
 
 private:

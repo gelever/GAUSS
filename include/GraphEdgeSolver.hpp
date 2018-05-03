@@ -91,13 +91,40 @@ public:
     /** @brief Swap two solvers */
     friend void swap(GraphEdgeSolver& lhs, GraphEdgeSolver& rhs) noexcept;
 
-    Vector Mult(const VectorView& input) const;
-    void Mult(const VectorView& input, VectorView output) const;
-    void Mult(const VectorView& input, VectorView sigma_sol, VectorView u_sol) const;
+    /**
+       @brief Solves \f$ (D M^{-1} D^T) u = g\f$, \f$ \sigma = M^{-1} D^T u \f$.
 
+       @param rhs \f$ g \f$ in the formula above
+       @returns sigma_sol \f$ \sigma \f$ in the formula above
+    */
+    Vector Mult(const VectorView& rhs) const;
+
+    /**
+       @brief Solves \f$ (D M^{-1} D^T) u = g\f$, \f$ \sigma = M^{-1} D^T u \f$.
+
+       @param rhs \f$ g \f$ in the formula above
+       @param sigma_sol \f$ \sigma \f$ in the formula above
+    */
+    void Mult(const VectorView& rhs, VectorView output) const;
+
+    /**
+       @brief Solves \f$ (D M^{-1} D^T) u = g\f$, \f$ \sigma = M^{-1} D^T u \f$.
+
+       @param rhs \f$ g \f$ in the formula above
+       @param sigma_sol \f$ \sigma \f$ in the formula above
+       @param u_sol \f$ \u \f$ in the formula above
+    */
+    void Mult(const VectorView& rhs, VectorView sigma_sol, VectorView u_sol) const;
+
+    /**
+       @brief Solves \f$ (D M^{-1} D^T) u = g\f$, \f$ \sigma = M^{-1} D^T u \f$.
+
+       Dense block version
+
+       @param rhs \f$ g \f$ in the formula above
+       @returns sigma_sol \f$ \sigma \f$ in the formula above
+    */
     DenseMatrix Mult(const DenseMatrix& input) const;
-    void Mult(const DenseMatrix& input, DenseMatrix& output) const;
-    void Mult(const DenseMatrix& input, DenseMatrix& sigma_sol, DenseMatrix& u_sol) const;
 
     /**
        @brief Solves \f$ (D M^{-1} D^T) u = g\f$, \f$ \sigma = M^{-1} D^T u \f$.

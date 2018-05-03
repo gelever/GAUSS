@@ -250,8 +250,22 @@ void ExtractSubMatrix(const SparseMatrix& A, const std::vector<int>& rows,
 */
 void MultScalarVVt(double a, const VectorView& v, DenseMatrix& aVVt);
 
+/** @brief Assemble element matrices
+
+    @param elem_dof element to dof relationship
+    @param elems set of elements to assemble
+    @returns assembled matrix
+*/
 SparseMatrix AssembleElemMat(const SparseMatrix& elem_dof, const std::vector<DenseMatrix>& elems);
 
+/** @brief Adds two sparse matrices C = alpha * A + beta * B
+
+    @param alpha scale for A
+    @param A A matrix
+    @param beta scale for B
+    @param B B matrix
+    @returns C such that C = alpha * A + beta * B
+*/
 SparseMatrix Add(double alpha, const SparseMatrix& A, double beta, const SparseMatrix& B);
 
 /** @brief Handles mpi initialization and finalization */
@@ -345,6 +359,28 @@ void WriteVector(MPI_Comm comm, const T& vect, const std::string& filename, int 
    @returns colors contains colors of all elements
 */
 std::vector<int> GetElementColoring(const SparseMatrix& el_el);
+
+/**
+   @brief Extract a subvector from a vector
+
+   @param global_vect global vector from which to extract
+   @param map indices to extract
+   @returns subvector
+*/
+template <typename T = VectorView>
+T GetSubVector(const T& global_vect, const std::vector<int>& map)
+{
+    int size = map.size();
+
+    T local_vect(size);
+
+    for (int i = 0; i < size; ++i)
+    {
+        local_vect[i] = global_vect[map[i]];
+    }
+
+    return local_vect;
+}
 
 } //namespace smoothg
 
