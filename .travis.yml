@@ -18,6 +18,7 @@ matrix:
           - $TRAVIS_BUILD_DIR/extern/SuiteSparse
           - $TRAVIS_BUILD_DIR/extern/mpich
           - $TRAVIS_BUILD_DIR/extern/hypre
+          - $TRAVIS_BUILD_DIR/valgrind
     - os: osx
       compiler: gcc
       addons:
@@ -32,6 +33,7 @@ matrix:
           - $TRAVIS_BUILD_DIR/extern/SuiteSparse
           - $TRAVIS_BUILD_DIR/extern/mpich
           - $TRAVIS_BUILD_DIR/extern/hypre
+          - $TRAVIS_BUILD_DIR/valgrind
     - os: osx
       compiler: clang
       addons:
@@ -46,6 +48,7 @@ matrix:
           - $TRAVIS_BUILD_DIR/extern/SuiteSparse
           - $TRAVIS_BUILD_DIR/extern/mpich
           - $TRAVIS_BUILD_DIR/extern/hypre
+          - $TRAVIS_BUILD_DIR/valgrind
 
 install:
     - if [ ! -e extern/metis/lib/libmetis.a ]; then
