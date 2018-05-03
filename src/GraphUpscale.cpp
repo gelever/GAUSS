@@ -139,6 +139,18 @@ void GraphUpscale::MakeFineSolver(const std::vector<double>& agg_weights)
     }
 }
 
+void GraphUpscale::AssembleFineM()
+{
+    auto& mm = dynamic_cast<VectorElemMM&>(GetFineMatrix());
+    mm.AssembleM();
+}
+
+void GraphUpscale::AssembleCoarseM()
+{
+    auto& mm = dynamic_cast<DenseElemMM&>(GetCoarseMatrix());
+    mm.AssembleM();
+}
+
 Vector GraphUpscale::ReadVertexVector(const std::string& filename) const
 {
     return ReadVector(filename, graph_.vertex_map_);

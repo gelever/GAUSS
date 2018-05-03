@@ -126,6 +126,14 @@ public:
     /// Get number of aggregates
     int NumAggs() const { return gt_.agg_vertex_local_.Rows(); }
 
+    /// Force assembles fine M from element matrices
+    /** @warning this does not remake solver! */
+    void AssembleFineM();
+
+    /// Force assembles coarse M from element matrices
+    /** @warning this does not remake solver! */
+    void AssembleCoarseM();
+
 private:
     double spect_tol_;
     int max_evects_;

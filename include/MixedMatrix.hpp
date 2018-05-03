@@ -104,19 +104,19 @@ public:
     /* @brief Get Local M */
     const SparseMatrix& LocalM() const { return M_local_; }
 
-    /* @brie Get Local D  */
+    /* @brief Get Local D  */
     const SparseMatrix& LocalD() const { return D_local_; }
 
-    /* @brie Get Local W  */
+    /* @brief Get Local W  */
     const SparseMatrix& LocalW() const { return W_local_; }
 
-    /* @brie Get Global M  */
+    /* @brief Get Global M  */
     const ParMatrix& GlobalM() const { return M_global_; }
 
-    /* @brie Get Global D  */
+    /* @brief Get Global D  */
     const ParMatrix& GlobalD() const { return D_global_; }
 
-    /* @brie Get Global W  */
+    /* @brief Get Global W  */
     const ParMatrix& GlobalW() const { return W_global_; }
 
     /* @brief Get Edge True Edge */
