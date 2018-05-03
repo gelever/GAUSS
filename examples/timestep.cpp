@@ -42,7 +42,7 @@ int main(int argc, char* argv[])
 
     // program options from command line
     std::string graph_filename = "../../graphdata/fe_vertex_edge.txt";
-    std::string fiedler_filename = "../../graphdata/fe_rhs.txt";
+    std::string rhs_filename = ""; //"../../graphdata/fe_rhs.txt";
     std::string partition_filename = "../../graphdata/fe_part.txt";
     std::string weight_filename = "../../graphdata/fe_weight_0.txt";
     std::string output_dir = "timestep_out/";
@@ -61,7 +61,7 @@ int main(int argc, char* argv[])
     linalgcpp::ArgParser arg_parser(argc, argv);
 
     arg_parser.Parse(graph_filename, "--g", "Graph connection data.");
-    arg_parser.Parse(fiedler_filename, "--f", "Fiedler vector data.");
+    arg_parser.Parse(rhs_filename, "--f", "Right hand side source term.");
     arg_parser.Parse(partition_filename, "--p", "Partition data.");
     arg_parser.Parse(weight_filename, "--w", "Edge weight data.");
     arg_parser.Parse(max_evects, "--m", "Maximum eigenvectors per aggregate.");
@@ -118,11 +118,12 @@ int main(int argc, char* argv[])
     }
     /// [Load the edge weights]
 
+    /// [Set up W block]
     SparseMatrix W_block = SparseIdentity(nvertices_global);;
     double alpha = 200.0;
-    W_block *= alpha / delta_t;
+    W_block = alpha / delta_t;
+    /// [Set up W block]
 
-    // Set up GraphUpscale
     /// [Upscale]
     GraphUpscale upscale(comm, vertex_edge_global, global_partitioning,
                          spect_tol, max_evects, hybridization,
@@ -135,7 +136,15 @@ int main(int argc, char* argv[])
     /// [Right Hand Side]
     BlockVector fine_rhs = upscale.GetFineBlockVector();
     fine_rhs.GetBlock(0) = 0.0;
-    fine_rhs.GetBlock(1) = upscale.ReadVertexVector(fiedler_filename);
+
+    if (!rhs_filename.empty())
+    {
+        fine_rhs.GetBlock(1) = upscale.ReadVertexVector(rhs_filename);
+    }
+    else
+    {
+        fine_rhs.GetBlock(1) = 0.0;
+    }
     /// [Right Hand Side]
 
     /// [Time Step]
@@ -182,7 +191,7 @@ int main(int argc, char* argv[])
     if (vis_step > 0)
     {
         std::stringstream ss;
-        ss << "timestep_out/" << std::setw(5) << std::setfill('0') << count << ".txt";
+        ss << output_dir << std::setw(5) << std::setfill('0') << count << ".txt";
 
         upscale.WriteVertexVector(fine_u.GetBlock(1), ss.str());
     }
@@ -193,7 +202,7 @@ int main(int argc, char* argv[])
     {
         W.Mult(work_u.GetBlock(1), tmp.GetBlock(1));
 
-        //tmp += work_rhs; // RHS is zero for now
+        tmp += work_rhs;
         tmp *= -1.0;
 
         if (k == 0)
