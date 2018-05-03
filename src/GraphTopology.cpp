@@ -64,6 +64,16 @@ void GraphTopology::Init(const SparseMatrix& vertex_edge,
     const auto& edge_starts = starts[1];
     const auto& agg_starts = starts[2];
 
+    std::cout << "Edge ext: " << edge_ext_agg.Rows() << " " <<edge_ext_agg.Cols() << std::endl;
+
+    for (size_t i = 0; i < starts.size(); ++i)
+    {
+        for (auto j : starts[i])
+        {
+            std::cout << "Start: " << i << " " << j << std::endl;
+        }
+    }
+
     ParMatrix edge_agg_d(comm, edge_starts, agg_starts, std::move(edge_ext_agg));
     ParMatrix agg_edge_d = edge_agg_d.Transpose();
 
