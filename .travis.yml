@@ -48,6 +48,17 @@ matrix:
           - $TRAVIS_BUILD_DIR/extern/hypre
 
 install:
+    - cd $TRAVIS_BUILD_DIR;
+    - wget ftp://sourceware.org/pub/valgrind/valgrind-3.13.0.tar.bz2;
+    - tar -xvf valgrind-3.13.0.tar.bz2;
+    - cd valgrind-3.13.0;
+    - ./configure --prefix=$TRAVIS_BUILD_DIR/valgrind;
+    - make;
+    - make install;
+    - ls $TRAVIS_BUILD_DIR/valgrind;
+    - export PATH=$TRAVIS_BUILD_DIR/valgrind/bin:$PATH;
+    - which valgrind;
+
     - if [ ! -e extern/metis/lib/libmetis.a ]; then
         sh config/build_scripts/build_metis.sh;
      else
@@ -83,5 +94,8 @@ script:
    - sh config/extern_build.sh;
 
    # Run tests
-   - cd build;
-   - CTEST_OUTPUT_ON_FAILURE=1 make test;
+   - cd build/examples;
+   - valgrind --leak-check=full --track-origins=yes ./generalgraph;
+
+    #- cd build;
+    #- CTEST_OUTPUT_ON_FAILURE=1 make test;
