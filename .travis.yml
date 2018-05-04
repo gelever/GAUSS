@@ -68,17 +68,12 @@ before_install:
 
 install:
     - if [ ! -d extern/metis/lib ]; then
-        export CXXFLAGS=-fPIC;
-        export CMAKE_CXX_FLAGS=-fPIC;
         sh config/build_scripts/build_metis.sh;
-        unset CXXFLAGS;
-        unset CMAKE_CXX_FLAGS;
      else
         echo "Reusing cached metis";
      fi;
 
     - if [ ! -d extern/SuiteSparse/lib ]; then
-        export LIBRARY_PATH=$TRAVIS_BUILD_DIR/extern/metis/lib:$LIBRARY_PATH;
         sh config/build_scripts/build_suitesparse.sh;
      else
         echo "Reusing cached SuiteSparse-4.5.4";
