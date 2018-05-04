@@ -33,7 +33,7 @@ make -j3 install \
 INSTALL=$INSTALL_DIR/SuiteSparse \
 BLAS=$BLAS_LIB \
 CFOPENMP="" \
-MY_METIS_LIB="-L$METIS_DIR/lib -lmetis -fopenmp=libomp" \
+MY_METIS_LIB="-L$METIS_DIR/lib -lmetis" \
 MY_METIS_INC=$METIS_DIR/include/
 
 rm -r $TMP_DIR
