@@ -62,17 +62,16 @@ matrix:
           - $TRAVIS_BUILD_DIR/extern/hypre
 
 before_install:
-    - export LIBRARY_PATH=$TRAVIS_BUILD_DIR/extern/metis/lib:$LIBRARY_PATH;
-    - export LD_LIBRARY_PATH=$TRAVIS_BUILD_DIR/extern/metis/lib:$LD_LIBRARY_PATH;
+    - export PATH=$TRAVIS_BUILD_DIR/extern/mpich/bin:$PATH;
 
 install:
-    - if [ ! -d extern/metis/librebuild ]; then
+    - if [ ! -d extern/metis/lib ]; then
         sh config/build_scripts/build_metis.sh;
      else
         echo "Reusing cached metis";
      fi;
 
-    - if [ ! -d extern/SuiteSparse/librebuild ]; then
+    - if [ ! -d extern/SuiteSparse/lib ]; then
         sh config/build_scripts/build_suitesparse.sh;
      else
         echo "Reusing cached SuiteSparse-4.5.4";
@@ -80,9 +79,7 @@ install:
 
     - if [ ! -d extern/mpich/bin ]; then
         sh config/build_scripts/build_mpich.sh;
-        export PATH=$TRAVIS_BUILD_DIR/extern/mpich/bin:$PATH;
      else
-        export PATH=$TRAVIS_BUILD_DIR/extern/mpich/bin:$PATH;
         echo "Reusing cached mpich";
      fi;
 
