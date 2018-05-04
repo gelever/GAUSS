@@ -68,7 +68,11 @@ before_install:
 
 install:
     - if [ ! -d extern/metis/lib ]; then
+        export CXXFLAGS=-fPIC;
+        export CMAKE_CXX_FLAGS=-fPIC;
         sh config/build_scripts/build_metis.sh;
+        unset CXXFLAGS;
+        unset CMAKE_CXX_FLAGS;
      else
         echo "Reusing cached metis";
      fi;
