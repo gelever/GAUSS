@@ -60,11 +60,8 @@ matrix:
           - $TRAVIS_BUILD_DIR/extern/hypre
 
 before_install:
-    - if [ "$TRAVIS_OS_NAME" == "osx" ]; then 
-        brew install valgrind;
-     else
-        echo "Not using osx";
-     fi;
+    - export LIBRARY_PATH=$TRAVIS_BUILD_DIR/extern/metis/lib:$LIBRARY_PATH;
+    - export LD_LIBRARY_PATH=$TRAVIS_BUILD_DIR/extern/metis/lib:$LD_LIBRARY_PATH;
 
 install:
     - if [ ! -d extern/metis/lib ]; then
