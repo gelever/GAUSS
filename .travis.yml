@@ -69,7 +69,6 @@ before_install:
     - export PATH=$TRAVIS_BUILD_DIR/extern/mpich/bin:$PATH;
     - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install metis; fi
     - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install suite-sparse; fi
-    - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install mpich; fi
 
 install:
     - if [ ! -d extern/metis/lib ] && [[ "$TRAVIS_OS_NAME" != "osx" ]]; then
@@ -84,7 +83,7 @@ install:
         echo "Reusing cached SuiteSparse-4.5.4";
      fi;
 
-    - if [ ! -d extern/mpich/bin ] && [[ "$TRAVIS_OS_NAME" != "osx" ]]; then
+    - if [ ! -d extern/mpich/bin ]; then
         sh config/build_scripts/build_mpich.sh;
      else
         echo "Reusing cached mpich";
