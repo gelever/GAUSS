@@ -66,13 +66,13 @@ before_install:
     - export LD_LIBRARY_PATH=$TRAVIS_BUILD_DIR/extern/metis/lib:$LD_LIBRARY_PATH;
 
 install:
-    - if [ ! -d extern/metis/lib ]; then
+    - if [ ! -d extern/metis/librebuild ]; then
         sh config/build_scripts/build_metis.sh;
      else
         echo "Reusing cached metis";
      fi;
 
-    - if [ ! -d extern/SuiteSparse/lib ]; then
+    - if [ ! -d extern/SuiteSparse/librebuild ]; then
         sh config/build_scripts/build_suitesparse.sh;
      else
         echo "Reusing cached SuiteSparse-4.5.4";
