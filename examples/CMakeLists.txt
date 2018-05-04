@@ -86,13 +86,13 @@ else()
   add_test(pargraph-usegenerator python stest.py pargraph-usegenerator)
   add_test(pargraph-metis python stest.py pargraph-metis)
 
+  add_test(veigenvector python stest.py veigenvector)
+  add_test(vgraph-small-usegenerator python stest.py vgraph-small-usegenerator)
+  add_test(vgraph-small-usegenerator-hb python stest.py vgraph-small-usegenerator-hb)
+
   # TODO(gelever1): figure out why these are so different on osx
   add_test(poweriter python stest.py poweriter)
   add_test(parpoweriter python stest.py parpoweriter)
 endif()
-
-add_test(veigenvector python stest.py veigenvector)
-add_test(vgraph-small-usegenerator python stest.py vgraph-small-usegenerator)
-add_test(vgraph-small-usegenerator-hb python stest.py vgraph-small-usegenerator-hb)
 
 #add_test(isolate_coarsen python stest.py isolate-coarsen)
