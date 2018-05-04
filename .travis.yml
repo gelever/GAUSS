@@ -26,6 +26,8 @@ matrix:
             - liblapack-dev
             - libblas-dev
             - valgrind
+            - libgomp1
+            - lib32gomp1
       cache:
         directories:
           - $TRAVIS_BUILD_DIR/extern/metis
