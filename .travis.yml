@@ -34,37 +34,19 @@ matrix:
           - $TRAVIS_BUILD_DIR/extern/hypre
     - os: osx
       compiler: gcc
-      addons:
-        apt:
-          packages:
-            - liblapack-dev
-            - libblas-dev
-            - metis
       cache:
         directories:
-          - $TRAVIS_BUILD_DIR/extern/metis
-          - $TRAVIS_BUILD_DIR/extern/SuiteSparse
           - $TRAVIS_BUILD_DIR/extern/mpich
           - $TRAVIS_BUILD_DIR/extern/hypre
     - os: osx
       compiler: clang
-      addons:
-        apt:
-          packages:
-            - liblapack-dev
-            - libblas-dev
-            - metis
       cache:
         directories:
-          - $TRAVIS_BUILD_DIR/extern/metis
-          - $TRAVIS_BUILD_DIR/extern/SuiteSparse
           - $TRAVIS_BUILD_DIR/extern/mpich
           - $TRAVIS_BUILD_DIR/extern/hypre
 
 before_install:
     - export LD_LIBRARY_PATH=$TRAVIS_BUILD_DIR/extern/metis/lib:$LD_LIBRARY_PATH; 
-    - export DYLD_LIBRARY_PATH=$TRAVIS_BUILD_DIR/extern/metis/lib:$DYLD_LIBRARY_PATH; 
-    - export DYLD_FALLBACK_LIBRARY_PATH=$TRAVIS_BUILD_DIR/extern/metis/lib:$DYLD_FALLBACK_LIBRARY_PATH; 
     - export LIBRARY_PATH=$TRAVIS_BUILD_DIR/extern/metis/lib:$LIBRARY_PATH; 
     - export PATH=$TRAVIS_BUILD_DIR/extern/mpich/bin:$PATH;
     - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install metis; fi
@@ -105,6 +87,4 @@ script:
 
    # Run tests
    - cd build;
-   - make clean;
-   - make VERBOSE=1;
    - CTEST_OUTPUT_ON_FAILURE=1 make test;
