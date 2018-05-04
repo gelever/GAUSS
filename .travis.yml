@@ -39,6 +39,7 @@ matrix:
           packages:
             - liblapack-dev
             - libblas-dev
+            - metis
       cache:
         directories:
           - $TRAVIS_BUILD_DIR/extern/metis
@@ -52,6 +53,7 @@ matrix:
           packages:
             - liblapack-dev
             - libblas-dev
+            - metis
       cache:
         directories:
           - $TRAVIS_BUILD_DIR/extern/metis
@@ -62,6 +64,7 @@ matrix:
 before_install:
     - export LD_LIBRARY_PATH=$TRAVIS_BUILD_DIR/extern/metis/lib:$LD_LIBRARY_PATH; 
     - export DYLD_LIBRARY_PATH=$TRAVIS_BUILD_DIR/extern/metis/lib:$DYLD_LIBRARY_PATH; 
+    - export DYLD_FALLBACK_LIBRARY_PATH=$TRAVIS_BUILD_DIR/extern/metis/lib:$DYLD_FALLBACK_LIBRARY_PATH; 
     - export LIBRARY_PATH=$TRAVIS_BUILD_DIR/extern/metis/lib:$LIBRARY_PATH; 
     - export PATH=$TRAVIS_BUILD_DIR/extern/mpich/bin:$PATH;
 
