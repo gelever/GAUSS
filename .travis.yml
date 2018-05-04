@@ -18,6 +18,20 @@ matrix:
           - $TRAVIS_BUILD_DIR/extern/SuiteSparse
           - $TRAVIS_BUILD_DIR/extern/mpich
           - $TRAVIS_BUILD_DIR/extern/hypre
+    - os: linux
+      compiler: clang
+      addons:
+        apt:
+          packages:
+            - liblapack-dev
+            - libblas-dev
+            - valgrind
+      cache:
+        directories:
+          - $TRAVIS_BUILD_DIR/extern/metis
+          - $TRAVIS_BUILD_DIR/extern/SuiteSparse
+          - $TRAVIS_BUILD_DIR/extern/mpich
+          - $TRAVIS_BUILD_DIR/extern/hypre
     - os: osx
       compiler: gcc
       addons:
@@ -60,6 +74,7 @@ install:
      fi;
 
     - if [ ! -d extern/SuiteSparse/lib ]; then
+        export LIBRARY_PATH=$TRAVIS_BUILD_DIR/extern/metis/lib:$LIBRARY_PATH;
         sh config/build_scripts/build_suitesparse.sh;
      else
         echo "Reusing cached SuiteSparse-4.5.4";
