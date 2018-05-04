@@ -45,9 +45,11 @@ matrix:
           - $TRAVIS_BUILD_DIR/extern/mpich
           - $TRAVIS_BUILD_DIR/extern/hypre
 
-before install:
-    - if [ "$TRAVIS_OS_NAME" == "osx"] ; then 
+before_install:
+    - if [ "$TRAVIS_OS_NAME" == "osx"]; then 
         brew install valgrind;
+     else
+        echo "Not using osx";
      fi;
 
 install:
