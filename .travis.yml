@@ -62,6 +62,7 @@ matrix:
           - $TRAVIS_BUILD_DIR/extern/hypre
 
 before_install:
+    - export LIBRARY_PATH=$TRAVIS_BUILD_DIR/extern/metis/lib:$LIBRARY_PATH; 
     - export PATH=$TRAVIS_BUILD_DIR/extern/mpich/bin:$PATH;
 
 install:
