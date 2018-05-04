@@ -53,19 +53,19 @@ before_install:
      fi;
 
 install:
-    - if [ ! -e extern/metis/lib/libmetis.a ]; then
+    - if [ ! -d extern/metis/lib ]; then
         sh config/build_scripts/build_metis.sh;
      else
         echo "Reusing cached metis";
      fi;
 
-    - if [ ! -e extern/SuiteSparse/lib/libumfpack.so ]; then
+    - if [ ! -d extern/SuiteSparse/lib ]; then
         sh config/build_scripts/build_suitesparse.sh;
      else
         echo "Reusing cached SuiteSparse-4.5.4";
      fi;
 
-    - if [ ! -e extern/mpich/bin/mpirun ]; then
+    - if [ ! -d extern/mpich/bin ]; then
         sh config/build_scripts/build_mpich.sh;
         export PATH=$TRAVIS_BUILD_DIR/extern/mpich/bin:$PATH;
      else
@@ -73,7 +73,7 @@ install:
         echo "Reusing cached mpich";
      fi;
 
-    - if [ ! -e extern/hypre/lib/libHYPRE.a ]; then
+    - if [ ! -d extern/hypre/lib ]; then
         sh config/build_scripts/build_hypre.sh;
      else
         echo "Reusing cached hypre-2.10.0b";
