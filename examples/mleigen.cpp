@@ -33,6 +33,7 @@ using parlinalgcpp::ParOperator;
 using parlinalgcpp::LOBPCG;
 using parlinalgcpp::ParCG;
 using parlinalgcpp::BoomerAMG;
+using parlinalgcpp::ParaSails;
 
 /// @brief Computes DMinvDt + shift * I
 class ShiftedDMinvDt : public ParOperator
@@ -45,7 +46,8 @@ class ShiftedDMinvDt : public ParOperator
         */
         ShiftedDMinvDt(const ParMatrix& M, const ParMatrix& D, double shift = 1.0)
             : ParOperator(D.GetComm(), D.GetRowStarts()),
-              M_prec_(M, 1, 1e-8), M_solver_(M, M_prec_, 5000 /* max_iter */ , 1e-8 /* tol */),
+              M_prec_(M, false, 1, 1, 0.0, 0.1, 0.05),
+              M_solver_(M, M_prec_, 5000 /* max_iter */ , 1e-8 /* tol */),
               D_(D), DTx_(D_.Cols()), MinvDTx_(D_.Cols()),
               shift_(shift) { }
 
@@ -63,7 +65,7 @@ class ShiftedDMinvDt : public ParOperator
         }
 
     private:
-        BoomerAMG M_prec_;
+        ParaSails M_prec_;
         ParCG M_solver_;
         ParMatrix D_;
 
@@ -100,6 +102,7 @@ int main(int argc, char* argv[])
     arg_parser.Parse(max_evects, "--m", "Maximum eigenvectors per aggregate.");
     arg_parser.Parse(spect_tol, "--t", "Spectral tolerance for eigenvalue problem.");
     arg_parser.Parse(hybridization, "--hb", "Use hybridization in coarse solver.");
+    arg_parser.Parse(shift, "--shift", "Shift for eigenproblem");
     arg_parser.Parse(num_modes, "--num-modes", "Number of eigenpairs to compute.");
     arg_parser.Parse(no_coarse, "--no-coarse", "Do not use coarse approximation as initial guess.");
     arg_parser.Parse(verbose, "--verbose", "Verbose output.");
@@ -132,6 +135,7 @@ int main(int argc, char* argv[])
     // Two level spectral graph Laplacian eigensolver
     std::vector<Vector> evects(num_modes, Vector(upscale.Rows()));
 
+    // Setup eigenvector inital guess
     if (no_coarse)
     {
         for (auto& evect : evects)
