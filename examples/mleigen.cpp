@@ -140,8 +140,8 @@ int main(int argc, char* argv[])
     {
         for (auto& evect : evects)
         {
-            Randomize(evect);
-            Normalize(evect);
+            evect.Randomize();
+            evect.Normalize();
         }
     }
     else
@@ -157,8 +157,8 @@ int main(int argc, char* argv[])
 
         for (auto& evect : evects_c)
         {
-            Randomize(evect);
-            Normalize(evect);
+            evect.Randomize();
+            evect.Normalize();
         }
 
         auto evals = LOBPCG(A_c, evects_c, &upscale_coarse, verbose);
