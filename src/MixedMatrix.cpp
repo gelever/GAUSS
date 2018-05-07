@@ -23,6 +23,17 @@
 namespace smoothg
 {
 
+MixedMatrix::MixedMatrix(const SparseMatrix& vertex_edge_local, ParMatrix edge_true_edge,
+                         std::vector<double> weight_local,
+                         SparseMatrix W_local)
+    : edge_true_edge_(std::move(edge_true_edge)),
+      M_local_(std::move(weight_local)),
+      D_local_(MakeLocalD(edge_true_edge_, vertex_edge_local)),
+      W_local_(std::move(W_local))
+{
+    Init();
+}
+
 MixedMatrix::MixedMatrix(const Graph& graph, const std::vector<double>& global_weight,
                          const SparseMatrix& W_global)
     : edge_true_edge_(graph.edge_true_edge_)
@@ -37,8 +48,9 @@ MixedMatrix::MixedMatrix(const Graph& graph, const std::vector<double>& global_w
 
 MixedMatrix::MixedMatrix(SparseMatrix M_local, SparseMatrix D_local,
                          SparseMatrix W_local, ParMatrix edge_true_edge)
-    : M_local_(std::move(M_local)), D_local_(std::move(D_local)),
-      W_local_(std::move(W_local)), edge_true_edge_(std::move(edge_true_edge))
+    : edge_true_edge_(std::move(edge_true_edge)),
+      M_local_(std::move(M_local)), D_local_(std::move(D_local)),
+      W_local_(std::move(W_local))
 {
     Init();
 }
@@ -70,13 +82,13 @@ void MixedMatrix::Init()
 }
 
 MixedMatrix::MixedMatrix(const MixedMatrix& other) noexcept
-    : M_local_(other.M_local_),
+    : edge_true_edge_(other.edge_true_edge_),
+      M_local_(other.M_local_),
       D_local_(other.D_local_),
       W_local_(other.W_local_),
       M_global_(other.M_global_),
       D_global_(other.D_global_),
       W_global_(other.W_global_),
-      edge_true_edge_(other.edge_true_edge_),
       offsets_(other.offsets_),
       true_offsets_(other.true_offsets_)
 {
@@ -97,6 +109,8 @@ MixedMatrix& MixedMatrix::operator=(MixedMatrix other) noexcept
 
 void swap(MixedMatrix& lhs, MixedMatrix& rhs) noexcept
 {
+    swap(lhs.edge_true_edge_, rhs.edge_true_edge_);
+
     swap(lhs.M_local_, rhs.M_local_);
     swap(lhs.D_local_, rhs.D_local_);
     swap(lhs.W_local_, rhs.W_local_);
@@ -104,8 +118,6 @@ void swap(MixedMatrix& lhs, MixedMatrix& rhs) noexcept
     swap(lhs.M_global_, rhs.M_global_);
     swap(lhs.D_global_, rhs.D_global_);
     swap(lhs.W_global_, rhs.W_global_);
-
-    swap(lhs.edge_true_edge_, rhs.edge_true_edge_);
 
     std::swap(lhs.offsets_, rhs.offsets_);
     std::swap(lhs.true_offsets_, rhs.true_offsets_);
@@ -262,17 +274,16 @@ ParMatrix MixedMatrix::ToPrimal() const
 }
 
 template <>
-ElemMixedMatrix<std::vector<double>>::ElemMixedMatrix(const Graph& graph,
-                                                      const std::vector<double>& global_weight,
-                                                      const SparseMatrix& W_global)
+ElemMixedMatrix<std::vector<double>>::ElemMixedMatrix(SparseMatrix vertex_edge_local,
+                                                      ParMatrix edge_true_edge,
+                                                      const std::vector<double>& weight_local,
+                                                      SparseMatrix W_local)
+    : elem_dof_(std::move(vertex_edge_local))
 {
-    edge_true_edge_ = graph.edge_true_edge_;
+    edge_true_edge_ = std::move(edge_true_edge);
 
-    D_local_ = MakeLocalD(edge_true_edge_, graph.vertex_edge_local_);
-    elem_dof_ = D_local_;
-
-    auto M_data = MixedMatrix::MakeLocalWeight(edge_true_edge_, graph.edge_edge_,
-                                               graph.edge_map_, global_weight);
+    D_local_ = MakeLocalD(edge_true_edge_, elem_dof_);
+    W_local_ = std::move(W_local);
 
     const int num_vertices = D_local_.Rows();
 
@@ -290,12 +301,23 @@ ElemMixedMatrix<std::vector<double>>::ElemMixedMatrix(const Graph& graph,
 
         for (int j = 0; j < num_dofs; ++j)
         {
-            M_elem_[i][j] = M_data[edge_dofs[j]] / edge_vertex.RowSize(edge_dofs[j]);
+            M_elem_[i][j] = weight_local[edge_dofs[j]] / edge_vertex.RowSize(edge_dofs[j]);
         }
     }
 
-    W_local_ = MakeLocalW(graph, W_global);
-    Init();
+    MixedMatrix::Init();
+}
+
+template <>
+ElemMixedMatrix<std::vector<double>>::ElemMixedMatrix(const Graph& graph,
+                                                      const std::vector<double>& global_weight,
+                                                      const SparseMatrix& W_global)
+    : ElemMixedMatrix(graph.vertex_edge_local_, graph.edge_true_edge_,
+                      MakeLocalWeight(graph.edge_true_edge_, graph.edge_edge_,
+                                      graph.edge_map_, global_weight),
+                      MakeLocalW(graph, W_global))
+{
+
 }
 
 } // namespace smoothg

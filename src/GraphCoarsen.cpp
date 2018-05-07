@@ -594,6 +594,9 @@ void GraphCoarsen::BuildPedge(const GraphTopology& gt, const MixedMatrix& mgl)
 
     CooMatrix P_edge(num_edges, num_coarse_dofs);
 
+    // TODO(gelever1): Compute this correctly, not this wild guess
+    P_edge.Reserve(3.14 * ((agg_bubble_dof_.nnz() * num_aggs) + (num_faces * face_cdof_.nnz())));
+
     DenseMatrix bubbles;
     DenseMatrix trace_ext;
 
