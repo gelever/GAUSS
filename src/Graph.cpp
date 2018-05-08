@@ -40,12 +40,16 @@ Graph::Graph(MPI_Comm comm, const SparseMatrix& vertex_edge_global,
     int num_aggs_global = *std::max_element(std::begin(part_global), std::end(part_global)) + 1;
 
     SparseMatrix agg_vert = MakeAggVertex(part_global);
+
+    // TODO(gelever1): We may be able to produce better processor partitioning by
+    // using metis w/ PartitionAAT(proc_edge, num_procs);
+    // This will group aggregates together on a processor if they are connected
+    // by an edge
     SparseMatrix proc_agg = MakeProcAgg(num_procs, num_aggs_global);
 
     SparseMatrix proc_vert = proc_agg.Mult(agg_vert);
     SparseMatrix proc_edge = proc_vert.Mult(vertex_edge_global);
 
-    // TODO(gelever1): Check if this must go before the transpose
     proc_edge.SortIndices();
 
     vertex_map_ = proc_vert.GetIndices(myid);

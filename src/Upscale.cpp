@@ -24,7 +24,8 @@ namespace smoothg
 {
 
 Upscale::Upscale(const Graph& graph)
-    : comm_(graph.edge_true_edge_.GetComm()),
+    : Operator(graph.vertex_edge_local_.Rows()),
+      comm_(graph.edge_true_edge_.GetComm()),
       global_vertices_(graph.global_vertices_),
       global_edges_(graph.global_edges_),
       setup_time_(0)

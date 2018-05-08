@@ -98,9 +98,6 @@ GraphUpscale::GraphUpscale(Graph graph, double spect_tol, int max_evects, bool h
     mgl_.push_back(make_unique<VectorElemMM>(std::move(fine_mm)));
     mgl_.push_back(make_unique<DenseElemMM>(std::move(coarse_mm)));
 
-    Operator::rows_ = graph_.vertex_edge_local_.Rows();
-    Operator::cols_ = graph_.vertex_edge_local_.Rows();
-
     MakeCoarseVectors();
     MakeCoarseSolver();
     MakeFineSolver(); // TODO(gelever1): unset and let user make

@@ -191,8 +191,6 @@ protected:
     int global_vertices_;
     int global_edges_;
 
-    bool hybridization_;
-
     double setup_time_;
 
     mutable BlockVector rhs_coarse_;
