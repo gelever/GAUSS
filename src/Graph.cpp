@@ -24,7 +24,11 @@ namespace smoothg
 {
 
 Graph::Graph(MPI_Comm comm, const SparseMatrix& vertex_edge_global,
-             const std::vector<int>& part_global)
+             const std::vector<int>& part_global,
+             const std::vector<double>& weight_global,
+             const SparseMatrix& W_block_global)
+    : global_vertices_(vertex_edge_global.Rows()),
+      global_edges_(vertex_edge_global.Cols())
 {
     assert(static_cast<int>(part_global.size()) == vertex_edge_global.Rows());
 
@@ -64,14 +68,63 @@ Graph::Graph(MPI_Comm comm, const SparseMatrix& vertex_edge_global,
 
     ParMatrix edge_true_edge_T = edge_true_edge_.Transpose();
     edge_edge_ = edge_true_edge_.Mult(edge_true_edge_T);
+
+    MakeLocalWeight(weight_global);
+    MakeLocalW(W_block_global);
+}
+
+void Graph::MakeLocalWeight(const std::vector<double>& global_weight)
+{
+    int size = edge_map_.size();
+
+    weight_local_.resize(size);
+
+    if (static_cast<int>(global_weight.size()) == edge_true_edge_.GlobalCols())
+    {
+        for (int i = 0; i < size; ++i)
+        {
+            assert(std::fabs(global_weight[edge_map_[i]]) > 1e-14);
+            weight_local_[i] = std::fabs(global_weight[edge_map_[i]]);
+        }
+    }
+    else
+    {
+        std::fill(std::begin(weight_local_), std::end(weight_local_), 1.0);
+    }
+
+    const SparseMatrix& edge_offd = edge_edge_.GetOffd();
+
+    assert(edge_offd.Rows() == size);
+
+    for (int i = 0; i < size; ++i)
+    {
+        if (edge_offd.RowSize(i))
+        {
+            weight_local_[i] *= 2.0;
+        }
+    }
+}
+
+void Graph::MakeLocalW(const SparseMatrix& W_global)
+{
+    if (W_global.Rows() > 0)
+    {
+        W_local_ = W_global.GetSubMatrix(vertex_map_, vertex_map_);
+        W_local_ *= -1.0;
+    }
 }
 
 Graph::Graph(SparseMatrix vertex_edge_local, ParMatrix edge_true_edge,
-          std::vector<int> part_local)
+          std::vector<int> part_local,
+          std::vector<double> weight_local,
+          SparseMatrix W_block_local)
     : part_local_(std::move(part_local)),
       vertex_edge_local_(std::move(vertex_edge_local)),
       edge_true_edge_(std::move(edge_true_edge)),
-      edge_edge_(edge_true_edge_.Mult(edge_true_edge_.Transpose()))
+      edge_edge_(edge_true_edge_.Mult(edge_true_edge_.Transpose())),
+      weight_local_(std::move(weight_local)),
+      W_local_(std::move(W_block_local)),
+      global_edges_(edge_true_edge_.Cols())
 {
     int num_vertices = vertex_edge_local_.Rows();
     int num_edges = vertex_edge_local_.Cols();
@@ -80,6 +133,7 @@ Graph::Graph(SparseMatrix vertex_edge_local, ParMatrix edge_true_edge,
 
     auto vertex_starts = parlinalgcpp::GenerateOffsets(comm, num_vertices);
 
+    global_vertices_ = vertex_starts.back();
     vertex_map_.resize(num_vertices);
     edge_map_.resize(num_edges);
 
@@ -116,7 +170,9 @@ Graph::Graph(const Graph& other) noexcept
       part_local_(other.part_local_),
       vertex_edge_local_(other.vertex_edge_local_),
       edge_true_edge_(other.edge_true_edge_),
-      edge_edge_(other.edge_edge_)
+      edge_edge_(other.edge_edge_),
+      weight_local_(other.weight_local_),
+      W_local_(other.W_local_)
 {
 
 }
@@ -142,6 +198,9 @@ void swap(Graph& lhs, Graph& rhs) noexcept
     swap(lhs.vertex_edge_local_, rhs.vertex_edge_local_);
     swap(lhs.edge_true_edge_, rhs.edge_true_edge_);
     swap(lhs.edge_edge_, rhs.edge_edge_);
+
+    swap(lhs.weight_local_, rhs.weight_local_);
+    swap(lhs.W_local_, rhs.W_local_);
 }
 
 } // namespace smoothg

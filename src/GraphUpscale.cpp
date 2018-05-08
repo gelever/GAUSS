@@ -41,15 +41,52 @@ GraphUpscale::GraphUpscale(MPI_Comm comm,
                            double spect_tol, int max_evects, bool hybridization,
                            const std::vector<double>& weight_global,
                            const SparseMatrix& W_block_global)
-    : Upscale(comm, vertex_edge_global, hybridization),
-      spect_tol_(spect_tol), max_evects_(max_evects)
+    : GraphUpscale(Graph(comm, vertex_edge_global, partitioning_global,
+                         weight_global, W_block_global),
+                    spect_tol, max_evects, hybridization)
+{
+}
+
+GraphUpscale::GraphUpscale(const SparseMatrix& vertex_edge_local,
+                           ParMatrix edge_true_edge,
+                           double coarse_factor,
+                           double spect_tol, int max_evects, bool hybridization,
+                           std::vector<double> weight_local,
+                           SparseMatrix W_block_local)
+    : GraphUpscale(vertex_edge_local, std::move(edge_true_edge),
+                   PartitionAAT(vertex_edge_local, coarse_factor),
+                   spect_tol, max_evects, hybridization,
+                   std::move(weight_local),
+                   std::move(W_block_local))
+{
+
+}
+
+GraphUpscale::GraphUpscale(SparseMatrix vertex_edge_local,
+                           ParMatrix edge_true_edge,
+                           std::vector<int> partitioning_local,
+                           double spect_tol, int max_evects, bool hybridization,
+                           std::vector<double> weight_local,
+                           SparseMatrix W_block_local)
+    : GraphUpscale(Graph(std::move(vertex_edge_local),
+                         std::move(edge_true_edge),
+                         std::move(partitioning_local),
+                         std::move(weight_local),
+                         std::move(W_block_local)),
+                    spect_tol, max_evects, hybridization)
+{
+}
+
+GraphUpscale::GraphUpscale(Graph graph, double spect_tol, int max_evects, bool hybridization)
+    : Upscale(graph), spect_tol_(spect_tol),
+      max_evects_(max_evects), hybridization_(hybridization),
+      graph_(std::move(graph))
 {
     Timer timer(Timer::Start::True);
 
-    graph_ = Graph(comm_, vertex_edge_global, partitioning_global);
     gt_ = GraphTopology(graph_);
 
-    VectorElemMM fine_mm(graph_, weight_global, W_block_global);
+    VectorElemMM fine_mm(graph_);
     fine_mm.AssembleM(); // Coarsening requires assembled M, for now
 
     coarsener_ = GraphCoarsen(fine_mm, gt_, max_evects_, spect_tol_);

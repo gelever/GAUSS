@@ -28,6 +28,7 @@
 #include "MixedMatrix.hpp"
 #include "GraphCoarsen.hpp"
 #include "MGLSolver.hpp"
+#include "Graph.hpp"
 
 namespace smoothg
 {
@@ -174,8 +175,7 @@ public:
                     const BlockVector& fine_sol) const;
 
 protected:
-    Upscale(MPI_Comm comm, const SparseMatrix& vertex_edge_global,
-            bool hybridization = false);
+    Upscale(const Graph& graph);
 
     void MakeCoarseVectors();
 
@@ -188,8 +188,8 @@ protected:
     int myid_;
     int num_procs_;
 
-    int global_edges_;
     int global_vertices_;
+    int global_edges_;
 
     bool hybridization_;
 

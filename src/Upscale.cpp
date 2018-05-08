@@ -23,11 +23,11 @@
 namespace smoothg
 {
 
-Upscale::Upscale(MPI_Comm comm, const SparseMatrix& vertex_edge_global,
-                 bool hybridization)
-    : comm_(comm),
-      global_edges_(vertex_edge_global.Cols()), global_vertices_(vertex_edge_global.Rows()),
-      hybridization_(hybridization), setup_time_(0)
+Upscale::Upscale(const Graph& graph)
+    : comm_(graph.edge_true_edge_.GetComm()),
+      global_vertices_(graph.global_vertices_),
+      global_edges_(graph.global_edges_),
+      setup_time_(0)
 {
     MPI_Comm_size(comm_, &num_procs_);
     MPI_Comm_rank(comm_, &myid_);

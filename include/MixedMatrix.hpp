@@ -56,8 +56,7 @@ public:
         @param global_weight Global edge weights
         @param W_global optional global W block
     */
-    MixedMatrix(const Graph& graph, const std::vector<double>& global_weight,
-                const SparseMatrix& W_global = SparseMatrix());
+    MixedMatrix(const Graph& graph);
 
     /** @brief Constructor with given local matrices
         @param M_local Local M
@@ -138,14 +137,11 @@ public:
     /* @brief Block true offsets */
     const std::vector<int>& TrueOffsets() const { return true_offsets_; }
 
-protected:
 
-    SparseMatrix MakeLocalD(const ParMatrix& edge_true_edge,
+    static SparseMatrix MakeLocalD(const ParMatrix& edge_true_edge,
                             const SparseMatrix& vertex_edge);
 
-    SparseMatrix MakeLocalW(const Graph& graph,
-                            const SparseMatrix& W_global);
-
+protected:
     void Init();
 
     ParMatrix edge_true_edge_;
@@ -185,13 +181,10 @@ public:
                     std::vector<double> weight_local,
                     SparseMatrix W_local = SparseMatrix());
 
-    /** @brief Generates local matrices given global graph information
-        @param graph Global graph information
-        @param global_weight Global edge weights
-        @param W_global optional global W block
+    /** @brief Generates local matrices given distributed graph information
+        @param graph graph information
     */
-    ElemMixedMatrix(const Graph& graph, const std::vector<double>& global_weight,
-                    const SparseMatrix& W_global = SparseMatrix());
+    ElemMixedMatrix(const Graph& graph);
 
     /** @brief Constructor with given local matrices
         @param M_elem Local M element matrices

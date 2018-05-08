@@ -22,6 +22,9 @@ set(CMAKE_CXX_EXTENSIONS NO)
 add_executable(generalgraph generalgraph.cpp)
 target_link_libraries(generalgraph smoothG)
 
+add_executable(generalgraph_dist generalgraph.cpp)
+target_link_libraries(generalgraph_dist smoothG)
+
 add_executable(timestep timestep.cpp)
 target_link_libraries(timestep smoothG)
 

@@ -914,4 +914,13 @@ std::vector<double> MakeLocalWeight(const ParMatrix& edge_true_edge,
     return local_weight;
 }
 
+int AllReduceSum(MPI_Comm comm, int local)
+{
+    int global_sum;
+
+    MPI_Allreduce(&local, &global_sum, 1, MPI_INT, MPI_SUM, comm);
+
+    return global_sum;
+}
+
 } // namespace smoothg
