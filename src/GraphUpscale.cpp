@@ -45,6 +45,7 @@ GraphUpscale::GraphUpscale(MPI_Comm comm,
                          weight_global, W_block_global),
                     spect_tol, max_evects, hybridization)
 {
+
 }
 
 GraphUpscale::GraphUpscale(const SparseMatrix& vertex_edge_local,
@@ -75,6 +76,7 @@ GraphUpscale::GraphUpscale(SparseMatrix vertex_edge_local,
                          std::move(W_block_local)),
                     spect_tol, max_evects, hybridization)
 {
+
 }
 
 GraphUpscale::GraphUpscale(Graph graph, double spect_tol, int max_evects, bool hybridization)

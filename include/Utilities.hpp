@@ -394,13 +394,6 @@ T GetSubVector(const T& global_vect, const std::vector<int>& map)
    @returns local_weight local edge weights
 */
 
-/**
-   @brief Sums local integers to global integer
-   @param local local portion
-   @returns global_sum sum of all local integers
-*/
-int AllReduceSum(MPI_Comm comm, int local);
-
 } //namespace smoothg
 
 #endif // __UTILITIES_HPP__
