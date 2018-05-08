@@ -27,23 +27,29 @@ MixedMatrix::MixedMatrix(const SparseMatrix& vertex_edge_local, ParMatrix edge_t
                          std::vector<double> weight_local,
                          SparseMatrix W_local)
     : edge_true_edge_(std::move(edge_true_edge)),
-      M_local_(std::move(weight_local)),
       D_local_(MakeLocalD(edge_true_edge_, vertex_edge_local)),
       W_local_(std::move(W_local))
 {
+    for (auto& i : weight_local)
+    {
+        assert(std::fabs(i) > 1e-12);
+        i = 1.0 / i;
+    }
+
+    M_local_ = SparseMatrix(std::move(weight_local));
+
     Init();
 }
 
 MixedMatrix::MixedMatrix(const Graph& graph, const std::vector<double>& global_weight,
                          const SparseMatrix& W_global)
-    : edge_true_edge_(graph.edge_true_edge_)
+    : MixedMatrix(graph.vertex_edge_local_, graph.edge_true_edge_,
+                  MakeLocalWeight(graph.edge_true_edge_, graph.edge_edge_,
+                                    graph.edge_map_,
+                                  global_weight),
+                  MakeLocalW(graph, W_global))
 {
-    M_local_ = SparseMatrix(MakeLocalWeight(edge_true_edge_, graph.edge_edge_, graph.edge_map_,
-                                            global_weight));
-    D_local_ = MakeLocalD(edge_true_edge_, graph.vertex_edge_local_);
-    W_local_ = MakeLocalW(graph, W_global);
 
-    Init();
 }
 
 MixedMatrix::MixedMatrix(SparseMatrix M_local, SparseMatrix D_local,
@@ -239,7 +245,7 @@ ParMatrix MixedMatrix::ToPrimal() const
 template <>
 ElemMixedMatrix<std::vector<double>>::ElemMixedMatrix(SparseMatrix vertex_edge_local,
                                                       ParMatrix edge_true_edge,
-                                                      const std::vector<double>& weight_local,
+                                                      std::vector<double> weight_local,
                                                       SparseMatrix W_local)
     : elem_dof_(std::move(vertex_edge_local))
 {
@@ -253,6 +259,12 @@ ElemMixedMatrix<std::vector<double>>::ElemMixedMatrix(SparseMatrix vertex_edge_l
     M_elem_.resize(num_vertices);
 
     SparseMatrix edge_vertex = D_local_.Transpose();
+
+    for (auto& i : weight_local)
+    {
+        assert(std::fabs(i) > 1e-12);
+        i = 1.0 / i;
+    }
 
     for (int i = 0; i < num_vertices; ++i)
     {

@@ -182,7 +182,7 @@ public:
         @param W_local local W block
     */
     ElemMixedMatrix(SparseMatrix vertex_edge_local, ParMatrix edge_true_edge,
-                    const std::vector<double>& weight_local,
+                    std::vector<double> weight_local,
                     SparseMatrix W_local = SparseMatrix());
 
     /** @brief Generates local matrices given global graph information

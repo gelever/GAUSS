@@ -890,8 +890,8 @@ std::vector<double> MakeLocalWeight(const ParMatrix& edge_true_edge,
     {
         for (int i = 0; i < size; ++i)
         {
-            assert(std::fabs(global_weight[edge_map[i]]) > 1e-12);
-            local_weight[i] = 1.0 / std::fabs(global_weight[edge_map[i]]);
+            assert(std::fabs(global_weight[edge_map[i]]) > 1e-14);
+            local_weight[i] = std::fabs(global_weight[edge_map[i]]);
         }
     }
     else
@@ -907,7 +907,7 @@ std::vector<double> MakeLocalWeight(const ParMatrix& edge_true_edge,
     {
         if (edge_offd.RowSize(i))
         {
-            local_weight[i] /= 2.0;
+            local_weight[i] *= 2.0;
         }
     }
 
