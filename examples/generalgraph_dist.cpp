@@ -143,16 +143,17 @@ int main(int argc, char* argv[])
     // Set up GraphUpscale
     /// [Upscale]
     // Transform global data to local data.
-    Graph graph(comm, vertex_edge_global, partitioning_global);
-    std::vector<double> weight_local = MakeLocalWeight(graph.edge_true_edge_,
-                                                       graph.edge_edge_,
-                                                       graph.edge_map_,
-                                                       weight);
+    Graph graph(comm, vertex_edge_global, global_partitioning, weight);
+
+    // Pretend these came from some outside distributed source
+    const auto& vertex_edge = graph.vertex_edge_local_;
+    const auto& edge_true_edge = graph.edge_true_edge_;
+    const auto& part_local = graph.part_local_;
+    const auto& weight_local = graph.weight_local_;
 
     // Use distrubted constructor
-    GraphUpscale upscale(graph.vertex_edge_local_, graph.edge_true_edge_,
-                         graph.part_local_, spect_tol, max_evects, hybridization,
-                         weight_local);
+    GraphUpscale upscale(vertex_edge, edge_true_edge, part_local,
+                         spect_tol, max_evects, hybridization, weight_local);
 
     upscale.PrintInfo();
     upscale.ShowSetupTime();

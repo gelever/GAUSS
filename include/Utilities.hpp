@@ -382,18 +382,6 @@ T GetSubVector(const T& global_vect, const std::vector<int>& map)
     return local_vect;
 }
 
-/**
-   @brief Extracts local edge weights from global edge weights.
-          If global weights are not given, 1.0 edge weight is assumed.
-          If an edge is on a processor boundary, the inverse is cut in half.
-
-   @param edge_true_edge edge to true edge relationship
-   @param edge_edge edge to edge if they share a true edge
-   @param edge_map map from local to global edge indices
-   @param global_weight global edge weights
-   @returns local_weight local edge weights
-*/
-
 } //namespace smoothg
 
 #endif // __UTILITIES_HPP__

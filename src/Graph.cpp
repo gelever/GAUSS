@@ -124,7 +124,7 @@ Graph::Graph(SparseMatrix vertex_edge_local, ParMatrix edge_true_edge,
       edge_edge_(edge_true_edge_.Mult(edge_true_edge_.Transpose())),
       weight_local_(std::move(weight_local)),
       W_local_(std::move(W_block_local)),
-      global_edges_(edge_true_edge_.Cols())
+      global_edges_(edge_true_edge_.GlobalCols())
 {
     int num_vertices = vertex_edge_local_.Rows();
     int num_edges = vertex_edge_local_.Cols();
@@ -150,6 +150,8 @@ Graph::Graph(SparseMatrix vertex_edge_local, ParMatrix edge_true_edge,
     const auto& offd_indptr = edge_offd.GetIndptr();
     const auto& offd_indices = edge_offd.GetIndices();
 
+    assert(edge_true_edge_.Rows() == num_edges);
+
     for (int i = 0; i < num_edges; ++i)
     {
         if (edge_diag.RowSize(i) > 0)
@@ -162,6 +164,11 @@ Graph::Graph(SparseMatrix vertex_edge_local, ParMatrix edge_true_edge,
             edge_map_[i] = edge_colmap[offd_indices[offd_indptr[i]]];
         }
     }
+
+    if (static_cast<int>(weight_local_.size()) != num_edges)
+    {
+        MakeLocalWeight(std::vector<double>());
+    }
 }
 
 Graph::Graph(const Graph& other) noexcept
@@ -172,7 +179,9 @@ Graph::Graph(const Graph& other) noexcept
       edge_true_edge_(other.edge_true_edge_),
       edge_edge_(other.edge_edge_),
       weight_local_(other.weight_local_),
-      W_local_(other.W_local_)
+      W_local_(other.W_local_),
+      global_vertices_(other.global_vertices_),
+      global_edges_(other.global_edges_)
 {
 
 }
@@ -201,6 +210,9 @@ void swap(Graph& lhs, Graph& rhs) noexcept
 
     swap(lhs.weight_local_, rhs.weight_local_);
     swap(lhs.W_local_, rhs.W_local_);
+
+    std::swap(lhs.global_vertices_, rhs.global_vertices_);
+    std::swap(lhs.global_edges_, rhs.global_edges_);
 }
 
 } // namespace smoothg

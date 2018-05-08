@@ -22,7 +22,7 @@ set(CMAKE_CXX_EXTENSIONS NO)
 add_executable(generalgraph generalgraph.cpp)
 target_link_libraries(generalgraph smoothG)
 
-add_executable(generalgraph_dist generalgraph.cpp)
+add_executable(generalgraph_dist generalgraph_dist.cpp)
 target_link_libraries(generalgraph_dist smoothG)
 
 add_executable(timestep timestep.cpp)
@@ -63,6 +63,7 @@ add_test(timestep python stest.py timestep)
 add_test(graphupscale graphupscale)
 add_test(mltopo mltopo)
 add_test(mlmc mlmc)
+add_test(generalgraph_dist generalgraph_dist --gf)
 
 add_test(pareigenvector1 python stest.py pareigenvector1)
 add_test(pareigenvector4 python stest.py pareigenvector4)
