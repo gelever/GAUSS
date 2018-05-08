@@ -66,6 +66,50 @@ Graph::Graph(MPI_Comm comm, const SparseMatrix& vertex_edge_global,
     edge_edge_ = edge_true_edge_.Mult(edge_true_edge_T);
 }
 
+Graph::Graph(SparseMatrix vertex_edge_local, ParMatrix edge_true_edge,
+          std::vector<int> part_local)
+    : part_local_(std::move(part_local)),
+      vertex_edge_local_(std::move(vertex_edge_local)),
+      edge_true_edge_(std::move(edge_true_edge)),
+      edge_edge_(edge_true_edge_.Mult(edge_true_edge_.Transpose()))
+{
+    int num_vertices = vertex_edge_local_.Rows();
+    int num_edges = vertex_edge_local_.Cols();
+
+    MPI_Comm comm = edge_true_edge_.GetComm();
+
+    auto vertex_starts = parlinalgcpp::GenerateOffsets(comm, num_vertices);
+
+    vertex_map_.resize(num_vertices);
+    edge_map_.resize(num_edges);
+
+    std::iota(std::begin(vertex_map_), std::end(vertex_map_), vertex_starts[0]);
+
+    const auto& edge_diag = edge_true_edge_.GetDiag();
+    const auto& edge_offd = edge_true_edge_.GetOffd();
+    const auto& edge_offset = edge_true_edge_.GetColStarts()[0];
+    const auto& edge_colmap = edge_true_edge_.GetColMap();
+
+    const auto& diag_indptr = edge_diag.GetIndptr();
+    const auto& diag_indices = edge_diag.GetIndices();
+
+    const auto& offd_indptr = edge_offd.GetIndptr();
+    const auto& offd_indices = edge_offd.GetIndices();
+
+    for (int i = 0; i < num_edges; ++i)
+    {
+        if (edge_diag.RowSize(i) > 0)
+        {
+            assert(edge_diag.RowSize(i) == 1);
+            edge_map_[i] = edge_offset + diag_indices[diag_indptr[i]];
+        }
+        else
+        {
+            edge_map_[i] = edge_colmap[offd_indices[offd_indptr[i]]];
+        }
+    }
+}
+
 Graph::Graph(const Graph& other) noexcept
     : edge_map_(other.edge_map_),
       vertex_map_(other.vertex_map_),

@@ -123,43 +123,6 @@ void swap(MixedMatrix& lhs, MixedMatrix& rhs) noexcept
     std::swap(lhs.true_offsets_, rhs.true_offsets_);
 }
 
-std::vector<double> MixedMatrix::MakeLocalWeight(const ParMatrix& edge_true_edge,
-                                                 const ParMatrix& edge_edge,
-                                                 const std::vector<int>& edge_map,
-                                                 const std::vector<double>& global_weight)
-{
-    int size = edge_map.size();
-
-    std::vector<double> local_weight(size);
-
-    if (static_cast<int>(global_weight.size()) == edge_true_edge.GlobalCols())
-    {
-        for (int i = 0; i < size; ++i)
-        {
-            assert(std::fabs(global_weight[edge_map[i]]) > 1e-12);
-            local_weight[i] = 1.0 / std::fabs(global_weight[edge_map[i]]);
-        }
-    }
-    else
-    {
-        std::fill(std::begin(local_weight), std::end(local_weight), 1.0);
-    }
-
-    const SparseMatrix& edge_offd = edge_edge.GetOffd();
-
-    assert(edge_offd.Rows() == static_cast<int>(local_weight.size()));
-
-    for (int i = 0; i < size; ++i)
-    {
-        if (edge_offd.RowSize(i))
-        {
-            local_weight[i] /= 2.0;
-        }
-    }
-
-    return local_weight;
-}
-
 SparseMatrix MixedMatrix::MakeLocalD(const ParMatrix& edge_true_edge,
                                      const SparseMatrix& vertex_edge)
 {

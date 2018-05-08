@@ -382,6 +382,12 @@ T GetSubVector(const T& global_vect, const std::vector<int>& map)
     return local_vect;
 }
 
+std::vector<double> MakeLocalWeight(const ParMatrix& edge_true_edge,
+                                    const ParMatrix& edge_edge,
+                                    const std::vector<int>& edge_map,
+                                    const std::vector<double>& global_weight);
+
+
 } //namespace smoothg
 
 #endif // __UTILITIES_HPP__

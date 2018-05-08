@@ -52,6 +52,18 @@ struct Graph
     Graph(MPI_Comm comm, const SparseMatrix& vertex_edge_global,
           const std::vector<int>& part_global);
 
+    /**
+       @brief Accepts an already distributed graph.
+              Computes vertex and edge maps from local info,
+              these are necessarily the same as the original maps!
+
+       @param vertex_edge_local local vertex edge relationship
+       @param edge_true_edge edge to true edge relationship
+       @param part_local partition of the local vertices
+    */
+    Graph(SparseMatrix vertex_edge_local, ParMatrix edge_true_edge,
+          std::vector<int> part_local);
+
     /** @brief Default Destructor */
     ~Graph() noexcept = default;
 
