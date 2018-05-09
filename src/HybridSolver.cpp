@@ -86,6 +86,53 @@ SparseMatrix HybridSolver::MakeEdgeDofMultiplier() const
                         num_edge_dofs_, num_multiplier_dofs_);
 }
 
+SparseMatrix HybridSolver::MakeLocalC(int agg, const ParMatrix& edge_true_edge,
+                                      const std::vector<int>& j_multiplier_edgedof,
+                                      std::vector<int>& edge_map,
+                                      std::vector<bool>& edge_marker) const
+{
+    const auto& edgedof_IsOwned = edge_true_edge.GetDiag();
+
+    std::vector<int> local_edgedof = agg_edgedof_.GetIndices(agg);
+    std::vector<int> local_multiplier = agg_multiplier_.GetIndices(agg);
+
+    const int nlocal_edgedof = local_edgedof.size();
+    const int nlocal_multiplier = local_multiplier.size();
+
+    SetMarker(edge_map, local_edgedof);
+
+    std::vector<int> Cloc_i(nlocal_multiplier + 1);
+    std::iota(std::begin(Cloc_i), std::end(Cloc_i), 0);
+
+    std::vector<int> Cloc_j(nlocal_multiplier);
+    std::vector<double> Cloc_data(nlocal_multiplier);
+
+    for (int i = 0; i < nlocal_multiplier; ++i)
+    {
+        const int edgedof_global_id = j_multiplier_edgedof[local_multiplier[i]];
+        const int edgedof_local_id = edge_map[edgedof_global_id];
+
+        Cloc_j[i] = edgedof_local_id;
+
+        if (edgedof_IsOwned.RowSize(edgedof_global_id) &&
+            edge_marker[edgedof_global_id])
+        {
+            edge_marker[edgedof_global_id] = false;
+            Cloc_data[i] = 1.;
+        }
+        else
+        {
+            Cloc_data[i] = -1.;
+        }
+    }
+
+    ClearMarker(edge_map, local_edgedof);
+
+    return SparseMatrix(std::move(Cloc_i), std::move(Cloc_j), std::move(Cloc_data),
+                        nlocal_multiplier, nlocal_edgedof);
+}
+
+
 void HybridSolver::Solve(const BlockVector& Rhs, BlockVector& Sol) const
 {
     RHSTransform(Rhs, Hrhs_);
