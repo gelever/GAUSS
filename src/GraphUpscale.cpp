@@ -37,12 +37,12 @@ GraphUpscale::GraphUpscale(Graph graph, double spect_tol, int max_evects, bool h
 
     gt_ = GraphTopology(graph_);
 
-    fine_mgl_ = VectorMixedMatrix(graph_);
-    fine_mgl_.AssembleM(); // Coarsening requires assembled M, for now
+    mgl_.emplace_back(graph_);
+    GetFineMatrix().AssembleM(); // Coarsening requires assembled M, for now
 
-    coarsener_ = GraphCoarsen(fine_mgl_, gt_, max_evects_, spect_tol_);
+    coarsener_ = GraphCoarsen(GetFineMatrix(), gt_, max_evects_, spect_tol_);
 
-    coarse_mgl_ = coarsener_.Coarsen(gt_, fine_mgl_);
+    mgl_.push_back(coarsener_.Coarsen(gt_, GetFineMatrix()));
 
     MakeCoarseVectors();
     MakeCoarseSolver();
@@ -386,24 +386,38 @@ BlockVector GraphUpscale::GetFineTrueBlockVector() const
     return BlockVector(GetFineMatrix().TrueOffsets());
 }
 
-VectorMixedMatrix& GraphUpscale::GetFineMatrix()
+MixedMatrix& GraphUpscale::GetFineMatrix()
 {
-    return fine_mgl_;
+    return GetMatrix(0);
 }
 
-const VectorMixedMatrix& GraphUpscale::GetFineMatrix() const
+const MixedMatrix& GraphUpscale::GetFineMatrix() const
 {
-    return fine_mgl_;
+    return GetMatrix(0);
 }
 
-DenseMixedMatrix& GraphUpscale::GetCoarseMatrix()
+MixedMatrix& GraphUpscale::GetCoarseMatrix()
 {
-    return coarse_mgl_;
+    return GetMatrix(1);
 }
 
-const DenseMixedMatrix& GraphUpscale::GetCoarseMatrix() const
+const MixedMatrix& GraphUpscale::GetCoarseMatrix() const
 {
-    return coarse_mgl_;
+    return GetMatrix(1);
+}
+
+MixedMatrix& GraphUpscale::GetMatrix(int level)
+{
+    assert(level >= 0 && level < static_cast<int>(mgl_.size()));
+
+    return mgl_[level];
+}
+
+const MixedMatrix& GraphUpscale::GetMatrix(int level) const
+{
+    assert(level >= 0 && level < static_cast<int>(mgl_.size()));
+
+    return mgl_[level];
 }
 
 void GraphUpscale::PrintInfo(std::ostream& out) const

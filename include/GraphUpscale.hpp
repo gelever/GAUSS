@@ -178,12 +178,16 @@ public:
     BlockVector GetFineTrueBlockVector() const;
 
     /// Get Fine level Mixed Matrix
-    VectorMixedMatrix& GetFineMatrix();
-    const VectorMixedMatrix& GetFineMatrix() const;
+    MixedMatrix& GetFineMatrix();
+    const MixedMatrix& GetFineMatrix() const;
 
     /// Get Coarse level Mixed Matrix
-    DenseMixedMatrix& GetCoarseMatrix();
-    const DenseMixedMatrix& GetCoarseMatrix() const;
+    MixedMatrix& GetCoarseMatrix();
+    const MixedMatrix& GetCoarseMatrix() const;
+
+    /// Get Matrix by level
+    MixedMatrix& GetMatrix(int level);
+    const MixedMatrix& GetMatrix(int level) const;
 
     /// Show Solver Information
     void PrintInfo(std::ostream& out = std::cout) const;
@@ -237,9 +241,7 @@ public:
 protected:
     void MakeCoarseVectors();
 
-    //std::vector<std::unique_ptr<MixedMatrix>> mgl_;
-    VectorMixedMatrix fine_mgl_;
-    DenseMixedMatrix coarse_mgl_;
+    std::vector<MixedMatrix> mgl_;
 
     GraphCoarsen coarsener_;
     std::unique_ptr<MGLSolver> coarse_solver_;

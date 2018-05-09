@@ -35,7 +35,7 @@ using parlinalgcpp::LOBPCG;
 using parlinalgcpp::BoomerAMG;
 
 std::vector<int> MetisPart(const SparseMatrix& vertex_edge, int num_parts);
-Vector ComputeFiedlerVector(const VectorMixedMatrix& mgl);
+Vector ComputeFiedlerVector(const MixedMatrix& mgl);
 
 int main(int argc, char* argv[])
 {
@@ -194,7 +194,7 @@ std::vector<int> MetisPart(const SparseMatrix& vertex_edge, int num_parts)
     return Partition(vertex_vertex, num_parts, ubal_tol);
 }
 
-Vector ComputeFiedlerVector(const VectorMixedMatrix& mgl)
+Vector ComputeFiedlerVector(const MixedMatrix& mgl)
 {
     ParMatrix A = mgl.ToPrimal();
 

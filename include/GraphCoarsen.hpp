@@ -55,7 +55,7 @@ public:
         @param spect_tol spectral tolerance used to determine how many eigenvectors
                          to keep per aggregate
     */
-    GraphCoarsen(const VectorMixedMatrix& mgl, const GraphTopology& gt,
+    GraphCoarsen(const MixedMatrix& mgl, const GraphTopology& gt,
                  int max_evects, double spect_tol);
 
     /** @brief Default Destructor */
@@ -77,7 +77,7 @@ public:
         @param gt Fine level graph topology relationships
         @param mgl Fine level mixed matrix
     */
-    DenseMixedMatrix Coarsen(const GraphTopology& gt, const VectorMixedMatrix& mgl) const;
+    MixedMatrix Coarsen(const GraphTopology& gt, const MixedMatrix& mgl) const;
 
     /** @brief Interpolate a coarse vertex vector to the fine level
         @param coarse_vect vertex vector to interpolate
@@ -142,7 +142,7 @@ private:
 
     void ComputeVertexTargets(const GraphTopology& gt, const ParMatrix& M_ext, const ParMatrix& D_ext);
     void ComputeEdgeTargets(const GraphTopology& gt,
-                            const VectorMixedMatrix& mgl,
+                            const MixedMatrix& mgl,
                             const ParMatrix& face_edge_perm);
     void ScaleEdgeTargets(const GraphTopology& gt, const SparseMatrix& D_local);
 
@@ -162,14 +162,14 @@ private:
     void BuildAggBubbleDof();
     void BuildFaceCoarseDof(const GraphTopology& gt);
     void BuildPvertex(const GraphTopology& gt);
-    void BuildPedge(const GraphTopology& gt, const VectorMixedMatrix& mgl);
+    void BuildPedge(const GraphTopology& gt, const MixedMatrix& mgl);
     void BuildAggCDofVertex(const GraphTopology& gt);
     void BuildAggCDofEdge(const GraphTopology& gt);
 
     ParMatrix BuildEdgeTrueEdge(const GraphTopology& gt) const;
 
     SparseMatrix BuildCoarseD(const GraphTopology& gt) const;
-    std::vector<DenseMatrix> BuildElemM(const VectorMixedMatrix& mgl, const GraphTopology& gt) const;
+    std::vector<DenseMatrix> BuildElemM(const MixedMatrix& mgl, const GraphTopology& gt) const;
 
     DenseMatrix RestrictLocal(const DenseMatrix& ext_mat,
                               std::vector<int>& global_marker,

@@ -23,7 +23,7 @@
 namespace smoothg
 {
 
-GraphCoarsen::GraphCoarsen(const VectorMixedMatrix& mgl, const GraphTopology& gt,
+GraphCoarsen::GraphCoarsen(const MixedMatrix& mgl, const GraphTopology& gt,
                            int max_evects, double spect_tol)
     : max_evects_(max_evects), spect_tol_(spect_tol),
       vertex_targets_(gt.agg_ext_edge_.Rows()),
@@ -272,7 +272,7 @@ std::vector<std::vector<std::vector<double>>> GraphCoarsen::CollectM(const Graph
 }
 
 void GraphCoarsen::ComputeEdgeTargets(const GraphTopology& gt,
-                                      const VectorMixedMatrix& mgl,
+                                      const MixedMatrix& mgl,
                                       const ParMatrix& face_perm_edge)
 {
     const SparseMatrix& face_edge = face_perm_edge.GetDiag();
@@ -579,7 +579,7 @@ void GraphCoarsen::BuildPvertex(const GraphTopology& gt)
                              num_vertices, coarse_dof_counter);
 }
 
-void GraphCoarsen::BuildPedge(const GraphTopology& gt, const VectorMixedMatrix& mgl)
+void GraphCoarsen::BuildPedge(const GraphTopology& gt, const MixedMatrix& mgl)
 {
     const SparseMatrix& agg_face = gt.agg_face_local_;
     const SparseMatrix& agg_edge = gt.agg_edge_local_;
@@ -818,7 +818,7 @@ SparseMatrix GraphCoarsen::BuildCoarseD(const GraphTopology& gt) const
     return D_coarse.ToSparse();
 }
 
-std::vector<DenseMatrix> GraphCoarsen::BuildElemM(const VectorMixedMatrix& mgl,
+std::vector<DenseMatrix> GraphCoarsen::BuildElemM(const MixedMatrix& mgl,
                                                   const GraphTopology& gt) const
 {
     int num_aggs = gt.agg_ext_edge_.Rows();
@@ -967,7 +967,7 @@ ParMatrix GraphCoarsen::MakeExtPermutation(const ParMatrix& parmat) const
     return ParMatrix(comm, ext_starts, mat_starts, std::move(perm_diag), std::move(perm_offd), colmap);
 }
 
-DenseMixedMatrix GraphCoarsen::Coarsen(const GraphTopology& gt, const VectorMixedMatrix& mgl) const
+MixedMatrix GraphCoarsen::Coarsen(const GraphTopology& gt, const MixedMatrix& mgl) const
 {
     auto M_elem = BuildElemM(mgl, gt);
     SparseMatrix D_c = BuildCoarseD(gt);
@@ -981,7 +981,7 @@ DenseMixedMatrix GraphCoarsen::Coarsen(const GraphTopology& gt, const VectorMixe
 
     ParMatrix edge_true_edge = BuildEdgeTrueEdge(gt);
 
-    DenseMixedMatrix dense_mm(std::move(M_elem), agg_cdof_edge_, std::move(D_c), std::move(W_c),
+    MixedMatrix dense_mm(std::move(M_elem), agg_cdof_edge_, std::move(D_c), std::move(W_c),
                               std::move(edge_true_edge));
 
     dense_mm.agg_vertexdof_ = agg_cdof_vertex_;
