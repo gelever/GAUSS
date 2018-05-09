@@ -50,6 +50,7 @@ class Elem : public BaseElem
         virtual void Invert(DenseMatrix& inverse) const override;
         virtual void AddToCoo(CooMatrix& coo, const std::vector<int>& indices,
                               double scale = 1.0) const override;
+        const T& GetData() const { return data_; }
 
     private:
         T data_;
