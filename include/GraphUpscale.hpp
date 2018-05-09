@@ -25,10 +25,11 @@
 #include "parlinalgcpp.hpp"
 #include "partition.hpp"
 
-#include "Upscale.hpp"
+#include "Utilities.hpp"
+#include "MixedMatrix.hpp"
+#include "GraphCoarsen.hpp"
+#include "MGLSolver.hpp"
 #include "Graph.hpp"
-#include "GraphTopology.hpp"
-#include "SharedEntityComm.hpp"
 
 #include "MinresBlockSolver.hpp"
 #include "HybridSolver.hpp"
@@ -40,7 +41,7 @@ namespace smoothg
    @brief Use upscaling as operator
 */
 
-class GraphUpscale : public Upscale
+class GraphUpscale : public linalgcpp::Operator
 {
     using VectorElemMM = ElemMixedMatrix<std::vector<double>>;
     using DenseElemMM = ElemMixedMatrix<DenseMatrix>;
@@ -105,13 +106,167 @@ public:
     /// Get number of aggregates
     int NumAggs() const { return gt_.agg_vertex_local_.Rows(); }
 
+    /// Wrapper for applying the upscaling, in linalgcpp terminology
+    void Mult(const VectorView& x, VectorView y) const override;
+
+    /// Wrapper for applying the upscaling
+    void Solve(const VectorView& x, VectorView y) const;
+    Vector Solve(const VectorView& x) const;
+
+    /// Wrapper for applying the upscaling in mixed form
+    void Solve(const BlockVector& x, BlockVector& y) const;
+    BlockVector Solve(const BlockVector& x) const;
+
+    /// Wrapper for only the coarse level, no coarsen, interpolate with fine level
+    void SolveCoarse(const VectorView& x, VectorView y) const;
+    Vector SolveCoarse(const VectorView& x) const;
+
+    /// Wrapper for only the coarse level, no coarsen, interpolate with fine level,
+    //  in mixed form
+    void SolveCoarse(const BlockVector& x, BlockVector& y) const;
+    BlockVector SolveCoarse(const BlockVector& x) const;
+
+    /// Solve Fine Level
+    void SolveFine(const VectorView& x, VectorView y) const;
+    Vector SolveFine(const VectorView& x) const;
+
+    /// Solve Fine Level, in mixed form
+    void SolveFine(const BlockVector& x, BlockVector& y) const;
+    BlockVector SolveFine(const BlockVector& x) const;
+
+    /// Interpolate a coarse vector to the fine level
+    void Interpolate(const VectorView& x, VectorView y) const;
+    Vector Interpolate(const VectorView& x) const;
+
+    /// Interpolate a coarse vector to the fine level, in mixed form
+    void Interpolate(const BlockVector& x, BlockVector& y) const;
+    BlockVector Interpolate(const BlockVector& x) const;
+
+    /// Restrict a fine vector to the coarse level
+    void Restrict(const VectorView& x, VectorView y) const;
+    Vector Restrict(const VectorView& x) const;
+
+    /// Restrict a fine vector to the coarse level, in mixed form
+    void Restrict(const BlockVector& x, BlockVector& y) const;
+    BlockVector Restrict(const BlockVector& x) const;
+
+    /// Get block offsets
+    const std::vector<int>& FineBlockOffsets() const;
+    const std::vector<int>& CoarseBlockOffsets() const;
+
+    /// Get true block offsets
+    const std::vector<int>& FineTrueBlockOffsets() const;
+    const std::vector<int>& CoarseTrueBlockOffsets() const;
+
+    /// Orthogonalize against the constant vector
+    void Orthogonalize(VectorView vect) const;
+    void Orthogonalize(BlockVector& vect) const;
+
+    /// Create a coarse vertex space vector
+    Vector GetCoarseVector() const;
+
+    /// Create a fine vertex space vector
+    Vector GetFineVector() const;
+
+    /// Create a coarse mixed form vector
+    BlockVector GetCoarseBlockVector() const;
+
+    /// Create a fine mixed form vector
+    BlockVector GetFineBlockVector() const;
+
+    /// Create a coarse mixed form vector on true dofs
+    BlockVector GetCoarseTrueBlockVector() const;
+
+    /// Create a fine mixed form vector on true dofs
+    BlockVector GetFineTrueBlockVector() const;
+
+    // Get Mixed Matrix
+    MixedMatrix& GetMatrix(int level);
+    const MixedMatrix& GetMatrix(int level) const;
+
+    /// Get Fine level Mixed Matrix
+    MixedMatrix& GetFineMatrix();
+    const MixedMatrix& GetFineMatrix() const;
+
+    /// Get Coarse level Mixed Matrix
+    MixedMatrix& GetCoarseMatrix();
+    const MixedMatrix& GetCoarseMatrix() const;
+
+    /// Show Solver Information
+    void PrintInfo(std::ostream& out = std::cout) const;
+
+    /// Compute Operator Complexity
+    double OperatorComplexity() const;
+
+    /// Get communicator
+    MPI_Comm GetComm() const { return comm_; }
+
+    /// Set solver parameters
+    void SetPrintLevel(int print_level);
+    void SetMaxIter(int max_num_iter);
+    void SetRelTol(double rtol);
+    void SetAbsTol(double atol);
+
+    /// Show Total Solve time on the coarse level on processor 0
+    void ShowCoarseSolveInfo(std::ostream& out = std::cout) const;
+
+    /// Show Total Solve time on the fine level on processor 0
+    void ShowFineSolveInfo(std::ostream& out = std::cout) const;
+
+    /// Show Total setup time on processor 0
+    void ShowSetupTime(std::ostream& out = std::cout) const;
+
+    /// Get Total Solve time on the coarse level
+    double GetCoarseSolveTime() const;
+
+    /// Get Total Solve time on the fine level
+    double GetFineSolveTime() const;
+
+    /// Get Total Solve iterations on the coarse level
+    int GetCoarseSolveIters() const;
+
+    /// Get Total Solve iterations on the fine level
+    int GetFineSolveIters() const;
+
+    /// Get Total setup time
+    double GetSetupTime() const;
+
+    /// Compare errors between upscaled and fine solution.
+    /// Returns {vertex_error, edge_error, div_error} array.
+    std::vector<double> ComputeErrors(const BlockVector& upscaled_sol,
+                                      const BlockVector& fine_sol) const;
+
+    /// Compare errors between upscaled and fine solution.
+    /// Displays error to stdout on processor 0
+    void ShowErrors(const BlockVector& upscaled_sol,
+                    const BlockVector& fine_sol) const;
+
+protected:
+    void MakeCoarseVectors();
+
+    std::vector<std::unique_ptr<MixedMatrix>> mgl_;
+    GraphCoarsen coarsener_;
+    std::unique_ptr<MGLSolver> coarse_solver_;
+    std::unique_ptr<MGLSolver> fine_solver_;
+
+    MPI_Comm comm_;
+    int myid_;
+
+    int global_vertices_;
+    int global_edges_;
+
+    double setup_time_;
+
+    mutable BlockVector rhs_coarse_;
+    mutable BlockVector sol_coarse_;
+
 private:
     double spect_tol_;
     int max_evects_;
     bool hybridization_;
 
-    Graph graph_;
     GraphTopology gt_;
+    Graph graph_;
 };
 
 template <typename T>
