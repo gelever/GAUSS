@@ -278,7 +278,7 @@ T GraphUpscale::GetVertexVector(const T& global_vect) const
 template <typename T>
 T GraphUpscale::GetEdgeVector(const T& global_vect) const
 {
-    return GetSubVector(global_vect, graph_.vertex_map_);
+    return GetSubVector(global_vect, graph_.edge_map_);
 }
 
 } // namespace smoothg
