@@ -181,7 +181,8 @@ int main(int argc, char* argv[])
         upscale.Restrict(fine_rhs, work_rhs);
     }
 
-    const SparseMatrix& W = upscale.GetMatrix(k).LocalW();
+    const SparseMatrix& W = (k == 0) ? upscale.GetFineMatrix().LocalW() :
+                                       upscale.GetCoarseMatrix().LocalW();
 
     upscale.ShowSetupTime();
 

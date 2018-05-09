@@ -37,15 +37,12 @@ GraphUpscale::GraphUpscale(Graph graph, double spect_tol, int max_evects, bool h
 
     gt_ = GraphTopology(graph_);
 
-    VectorElemMM fine_mm(graph_);
-    fine_mm.AssembleM(); // Coarsening requires assembled M, for now
+    fine_mgl_ = VectorMixedMatrix(graph_);
+    fine_mgl_.AssembleM(); // Coarsening requires assembled M, for now
 
-    coarsener_ = GraphCoarsen(fine_mm, gt_, max_evects_, spect_tol_);
+    coarsener_ = GraphCoarsen(fine_mgl_, gt_, max_evects_, spect_tol_);
 
-    DenseElemMM coarse_mm = coarsener_.Coarsen(gt_, fine_mm);
-
-    mgl_.push_back(make_unique<VectorElemMM>(std::move(fine_mm)));
-    mgl_.push_back(make_unique<DenseElemMM>(std::move(coarse_mm)));
+    coarse_mgl_ = coarsener_.Coarsen(gt_, fine_mgl_);
 
     MakeCoarseVectors();
     MakeCoarseSolver();
@@ -57,11 +54,11 @@ GraphUpscale::GraphUpscale(Graph graph, double spect_tol, int max_evects, bool h
 
 void GraphUpscale::MakeCoarseSolver()
 {
-    auto& mm = dynamic_cast<DenseElemMM&>(GetCoarseMatrix());
+    auto& mm = GetCoarseMatrix();
 
     if (hybridization_)
     {
-        coarse_solver_ = make_unique<HybridSolver>(mm, coarsener_);
+        coarse_solver_ = make_unique<HybridSolver>(mm);
     }
     else
     {
@@ -72,7 +69,7 @@ void GraphUpscale::MakeCoarseSolver()
 
 void GraphUpscale::MakeFineSolver()
 {
-    auto& mm = dynamic_cast<VectorElemMM&>(GetFineMatrix());
+    auto& mm = GetFineMatrix();
 
     if (hybridization_)
     {
@@ -87,7 +84,7 @@ void GraphUpscale::MakeFineSolver()
 
 void GraphUpscale::MakeCoarseSolver(const std::vector<double>& agg_weights)
 {
-    auto& mm = dynamic_cast<DenseElemMM&>(GetCoarseMatrix());
+    auto& mm = GetCoarseMatrix();
 
     if (hybridization_)
     {
@@ -105,7 +102,7 @@ void GraphUpscale::MakeCoarseSolver(const std::vector<double>& agg_weights)
 
 void GraphUpscale::MakeFineSolver(const std::vector<double>& agg_weights)
 {
-    auto& mm = dynamic_cast<VectorElemMM&>(GetFineMatrix());
+    auto& mm = GetFineMatrix();
 
     if (hybridization_)
     {
@@ -389,40 +386,24 @@ BlockVector GraphUpscale::GetFineTrueBlockVector() const
     return BlockVector(GetFineMatrix().TrueOffsets());
 }
 
-MixedMatrix& GraphUpscale::GetMatrix(int level)
+VectorMixedMatrix& GraphUpscale::GetFineMatrix()
 {
-    assert(level >= 0 && level < static_cast<int>(mgl_.size()));
-    assert(mgl_[level]);
-
-    return *mgl_[level];
+    return fine_mgl_;
 }
 
-const MixedMatrix& GraphUpscale::GetMatrix(int level) const
+const VectorMixedMatrix& GraphUpscale::GetFineMatrix() const
 {
-    assert(level >= 0 && level < static_cast<int>(mgl_.size()));
-    assert(mgl_[level]);
-
-    return *mgl_[level];
+    return fine_mgl_;
 }
 
-MixedMatrix& GraphUpscale::GetFineMatrix()
+DenseMixedMatrix& GraphUpscale::GetCoarseMatrix()
 {
-    return GetMatrix(0);
+    return coarse_mgl_;
 }
 
-const MixedMatrix& GraphUpscale::GetFineMatrix() const
+const DenseMixedMatrix& GraphUpscale::GetCoarseMatrix() const
 {
-    return GetMatrix(0);
-}
-
-MixedMatrix& GraphUpscale::GetCoarseMatrix()
-{
-    return GetMatrix(1);
-}
-
-const MixedMatrix& GraphUpscale::GetCoarseMatrix() const
-{
-    return GetMatrix(1);
+    return coarse_mgl_;
 }
 
 void GraphUpscale::PrintInfo(std::ostream& out) const

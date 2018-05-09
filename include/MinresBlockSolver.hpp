@@ -64,7 +64,8 @@ public:
     /** @brief Constructor from a mixed matrix
         @param mgl mixed matrix information
     */
-    MinresBlockSolver(const MixedMatrix& mgl);
+    template <typename T>
+    MinresBlockSolver(const MixedMatrix<T>& mgl);
 
     /** @brief Copy Constructor */
     MinresBlockSolver(const MinresBlockSolver& other) noexcept;
@@ -122,25 +123,66 @@ private:
     bool use_w_;
 };
 
-/**
-   @brief MinresBlockSolver acts on "true" dofs, this one does not.
-*/
-class MinresBlockSolverFalse : public MinresBlockSolver
+template <typename T>
+MinresBlockSolver::MinresBlockSolver(const MixedMatrix<T>& mgl)
+    : MGLSolver(mgl.Offsets()), M_(mgl.GlobalM()), D_(mgl.GlobalD()), W_(mgl.GlobalW()),
+      edge_true_edge_(mgl.EdgeTrueEdge()),
+      comm_(M_.GetComm()), myid_(M_.GetMyId()),
+      op_(mgl.TrueOffsets()), prec_(mgl.TrueOffsets()),
+      true_rhs_(mgl.TrueOffsets()), true_sol_(mgl.TrueOffsets()),
+      use_w_(mgl.CheckW())
 {
-public:
-    MinresBlockSolverFalse() = default;
-    MinresBlockSolverFalse(const MixedMatrix& mgl);
+    if (!use_w_ && myid_ == 0)
+    {
+        D_.EliminateRow(0);
+    }
 
-    ~MinresBlockSolverFalse() = default;
+    DT_ = D_.Transpose();
 
-    virtual void Mult(const BlockVector& rhs, BlockVector& sol) const;
+    SparseMatrix M_diag(M_.GetDiag().GetDiag());
+    ParMatrix MinvDT = DT_;
+    MinvDT.InverseScaleRows(M_diag);
+    ParMatrix schur_block = D_.Mult(MinvDT);
 
-private:
-    //const MixedMatrix& mixed_matrix_;
+    if (!use_w_)
+    {
+        CooMatrix elim_dof(D_.Rows(), D_.Rows());
 
-    mutable BlockVector true_rhs_;
-    mutable BlockVector true_sol_;
-};
+        if (myid_ == 0)
+        {
+            elim_dof.Add(0, 0, 1.0);
+        }
+
+        SparseMatrix W = elim_dof.ToSparse();
+        W_ = ParMatrix(D_.GetComm(), D_.GetRowStarts(), std::move(W));
+    }
+    else
+    {
+        schur_block = parlinalgcpp::ParSub(schur_block, W_);
+    }
+
+    M_prec_ = parlinalgcpp::ParDiagScale(M_);
+    schur_prec_ = parlinalgcpp::BoomerAMG(std::move(schur_block));
+
+    op_.SetBlock(0, 0, M_);
+    op_.SetBlock(0, 1, DT_);
+    op_.SetBlock(1, 0, D_);
+    op_.SetBlock(1, 1, W_);
+
+    prec_.SetBlock(0, 0, M_prec_);
+    prec_.SetBlock(1, 1, schur_prec_);
+
+    pminres_ = linalgcpp::PMINRESSolver(op_, prec_, max_num_iter_, rtol_,
+                                        atol_, 0, parlinalgcpp::ParMult);
+
+    if (myid_ == 0)
+    {
+        SetPrintLevel(print_level_);
+    }
+
+    nnz_ = M_.nnz() + DT_.nnz() + D_.nnz() + W_.nnz();
+}
+
 
 } // namespace smoothg
 
