@@ -46,88 +46,23 @@ class GraphUpscale : public Upscale
     using DenseElemMM = ElemMixedMatrix<DenseMatrix>;
 
 public:
-    /**
-       @brief Global Constructor, computed partition
+    /// Default Constructor
+    GraphUpscale() = default;
 
-       @param comm MPI communicator
-       @param vertex_edge relationship between vertices and edge
-       @param coarse_factor how coarse to partition the graph
+    /**
+       @brief Graph Constructor
+
+       @param graph contains input graph information
        @param spect_tol spectral tolerance determines how many eigenvectors to
                         keep per aggregate
        @param max_evects maximum number of eigenvectors to keep per aggregate
        @param hybridization use hybridization as solver
-       @param weight edge weights. if not provided, set to all ones
     */
-    GraphUpscale(MPI_Comm comm,
-                 const SparseMatrix& vertex_edge_global,
-                 double coarse_factor, double spect_tol = 0.001,
-                 int max_evects = 4, bool hybridization = false,
-                 const std::vector<double>& weight_global = {},
-                 const SparseMatrix& W_block_global = SparseMatrix());
-
-    /**
-       @brief Global Constructor, given partition
-
-       @param comm MPI communicator
-       @param vertex_edge relationship between vertices and edge
-       @param global_partitioning partition of global vertices
-       @param spect_tol spectral tolerance determines how many eigenvectors to
-                        keep per aggregate
-       @param max_evects maximum number of eigenvectors to keep per aggregate
-       @param hybridization use hybridization as solver
-       @param weight edge weights. if not provided, set to all ones
-    */
-    GraphUpscale(MPI_Comm comm,
-                 const SparseMatrix& vertex_edge_global,
-                 const std::vector<int>& partitioning_global,
-                 double spect_tol = 0.001, int max_evects = 4,
-                 bool hybridization = false,
-                 const std::vector<double>& weight_global = {},
-                 const SparseMatrix& W_block_global = SparseMatrix());
-
-    /**
-       @brief Distributed Constructor, computed partition
-
-       @param vertex_edge local relationship between vertices and edge
-       @param edge_true_edge edge to true edge relationship
-       @param coarse_factor how coarse to partition the graph
-       @param spect_tol spectral tolerance determines how many eigenvectors to
-                        keep per aggregate
-       @param max_evects maximum number of eigenvectors to keep per aggregate
-       @param hybridization use hybridization as solver
-       @param weight edge weights. if not provided, set to all ones
-    */
-    GraphUpscale(const SparseMatrix& vertex_edge_local,
-                 ParMatrix edge_true_edge,
-                 double coarse_factor,
-                 double spect_tol = 0.001, int max_evects = 4,
-                 bool hybridization = false,
-                 std::vector<double> weight_local = {},
-                 SparseMatrix W_block_local = SparseMatrix());
-
-    /**
-       @brief Distributed Constructor, given partition
-
-       @param vertex_edge local relationship between vertices and edge
-       @param edge_true_edge edge to true edge relationship
-       @param partitioning_local partition of local vertices
-       @param spect_tol spectral tolerance determines how many eigenvectors to
-                        keep per aggregate
-       @param max_evects maximum number of eigenvectors to keep per aggregate
-       @param hybridization use hybridization as solver
-       @param weight edge weights. if not provided, set to all ones
-    */
-    GraphUpscale(SparseMatrix vertex_edge_local,
-                 ParMatrix edge_true_edge,
-                 std::vector<int> partitioning_local,
-                 double spect_tol = 0.001, int max_evects = 4,
-                 bool hybridization = false,
-                 std::vector<double> weight_local = {},
-                 SparseMatrix W_block_local = SparseMatrix());
-
-    GraphUpscale(Graph graph,
-                 double spect_tol = 0.001, int max_evects = 4,
+    GraphUpscale(Graph graph, double spect_tol = 0.001, int max_evects = 4,
                  bool hybridization = false);
+
+    /// Default Destructor
+    ~GraphUpscale() = default;
 
     /// Extract a local fine vertex space vector from global vector
     template <typename T>

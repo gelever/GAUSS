@@ -60,13 +60,10 @@ int main(int argc, char* argv[])
 
     // vertex_edge and partition
     {
-        SparseMatrix edge_vertex = vertex_edge.Transpose();
-        SparseMatrix vertex_vertex = vertex_edge.Mult(edge_vertex);
+        std::vector<int> part = PartitionAAT(vertex_edge, coarse_factor);
+        Graph graph(comm, vertex_edge, part);
 
-        std::vector<int> global_part = Partition(vertex_vertex, num_partitions);
-
-        GraphUpscale upscale(comm, vertex_edge, global_part,
-                             spect_tol, max_evects, hybridization);
+        GraphUpscale upscale(graph, spect_tol, max_evects, hybridization);
 
         Vector rhs_u_fine = upscale.ReadVertexVector(rhs_filename);
         Vector sol = upscale.Solve(rhs_u_fine);
@@ -74,21 +71,12 @@ int main(int argc, char* argv[])
         upscale.WriteVertexVector(sol, "sol1.out");
     }
 
-    // vertex_edge and coarse factor
-    {
-        GraphUpscale upscale(comm, vertex_edge, coarse_factor,
-                             spect_tol, max_evects, hybridization);
-
-        Vector rhs_u_fine = upscale.ReadVertexVector(rhs_filename);
-        Vector sol = upscale.Solve(rhs_u_fine);
-
-        upscale.WriteVertexVector(sol, "sol2.out");
-    }
-
     // Using coarse space
     {
-        GraphUpscale upscale(comm, vertex_edge, coarse_factor,
-                             spect_tol, max_evects, hybridization);
+        std::vector<int> part = PartitionAAT(vertex_edge, coarse_factor);
+        Graph graph(comm, vertex_edge, part);
+
+        GraphUpscale upscale(graph, spect_tol, max_evects, hybridization);
 
         // Start at Fine Level
         Vector rhs_u_fine = upscale.ReadVertexVector(rhs_filename);
@@ -112,8 +100,10 @@ int main(int argc, char* argv[])
 
     // Comparing Error; essentially generalgraph.cpp
     {
-        GraphUpscale upscale(comm, vertex_edge, coarse_factor,
-                             spect_tol, max_evects, hybridization);
+        std::vector<int> part = PartitionAAT(vertex_edge, coarse_factor);
+        Graph graph(comm, vertex_edge, part);
+
+        GraphUpscale upscale(graph, spect_tol, max_evects, hybridization);
 
         BlockVector fine_rhs = upscale.ReadVertexBlockVector(rhs_filename);
 
@@ -135,13 +125,13 @@ int main(int argc, char* argv[])
 
     // Compare hybridization vs Minres solvers
     {
+        std::vector<int> part = PartitionAAT(vertex_edge, coarse_factor);
+        Graph graph(comm, vertex_edge, part);
+
         bool use_hybridization = true;
 
-        GraphUpscale hb_upscale(comm, vertex_edge, coarse_factor,
-                                spect_tol, max_evects, use_hybridization);
-
-        GraphUpscale minres_upscale(comm, vertex_edge, coarse_factor,
-                                    spect_tol, max_evects, !use_hybridization);
+        GraphUpscale hb_upscale(graph, spect_tol, max_evects, use_hybridization);
+        GraphUpscale minres_upscale(graph, spect_tol, max_evects, !use_hybridization);
 
         Vector rhs_u_fine = minres_upscale.ReadVertexVector(rhs_filename);
 

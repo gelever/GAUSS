@@ -214,7 +214,6 @@ std::vector<std::vector<DenseMatrix>> GraphCoarsen::CollectSigma(const GraphTopo
 std::vector<std::vector<SparseMatrix>> GraphCoarsen::CollectD(const GraphTopology& gt,
                                                               const SparseMatrix& D_local)
 {
-
     SharedEntityComm<SparseMatrix> sec_D(gt.face_true_face_);
 
     int num_faces = gt.face_edge_local_.Rows();
