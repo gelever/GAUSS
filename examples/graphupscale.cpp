@@ -71,6 +71,29 @@ int main(int argc, char* argv[])
         upscale.WriteVertexVector(sol, "sol1.out");
     }
 
+    // Mimic distributed data
+    {
+        std::vector<int> part = PartitionAAT(vertex_edge, coarse_factor);
+        Graph graph_global(comm, vertex_edge, part);
+
+        // Pretend these came from some outside distributed source
+        const auto& vertex_edge_local = graph_global.vertex_edge_local_;
+        const auto& edge_true_edge = graph_global.edge_true_edge_;
+        const auto& part_local = graph_global.part_local_;
+        const auto& weight_local = graph_global.weight_local_;
+
+        // Use distrubted constructor
+        Graph graph_local(vertex_edge_local, edge_true_edge, part_local, weight_local);
+        GraphUpscale upscale(graph_local, spect_tol, max_evects, hybridization);
+
+        // This right hand side may not be permuted the same as in the upscaler,
+        // since only local vertex information was given and the vertex map was generated
+        Vector rhs_u_fine = upscale.ReadVertexVector(rhs_filename);
+        Vector sol = upscale.Solve(rhs_u_fine);
+
+        upscale.WriteVertexVector(sol, "sol2.out");
+    }
+
     // Using coarse space
     {
         std::vector<int> part = PartitionAAT(vertex_edge, coarse_factor);
