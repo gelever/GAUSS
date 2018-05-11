@@ -27,11 +27,11 @@ namespace smoothg
 HybridSolver::HybridSolver(const MixedMatrix& mgl)
     :
     MGLSolver(mgl.Offsets()), comm_(mgl.GlobalD().GetComm()), myid_(mgl.GlobalD().GetMyId()),
-    agg_vertexdof_(mgl.agg_vertexdof_),
+    agg_vertexdof_(mgl.GetAggVertexDof()),
     agg_edgedof_(mgl.GetElemDof()),
     num_aggs_(agg_edgedof_.Rows()),
     num_edge_dofs_(agg_edgedof_.Cols()),
-    num_multiplier_dofs_(mgl.num_multiplier_dofs_),
+    num_multiplier_dofs_(mgl.GetFaceFaceDof().Cols()),
     MinvDT_(num_aggs_), MinvCT_(num_aggs_),
     AinvDMinvCT_(num_aggs_), Ainv_(num_aggs_),
     hybrid_elem_(num_aggs_), Ainv_f_(num_aggs_),

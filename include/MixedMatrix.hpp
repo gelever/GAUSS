@@ -54,16 +54,21 @@ public:
         @param D_local Local D
         @param W_local Local W
         @param edge_true_edge Edge to true edge relationship
+
+        @todo(gelever1) are there too many parameters here???
+        @param agg_vertexdof_ aggregate to vertex dof
+        @param face_facedof_ face to face dof
     */
     MixedMatrix(std::vector<DenseMatrix> M_elem, SparseMatrix elem_dof,
-                    SparseMatrix D_local, SparseMatrix W_local,
-                    ParMatrix edge_true_edge);
+                SparseMatrix D_local, SparseMatrix W_local,
+                ParMatrix edge_true_edge, SparseMatrix agg_vertexdof_,
+                SparseMatrix face_facedof_);
 
     /** @brief Default Destructor */
     virtual ~MixedMatrix() noexcept = default;
 
     /** @brief Copy Constructor */
-    MixedMatrix(const MixedMatrix& other) noexcept = delete;
+    MixedMatrix(const MixedMatrix& other) noexcept;
 
     /** @brief Move Constructor */
     MixedMatrix(MixedMatrix&& other) noexcept;
@@ -87,6 +92,12 @@ public:
 
     /** @brief Access element to dof relationship */
     const SparseMatrix& GetElemDof() const { return elem_dof_; }
+
+    /** @brief Access aggregate to vertex dof relationship */
+    const SparseMatrix& GetAggVertexDof() const { return agg_vertexdof_; }
+
+    /** @brief Access element to dof relationship */
+    const SparseMatrix& GetFaceFaceDof() const { return face_facedof_; }
 
     /* @brief Local size of mixed matrix, number of edges + number of vertices */
     int Rows() const;
@@ -143,10 +154,6 @@ public:
     /* @brief Block true offsets */
     const std::vector<int>& TrueOffsets() const { return true_offsets_; }
 
-    // TEMP: stuff from coarsener
-    SparseMatrix agg_vertexdof_;
-    int num_multiplier_dofs_;
-
 protected:
     void Init();
 
@@ -171,6 +178,11 @@ protected:
     // Element information
     std::vector<DenseMatrix> M_elem_;
     SparseMatrix elem_dof_;
+
+    // More information from coarsener
+    // @todo(gelever1): find gooder names for these???
+    SparseMatrix agg_vertexdof_;
+    SparseMatrix face_facedof_;
 };
 
 } // namespace smoothg

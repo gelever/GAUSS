@@ -27,7 +27,9 @@ MixedMatrix::MixedMatrix(const Graph& graph)
     : edge_true_edge_(graph.edge_true_edge_),
       D_local_(MakeLocalD(graph.edge_true_edge_, graph.vertex_edge_local_)),
       W_local_(graph.W_local_),
-      elem_dof_(graph.vertex_edge_local_)
+      elem_dof_(graph.vertex_edge_local_),
+      agg_vertexdof_(SparseIdentity(D_local_.Rows())),
+      face_facedof_(SparseIdentity(elem_dof_.Cols()))
 {
     const int num_vertices = D_local_.Rows();
 
@@ -56,20 +58,20 @@ MixedMatrix::MixedMatrix(const Graph& graph)
         }
     }
 
-    agg_vertexdof_ = SparseIdentity(D_local_.Rows());
-    num_multiplier_dofs_ = elem_dof_.Cols();
-
     Init();
 }
 
 MixedMatrix::MixedMatrix(std::vector<DenseMatrix> M_elem, SparseMatrix elem_dof,
                          SparseMatrix D_local, SparseMatrix W_local,
-                         ParMatrix edge_true_edge)
+                         ParMatrix edge_true_edge, SparseMatrix agg_vertexdof,
+                         SparseMatrix face_facedof_)
     : edge_true_edge_(std::move(edge_true_edge)),
       D_local_(std::move(D_local)),
       W_local_(std::move(W_local)),
       M_elem_(std::move(M_elem)),
-      elem_dof_(std::move(elem_dof))
+      elem_dof_(std::move(elem_dof)),
+      agg_vertexdof_(std::move(agg_vertexdof)),
+      face_facedof_(std::move(face_facedof_))
 {
     Init();
 }
@@ -98,6 +100,21 @@ void MixedMatrix::Init()
 
     offsets_ = {0, D_local_.Cols(), D_local_.Cols() + D_local_.Rows()};
     true_offsets_ = {0, D_global_.Cols(), D_global_.Cols() + D_global_.Rows()};
+}
+
+MixedMatrix::MixedMatrix(const MixedMatrix& other) noexcept
+    : edge_true_edge_(other.edge_true_edge_),
+      M_local_(other.M_local_),
+      D_local_(other.D_local_),
+      W_local_(other.W_local_),
+      M_global_(other.M_global_),
+      D_global_(other.D_global_),
+      W_global_(other.W_global_),
+      offsets_(other.offsets_),
+      true_offsets_(other.true_offsets_),
+      agg_vertexdof_(other.agg_vertexdof_),
+      face_facedof_(other.face_facedof_)
+{
 }
 
 MixedMatrix& MixedMatrix::operator=(MixedMatrix&& other) noexcept
@@ -131,7 +148,7 @@ void swap(MixedMatrix& lhs, MixedMatrix& rhs) noexcept
     swap(lhs.elem_dof_, rhs.elem_dof_);
 
     swap(lhs.agg_vertexdof_, rhs.agg_vertexdof_);
-    std::swap(lhs.num_multiplier_dofs_, rhs.num_multiplier_dofs_);
+    std::swap(lhs.face_facedof_, rhs.face_facedof_);
 }
 
 int MixedMatrix::Rows() const

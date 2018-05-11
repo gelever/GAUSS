@@ -1011,14 +1011,11 @@ MixedMatrix GraphCoarsen::Coarsen(const MixedMatrix& mgl) const
 
     ParMatrix edge_true_edge = BuildEdgeTrueEdge();
 
-    MixedMatrix dense_mm(std::move(M_elem), std::move(agg_cdof_edge),
-                         std::move(D_c), std::move(W_c),
-                         std::move(edge_true_edge));
-
-    dense_mm.agg_vertexdof_ = BuildAggCDofVertex();
-    dense_mm.num_multiplier_dofs_ = face_cdof_.Cols();
-
-    return dense_mm;
+    return MixedMatrix(std::move(M_elem), std::move(agg_cdof_edge),
+                       std::move(D_c), std::move(W_c),
+                       std::move(edge_true_edge),
+                       BuildAggCDofVertex(),
+                       face_cdof_);
 }
 
 Vector GraphCoarsen::Interpolate(const VectorView& coarse_vect) const
