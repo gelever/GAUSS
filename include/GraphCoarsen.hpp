@@ -49,7 +49,7 @@ public:
 
     /** @brief Construtor from a fine level graph
 
-        @param graph Fine level graph 
+        @param graph Fine level graph
         @param mgl Fine level mixed matrix
         @param max_evects maximum number of eigenvectors per aggregate
         @param spect_tol spectral tolerance used to determine how many eigenvectors
@@ -159,7 +159,7 @@ private:
     void BuildPvertex();
     void BuildPedge(const MixedMatrix& mgl);
 
-    // These only depend on GraphTopology and are sent directly to 
+    // These only depend on GraphTopology and are sent directly to
     // the coarse mixed matrix
     // {
     SparseMatrix BuildAggCDofVertex() const;

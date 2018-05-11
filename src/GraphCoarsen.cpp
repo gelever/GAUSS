@@ -114,7 +114,8 @@ void swap(GraphCoarsen& lhs, GraphCoarsen& rhs) noexcept
     swap(lhs.F_potential_, rhs.F_potential_);
 }
 
-void GraphCoarsen::ComputeVertexTargets(const ParMatrix& M_ext_global, const ParMatrix& D_ext_global)
+void GraphCoarsen::ComputeVertexTargets(const ParMatrix& M_ext_global,
+                                        const ParMatrix& D_ext_global)
 {
     const SparseMatrix& M_ext = M_ext_global.GetDiag();
     const SparseMatrix& D_ext = D_ext_global.GetDiag();

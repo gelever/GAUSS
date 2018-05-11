@@ -143,7 +143,8 @@ private:
 class UpscaleCoarseSolve : public linalgcpp::Operator
 {
 public:
-    UpscaleCoarseSolve(const GraphUpscale& A) : linalgcpp::Operator(A.GetCoarseMatrix().LocalD().Rows()),
+    UpscaleCoarseSolve(const GraphUpscale& A)
+        : linalgcpp::Operator(A.GetCoarseMatrix().LocalD().Rows()),
         A_(A)  {}
     void Mult(const VectorView& x, VectorView y) const { A_.SolveCoarse(x, y); }
 

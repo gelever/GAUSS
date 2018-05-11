@@ -129,9 +129,8 @@ public:
 
 private:
 
-    SparseMatrix AssembleHybridSystem(
-        const MixedMatrix& mgl,
-        const std::vector<int>& j_multiplier_edgedof);
+    SparseMatrix AssembleHybridSystem(const MixedMatrix& mgl,
+                                      const std::vector<int>& j_multiplier_edgedof);
 
     SparseMatrix MakeEdgeDofMultiplier() const;
 

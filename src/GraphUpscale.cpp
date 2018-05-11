@@ -595,7 +595,7 @@ double GraphUpscale::GetSetupTime() const
 }
 
 std::vector<double> GraphUpscale::ComputeErrors(const BlockVector& upscaled_sol,
-                                           const BlockVector& fine_sol) const
+                                                const BlockVector& fine_sol) const
 {
     const SparseMatrix& M = GetFineMatrix().LocalM();
     const SparseMatrix& D = GetFineMatrix().LocalD();
@@ -607,7 +607,7 @@ std::vector<double> GraphUpscale::ComputeErrors(const BlockVector& upscaled_sol,
 }
 
 void GraphUpscale::ShowErrors(const BlockVector& upscaled_sol,
-                         const BlockVector& fine_sol) const
+                              const BlockVector& fine_sol) const
 {
     auto info = ComputeErrors(upscaled_sol, fine_sol);
 
