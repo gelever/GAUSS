@@ -174,7 +174,6 @@ SparseMatrix HybridSolver::AssembleHybridSystem(
     std::vector<int> edge_map(map_size, -1);
     std::vector<bool> edge_marker(num_edge_dofs_, true);
 
-    //T Mloc_solver;
     DenseMatrix Minv;
 
     DenseMatrix Aloc;

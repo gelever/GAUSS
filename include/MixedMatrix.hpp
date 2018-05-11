@@ -96,7 +96,7 @@ public:
     /** @brief Access aggregate to vertex dof relationship */
     const SparseMatrix& GetAggVertexDof() const { return agg_vertexdof_; }
 
-    /** @brief Access element to dof relationship */
+    /** @brief Access face to face dof relationship */
     const SparseMatrix& GetFaceFaceDof() const { return face_facedof_; }
 
     /* @brief Local size of mixed matrix, number of edges + number of vertices */
