@@ -27,75 +27,12 @@
 namespace smoothg
 {
 
-class BaseElem
-{
-    public:
-        virtual ~BaseElem() = default;
-
-        virtual void Invert(DenseMatrix& inverse) const = 0;
-
-        /// I dont like AddToCoo, but idk how to get derived data w/ casting
-        /// At least it works for now
-        virtual void AddToCoo(CooMatrix& coo, const std::vector<int>& indices,
-                              double scale = 1.0) const = 0;
-};
-
-template <typename T>
-class Elem : public BaseElem
-{
-    public:
-        Elem(T elem) : data_(std::move(elem)) {}
-        virtual ~Elem() = default;
-
-        virtual void Invert(DenseMatrix& inverse) const override;
-        virtual void AddToCoo(CooMatrix& coo, const std::vector<int>& indices,
-                              double scale = 1.0) const override;
-        const T& GetData() const { return data_; }
-
-    private:
-        T data_;
-};
-
-template<>
-inline
-void Elem<std::vector<double>>::Invert(DenseMatrix& inverse) const
-{
-    int size = data_.size();
-
-    inverse.SetSize(size);
-    inverse = 0.0;
-
-    for (int i = 0; i < size; ++i)
-    {
-        inverse(i, i) = 1.0 / data_[i];
-    }
-}
-
-template<>
-inline
-void Elem<DenseMatrix>::Invert(DenseMatrix& inverse) const
-{
-    int size = data_.Rows();
-    inverse.SetSize(size);
-
-    data_.Invert(inverse);
-}
-
-template <typename T>
-void Elem<T>::AddToCoo(CooMatrix& coo, const std::vector<int>& indices, double scale) const
-{
-    coo.Add(indices, indices, scale, data_);
-}
-
 /**
    @brief Encapuslates the mixed form of a graph in saddle-point form.
 
    The given data is a vertex_edge table and weights in some form.
 
    This is essentially a container for a weight matrix and a D matrix.
-
-   Two types of element matrices are supported:
-   vector for when M is diagonal and dense matrix otherwise.
 */
 
 class MixedMatrix
@@ -118,8 +55,7 @@ public:
         @param W_local Local W
         @param edge_true_edge Edge to true edge relationship
     */
-    template <typename T>
-    MixedMatrix(std::vector<T> M_elem, SparseMatrix elem_dof,
+    MixedMatrix(std::vector<DenseMatrix> M_elem, SparseMatrix elem_dof,
                     SparseMatrix D_local, SparseMatrix W_local,
                     ParMatrix edge_true_edge);
 
@@ -147,7 +83,7 @@ public:
     void AssembleM(const std::vector<double>& agg_weight);
 
     /** @brief Access element matrices */
-    const std::vector<std::unique_ptr<BaseElem>>& GetElemM() const { return M_elem_; }
+    const std::vector<DenseMatrix>& GetElemM() const { return M_elem_; }
 
     /** @brief Access element to dof relationship */
     const SparseMatrix& GetElemDof() const { return elem_dof_; }
@@ -218,8 +154,6 @@ protected:
     SparseMatrix MakeLocalD(const ParMatrix& edge_true_edge,
                             const SparseMatrix& vertex_edge) const;
 
-
-
     ParMatrix edge_true_edge_;
 
     // Local blocks
@@ -236,31 +170,9 @@ protected:
     std::vector<int> true_offsets_;
 
     // Element information
-    std::vector<std::unique_ptr<BaseElem>> M_elem_;
+    std::vector<DenseMatrix> M_elem_;
     SparseMatrix elem_dof_;
 };
-
-template <typename T>
-MixedMatrix::MixedMatrix(std::vector<T> M_elem, SparseMatrix elem_dof,
-                         SparseMatrix D_local, SparseMatrix W_local,
-                         ParMatrix edge_true_edge)
-    : edge_true_edge_(std::move(edge_true_edge)),
-      D_local_(std::move(D_local)),
-      W_local_(std::move(W_local)),
-      elem_dof_(std::move(elem_dof))
-{
-    int num_elem = M_elem.size();
-
-    M_elem_.resize(num_elem);
-
-    for (int i = 0; i < num_elem; ++i)
-    {
-        M_elem_[i] = make_unique< Elem <T> >(std::move(M_elem[i]));
-    }
-
-    Init();
-}
-
 
 } // namespace smoothg
 

@@ -207,8 +207,7 @@ SparseMatrix HybridSolver::AssembleHybridSystem(
         //      CMinvDTAinvDMinvCT = CMinvDT * AinvDMinvCT_
         //      hybrid_elem = CMinvCT - CMinvDTAinvDMinvCT
 
-        //InvertLocal(M_el[agg], Mloc_solver);
-        M_el[agg]->Invert(Minv);
+        M_el[agg].Invert(Minv);
 
         DenseMatrix& MinvCT_i(MinvCT_[agg]);
         DenseMatrix& MinvDT_i(MinvDT_[agg]);
@@ -226,9 +225,6 @@ SparseMatrix HybridSolver::AssembleHybridSystem(
 
         Dloc.MultCT(Minv, MinvDT_i);
         Cloc.MultCT(Minv, MinvCT_i);
-
-        //MultLocal(Mloc_solver, Dloc, MinvDT_i);
-        //MultLocal(Mloc_solver, Cloc, MinvCT_i);
 
         Cloc.Mult(MinvCT_i, hybrid_elem);
         Dloc.Mult(MinvCT_i, DMinvCT);

@@ -48,20 +48,30 @@ MixedMatrix::MixedMatrix(const Graph& graph)
 
         int num_dofs = edge_dofs.size();
 
-        std::vector<double> M_elem_i(num_dofs);
+        M_elem_[i].SetSize(num_dofs, 0.0);
 
         for (int j = 0; j < num_dofs; ++j)
         {
-            M_elem_i[j] = weight_inv[edge_dofs[j]] / edge_vertex.RowSize(edge_dofs[j]);
+            M_elem_[i](j, j) = weight_inv[edge_dofs[j]] / edge_vertex.RowSize(edge_dofs[j]);
         }
-
-        M_elem_[i] = make_unique< Elem <std::vector<double> > >(std::move(M_elem_i));
     }
 
     agg_vertexdof_ = SparseIdentity(D_local_.Rows());
     agg_edgedof_ = D_local_;
     num_multiplier_dofs_ = agg_edgedof_.Cols();
 
+    Init();
+}
+
+MixedMatrix::MixedMatrix(std::vector<DenseMatrix> M_elem, SparseMatrix elem_dof,
+                         SparseMatrix D_local, SparseMatrix W_local,
+                         ParMatrix edge_true_edge)
+    : edge_true_edge_(std::move(edge_true_edge)),
+      D_local_(std::move(D_local)),
+      W_local_(std::move(W_local)),
+      M_elem_(std::move(M_elem)),
+      elem_dof_(std::move(elem_dof))
+{
     Init();
 }
 
@@ -199,9 +209,10 @@ void MixedMatrix::AssembleM()
     for (int i = 0; i < num_aggs; ++i)
     {
         std::vector<int> dofs = elem_dof_.GetIndices(i);
-        M_elem_[i]->AddToCoo(M_coo, dofs);
+        M_coo.Add(dofs, dofs, M_elem_[i]);
     }
 
+    M_coo.EliminateZeros(1e-12);
     M_local_ = M_coo.ToSparse();
     ParMatrix M_d(edge_true_edge_.GetComm(), edge_true_edge_.GetRowStarts(), M_local_);
     M_global_ = parlinalgcpp::RAP(M_d, edge_true_edge_);
@@ -220,9 +231,11 @@ void MixedMatrix::AssembleM(const std::vector<double>& agg_weight)
     {
         double scale = 1.0 / agg_weight[i];
         std::vector<int> dofs = elem_dof_.GetIndices(i);
-        M_elem_[i]->AddToCoo(M_coo, dofs, scale);
+
+        M_coo.Add(dofs, dofs, scale, M_elem_[i]);
     }
 
+    M_coo.EliminateZeros(1e-12);
     M_local_ = M_coo.ToSparse();
     ParMatrix M_d(edge_true_edge_.GetComm(), edge_true_edge_.GetRowStarts(), M_local_);
     M_global_ = parlinalgcpp::RAP(M_d, edge_true_edge_);
