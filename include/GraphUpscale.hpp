@@ -101,7 +101,7 @@ public:
     void MakeCoarseSolver(const std::vector<double>& agg_weights);
 
     /// Get number of aggregates
-    int NumAggs() const { return gt_.agg_vertex_local_.Rows(); }
+    int NumAggs() const { return coarsener_.GetGraphTopology().agg_vertex_local_.Rows(); }
 
     /// Wrapper for applying the upscaling, in linalgcpp terminology
     void Mult(const VectorView& x, VectorView y) const override;
@@ -263,7 +263,6 @@ private:
     int max_evects_;
     bool hybridization_;
 
-    GraphTopology gt_;
     Graph graph_;
 };
 

@@ -145,7 +145,6 @@ public:
 
     // TEMP: stuff from coarsener
     SparseMatrix agg_vertexdof_;
-    SparseMatrix agg_edgedof_;
     int num_multiplier_dofs_;
 
 protected:

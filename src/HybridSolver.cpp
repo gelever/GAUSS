@@ -28,7 +28,7 @@ HybridSolver::HybridSolver(const MixedMatrix& mgl)
     :
     MGLSolver(mgl.Offsets()), comm_(mgl.GlobalD().GetComm()), myid_(mgl.GlobalD().GetMyId()),
     agg_vertexdof_(mgl.agg_vertexdof_),
-    agg_edgedof_(mgl.agg_edgedof_),
+    agg_edgedof_(mgl.GetElemDof()),
     num_aggs_(agg_edgedof_.Rows()),
     num_edge_dofs_(agg_edgedof_.Cols()),
     num_multiplier_dofs_(mgl.num_multiplier_dofs_),

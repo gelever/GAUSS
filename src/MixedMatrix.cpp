@@ -57,8 +57,7 @@ MixedMatrix::MixedMatrix(const Graph& graph)
     }
 
     agg_vertexdof_ = SparseIdentity(D_local_.Rows());
-    agg_edgedof_ = D_local_;
-    num_multiplier_dofs_ = agg_edgedof_.Cols();
+    num_multiplier_dofs_ = elem_dof_.Cols();
 
     Init();
 }
@@ -132,7 +131,6 @@ void swap(MixedMatrix& lhs, MixedMatrix& rhs) noexcept
     swap(lhs.elem_dof_, rhs.elem_dof_);
 
     swap(lhs.agg_vertexdof_, rhs.agg_vertexdof_);
-    swap(lhs.agg_edgedof_, rhs.agg_edgedof_);
     std::swap(lhs.num_multiplier_dofs_, rhs.num_multiplier_dofs_);
 }
 

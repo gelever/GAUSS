@@ -35,14 +35,12 @@ GraphUpscale::GraphUpscale(Graph graph, double spect_tol, int max_evects, bool h
 {
     Timer timer(Timer::Start::True);
 
-    gt_ = GraphTopology(graph_);
-
     mgl_.emplace_back(graph_);
     GetFineMatrix().AssembleM(); // Coarsening requires assembled M, for now
 
-    coarsener_ = GraphCoarsen(GetFineMatrix(), gt_, max_evects_, spect_tol_);
+    coarsener_ = GraphCoarsen(graph_, GetFineMatrix(), max_evects_, spect_tol_);
 
-    mgl_.push_back(coarsener_.Coarsen(gt_, GetFineMatrix()));
+    mgl_.push_back(coarsener_.Coarsen(GetFineMatrix()));
 
     MakeCoarseVectors();
     MakeCoarseSolver();
