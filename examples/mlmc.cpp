@@ -22,6 +22,7 @@
 #include <fstream>
 #include <sstream>
 #include <mpi.h>
+#include <random>
 
 #include "smoothG.hpp"
 
@@ -37,6 +38,125 @@ using parlinalgcpp::BoomerAMG;
 std::vector<int> MetisPart(const SparseMatrix& vertex_edge, int num_parts);
 Vector ComputeFiedlerVector(const MixedMatrix& mgl);
 
+class NormalDistribution
+{
+    public:
+        NormalDistribution(double mean = 0.0, double stddev = 1.0, int seed = 0)
+            : generator_(seed), dist_(mean, stddev) { }
+
+        ~NormalDistribution() = default;
+
+        double Sample() { return dist_(generator_); }
+
+    private:
+        std::mt19937 generator_;
+        std::normal_distribution<double> dist_;
+};
+
+class SamplerUpscale
+{
+    public:
+
+        SamplerUpscale(Graph graph, double spect_tol, int max_evects, bool hybridization,
+                       int dimension, double kappa, double cell_volume, int seed);
+
+        ~SamplerUpscale() = default;
+
+        void Sample();
+
+        const std::vector<double>& GetCoefficientFine() const { return coefficient_fine_; }
+        const std::vector<double>& GetCoefficientCoarse() const { return coeffecient_coarse_; }
+
+    private:
+        GraphUpscale upscale_;
+
+        NormalDistribution normal_dist_;
+        double cell_volume_;
+        double scalar_g_;
+
+        Vector rhs_fine_;
+        Vector rhs_coarse_;
+
+        Vector sol_fine_;
+        Vector sol_coarse_;
+
+        std::vector<double> coefficient_fine_;
+        std::vector<double> coeffecient_coarse_;
+
+        Vector constant_coarse_;
+};
+
+
+SamplerUpscale::SamplerUpscale(Graph graph, double spect_tol, int max_evects, bool hybridization,
+                               int dimension, double kappa, double cell_volume, int seed)
+    : upscale_(std::move(graph), spect_tol, max_evects, hybridization),
+      normal_dist_(0.0, 1.0, seed),
+      cell_volume_(cell_volume),
+      rhs_fine_(upscale_.GetFineVector()),
+      rhs_coarse_(upscale_.GetCoarseVector()),
+      sol_fine_(upscale_.GetFineVector()),
+      sol_coarse_(upscale_.GetCoarseVector()),
+      coefficient_fine_(upscale_.Rows()),
+      coeffecient_coarse_(upscale_.NumAggs()),
+      constant_coarse_(upscale_.GetCoarseVector())
+{
+    upscale_.PrintInfo();
+    upscale_.ShowSetupTime();
+
+    Vector ones = upscale_.GetFineVector();
+    ones = 1.0;
+
+    upscale_.Restrict(ones, constant_coarse_);
+
+    double nu_param = dimension == 2 ? 1.0 : 0.5;
+    double ddim = static_cast<double>(dimension);
+
+    scalar_g_ = std::pow(4.0 * M_PI, ddim / 4.0) * std::pow(kappa, nu_param) *
+            std::sqrt( std::tgamma(nu_param + ddim / 2.0) / std::tgamma(nu_param) );
+}
+
+void SamplerUpscale::Sample()
+{
+    double g_cell_vol_sqrt = scalar_g_ * std::sqrt(cell_volume_);
+
+    for (auto& i : rhs_fine_)
+    {
+        i = g_cell_vol_sqrt * normal_dist_.Sample();
+    }
+
+    // Set Fine Coeffecient
+    upscale_.SolveFine(rhs_fine_, sol_fine_);
+
+    int fine_size = sol_fine_.size();
+    assert(coefficient_fine_.size() == fine_size);
+
+    for (int i = 0; i < fine_size; ++i)
+    {
+        coefficient_fine_[i] = std::exp(sol_fine_[i]);
+    }
+
+    // Set Coarse Coeffecient
+    upscale_.Restrict(rhs_fine_, rhs_coarse_);
+    upscale_.SolveCoarse(rhs_coarse_, sol_coarse_);
+
+    std::fill(std::begin(coeffecient_coarse_), std::end(coeffecient_coarse_), 0.0);
+
+    int coarse_size = sol_coarse_.size();
+    int agg_index = 0;
+
+    assert(constant_coarse_.size() == coarse_size);
+
+    for (int i = 0; i < coarse_size; ++i)
+    {
+        if (std::fabs(constant_coarse_[i]) > 1e-8)
+        {
+            coeffecient_coarse_[agg_index++] = std::exp(sol_coarse_[i] / constant_coarse_[i]);
+        }
+    }
+
+    assert(agg_index == upscale_.NumAggs());
+}
+
 int main(int argc, char* argv[])
 {
     // Initialize MPI
@@ -46,10 +166,10 @@ int main(int argc, char* argv[])
     int num_procs = mpi_info.num_procs_;
 
     // program options from command line
-    std::string graph_filename = "../../graphdata/vertex_edge_sample.txt";
-    std::string fiedler_filename = "../../graphdata/fiedler_sample.txt";
-    std::string partition_filename = "../../graphdata/partition_sample.txt";
-    std::string weight_filename = "";
+    std::string graph_filename = "../../graphdata/fe_vertex_edge.txt";
+    std::string fiedler_filename = "../../graphdata/fe_rhs.txt";
+    std::string partition_filename = "../../graphdata/fe_part.txt";
+    std::string weight_filename = "../../graphdata/fe_weight_0.txt";
     std::string w_block_filename = "";
     bool save_output = false;
 
@@ -70,6 +190,9 @@ int main(int argc, char* argv[])
     int seed = 0;
 
     int num_samples = 3;
+    int dimension = 2;
+    double kappa = 0.001;
+    double cell_volume = 200.0;
 
     linalgcpp::ArgParser arg_parser(argc, argv);
 
@@ -143,15 +266,22 @@ int main(int argc, char* argv[])
     {
         weight = std::vector<double>(nedges_global, 1.0);
     }
-    /// [Load the edge weights]
+
+    std::vector<double> one_weight(weight.size(), 1.0);
+
+    SparseMatrix W_block = SparseIdentity(nvertices_global);
+    W_block *= cell_volume * kappa * kappa;
 
     // Set up GraphUpscale
     /// [Upscale]
+    Graph sampler_graph(comm, vertex_edge_global, part, one_weight, W_block);
     Graph graph(comm, vertex_edge_global, part, weight);
-    GraphUpscale upscale(graph, spect_tol, max_evects, hybridization);
 
-    upscale.PrintInfo();
-    upscale.ShowSetupTime();
+    int sampler_seed = myid + 1;
+    SamplerUpscale sampler(std::move(sampler_graph), spect_tol, max_evects, hybridization,
+                           dimension, kappa, cell_volume, sampler_seed);
+    GraphUpscale upscale(std::move(graph), spect_tol, max_evects, hybridization);
+
     /// [Upscale]
 
     /// [Right Hand Side]
@@ -169,34 +299,37 @@ int main(int argc, char* argv[])
     /// [Right Hand Side]
 
     /// [Solve]
-    int num_aggs = upscale.NumAggs();
-    std::vector<double> fine_weights(upscale.Rows());
-    std::vector<double> coarse_weights(num_aggs);
 
     BlockVector fine_sol = upscale.GetFineBlockVector();
     BlockVector upscaled_sol = upscale.GetFineBlockVector();
 
     for (int i = 0; i < num_samples; ++i)
     {
-        std::fill(std::begin(coarse_weights), std::end(coarse_weights), i + 1.0);
-        std::fill(std::begin(fine_weights), std::end(fine_weights), i + 1.0);
+        sampler.Sample();
 
-        upscale.MakeCoarseSolver(coarse_weights);
-        upscale.MakeFineSolver(fine_weights);
+        const auto& fine_coeff = sampler.GetCoefficientFine();
+        const auto& coarse_coeff = sampler.GetCoefficientCoarse();
+
+        upscale.MakeCoarseSolver(coarse_coeff);
+        upscale.MakeFineSolver(fine_coeff);
 
         upscale.Solve(fine_rhs, upscaled_sol);
         upscale.SolveFine(fine_rhs, fine_sol);
+        upscale.Orthogonalize(fine_sol);
 
         if (save_output)
         {
             std::stringstream ss_coarse;
             std::stringstream ss_fine;
+            std::stringstream ss_coeffecient;
 
             ss_coarse << "coarse_sol_" << i << ".txt";
             ss_fine << "fine_sol_" << i << ".txt";
+            ss_coeffecient << "fine_coeff_" << i << ".txt";
 
             upscale.WriteVertexVector(upscaled_sol.GetBlock(1), ss_coarse.str());
             upscale.WriteVertexVector(fine_sol.GetBlock(1), ss_fine.str());
+            upscale.WriteVertexVector(sampler.GetCoefficientFine(), ss_coeffecient.str());
         }
 
         upscale.ShowCoarseSolveInfo();

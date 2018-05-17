@@ -50,7 +50,8 @@ MixedMatrix::MixedMatrix(const Graph& graph)
 
         int num_dofs = edge_dofs.size();
 
-        M_elem_[i].SetSize(num_dofs, 0.0);
+        M_elem_[i].SetSize(num_dofs);
+        M_elem_[i] = 0.0;
 
         for (int j = 0; j < num_dofs; ++j)
         {
@@ -227,7 +228,7 @@ void MixedMatrix::AssembleM()
         M_coo.Add(dofs, dofs, M_elem_[i]);
     }
 
-    M_coo.EliminateZeros(1e-12);
+    M_coo.EliminateZeros(1e-15);
     M_local_ = M_coo.ToSparse();
     ParMatrix M_d(edge_true_edge_.GetComm(), edge_true_edge_.GetRowStarts(), M_local_);
     M_global_ = parlinalgcpp::RAP(M_d, edge_true_edge_);
@@ -250,7 +251,7 @@ void MixedMatrix::AssembleM(const std::vector<double>& agg_weight)
         M_coo.Add(dofs, dofs, scale, M_elem_[i]);
     }
 
-    M_coo.EliminateZeros(1e-12);
+    M_coo.EliminateZeros(1e-15);
     M_local_ = M_coo.ToSparse();
     ParMatrix M_d(edge_true_edge_.GetComm(), edge_true_edge_.GetRowStarts(), M_local_);
     M_global_ = parlinalgcpp::RAP(M_d, edge_true_edge_);

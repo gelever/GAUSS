@@ -39,7 +39,7 @@ MinresBlockSolver::MinresBlockSolver(const MixedMatrix& mgl)
 
     DT_ = D_.Transpose();
 
-    SparseMatrix M_diag(M_.GetDiag().GetDiag());
+    std::vector<double> M_diag(M_.GetDiag().GetDiag());
     ParMatrix MinvDT = DT_;
     MinvDT.InverseScaleRows(M_diag);
     ParMatrix schur_block = D_.Mult(MinvDT);

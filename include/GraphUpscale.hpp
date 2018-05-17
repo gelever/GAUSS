@@ -83,10 +83,12 @@ public:
     BlockVector ReadEdgeBlockVector(const std::string& filename) const;
 
     /// Write permuted vertex vector
-    void WriteVertexVector(const VectorView& vect, const std::string& filename) const;
+    template <typename T>
+    void WriteVertexVector(const T& vect, const std::string& filename) const;
 
     /// Write permuted edge vector
-    void WriteEdgeVector(const VectorView& vect, const std::string& filename) const;
+    template <typename T>
+    void WriteEdgeVector(const T& vect, const std::string& filename) const;
 
     /// Create Fine Level Solver
     void MakeFineSolver();
@@ -277,6 +279,19 @@ T GraphUpscale::GetEdgeVector(const T& global_vect) const
 {
     return GetSubVector(global_vect, graph_.edge_map_);
 }
+
+template <typename T>
+void GraphUpscale::WriteVertexVector(const T& vect, const std::string& filename) const
+{
+    WriteVector(comm_, vect, filename, global_vertices_, graph_.vertex_map_);
+}
+
+template <typename T>
+void GraphUpscale::WriteEdgeVector(const T& vect, const std::string& filename) const
+{
+    WriteVector(comm_, vect, filename, global_edges_, graph_.edge_map_);
+}
+
 
 } // namespace smoothg
 

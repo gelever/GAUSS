@@ -68,6 +68,7 @@ void GraphUpscale::MakeCoarseSolver()
 void GraphUpscale::MakeFineSolver()
 {
     auto& mm = GetFineMatrix();
+    mm.AssembleM();
 
     if (hybridization_)
     {
@@ -75,7 +76,6 @@ void GraphUpscale::MakeFineSolver()
     }
     else
     {
-        mm.AssembleM();
         fine_solver_ = make_unique<MinresBlockSolver>(mm);
     }
 }
@@ -101,6 +101,7 @@ void GraphUpscale::MakeCoarseSolver(const std::vector<double>& agg_weights)
 void GraphUpscale::MakeFineSolver(const std::vector<double>& agg_weights)
 {
     auto& mm = GetFineMatrix();
+    mm.AssembleM(agg_weights);
 
     if (hybridization_)
     {
@@ -114,7 +115,6 @@ void GraphUpscale::MakeFineSolver(const std::vector<double>& agg_weights)
     }
     else
     {
-        mm.AssembleM(agg_weights);
         fine_solver_ = make_unique<MinresBlockSolver>(mm);
     }
 }
@@ -147,16 +147,6 @@ BlockVector GraphUpscale::ReadEdgeBlockVector(const std::string& filename) const
     vect.GetBlock(1) = 0.0;
 
     return vect;
-}
-
-void GraphUpscale::WriteVertexVector(const VectorView& vect, const std::string& filename) const
-{
-    WriteVector(comm_, vect, filename, global_vertices_, graph_.vertex_map_);
-}
-
-void GraphUpscale::WriteEdgeVector(const VectorView& vect, const std::string& filename) const
-{
-    WriteVector(comm_, vect, filename, global_edges_, graph_.edge_map_);
 }
 
 void GraphUpscale::Mult(const VectorView& x, VectorView y) const
@@ -231,7 +221,7 @@ void GraphUpscale::SolveCoarse(const BlockVector& x, BlockVector& y) const
     assert(coarse_solver_);
 
     coarse_solver_->Solve(x, y);
-    y *= -1.0;
+    //y *= -1.0;
 }
 
 BlockVector GraphUpscale::SolveCoarse(const BlockVector& x) const
@@ -247,9 +237,9 @@ void GraphUpscale::SolveFine(const VectorView& x, VectorView y) const
     assert(fine_solver_);
 
     fine_solver_->Solve(x, y);
-    y *= -1.0;
+    //y *= -1.0;
 
-    Orthogonalize(y);
+    //Orthogonalize(y);
 }
 
 Vector GraphUpscale::SolveFine(const VectorView& x) const
