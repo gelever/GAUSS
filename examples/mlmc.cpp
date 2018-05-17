@@ -169,7 +169,6 @@ int main(int argc, char* argv[])
 
         upscale.Solve(fine_rhs, upscaled_sol);
         upscale.SolveFine(fine_rhs, fine_sol);
-        upscale.Orthogonalize(fine_sol);
 
         if (save_output)
         {

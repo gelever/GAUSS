@@ -28,54 +28,54 @@ namespace smoothg
 
 class NormalDistribution
 {
-    public:
-        NormalDistribution(double mean = 0.0, double stddev = 1.0, int seed = 0)
-            : generator_(seed), dist_(mean, stddev) { }
+public:
+    NormalDistribution(double mean = 0.0, double stddev = 1.0, int seed = 0)
+        : generator_(seed), dist_(mean, stddev) { }
 
-        ~NormalDistribution() = default;
+    ~NormalDistribution() = default;
 
-        double Sample() { return dist_(generator_); }
+    double Sample() { return dist_(generator_); }
 
-    private:
-        std::mt19937 generator_;
-        std::normal_distribution<double> dist_;
+private:
+    std::mt19937 generator_;
+    std::normal_distribution<double> dist_;
 };
 
 class SamplerUpscale
 {
-    public:
+public:
 
-        SamplerUpscale(Graph graph, double spect_tol, int max_evects, bool hybridization,
-                       int dimension, double kappa, double cell_volume, int seed);
+    SamplerUpscale(Graph graph, double spect_tol, int max_evects, bool hybridization,
+                   int dimension, double kappa, double cell_volume, int seed);
 
-        ~SamplerUpscale() = default;
+    ~SamplerUpscale() = default;
 
-        void Sample();
+    void Sample();
 
-        const std::vector<double>& GetCoefficientFine() const { return coefficient_fine_; }
-        const std::vector<double>& GetCoefficientCoarse() const { return coefficient_coarse_; }
-        const std::vector<double>& GetCoefficientUpscaled() const { return coefficient_upscaled_; }
+    const std::vector<double>& GetCoefficientFine() const { return coefficient_fine_; }
+    const std::vector<double>& GetCoefficientCoarse() const { return coefficient_coarse_; }
+    const std::vector<double>& GetCoefficientUpscaled() const { return coefficient_upscaled_; }
 
-        const GraphUpscale& GetUpscale() const { return upscale_; }
+    const GraphUpscale& GetUpscale() const { return upscale_; }
 
-    private:
-        GraphUpscale upscale_;
+private:
+    GraphUpscale upscale_;
 
-        NormalDistribution normal_dist_;
-        double cell_volume_;
-        double scalar_g_;
+    NormalDistribution normal_dist_;
+    double cell_volume_;
+    double scalar_g_;
 
-        Vector rhs_fine_;
-        Vector rhs_coarse_;
+    Vector rhs_fine_;
+    Vector rhs_coarse_;
 
-        Vector sol_fine_;
-        Vector sol_coarse_;
+    Vector sol_fine_;
+    Vector sol_coarse_;
 
-        std::vector<double> coefficient_fine_;
-        std::vector<double> coefficient_coarse_;
-        std::vector<double> coefficient_upscaled_;
+    std::vector<double> coefficient_fine_;
+    std::vector<double> coefficient_coarse_;
+    std::vector<double> coefficient_upscaled_;
 
-        Vector constant_coarse_;
+    Vector constant_coarse_;
 };
 
 
@@ -105,7 +105,7 @@ SamplerUpscale::SamplerUpscale(Graph graph, double spect_tol, int max_evects, bo
     double ddim = static_cast<double>(dimension);
 
     scalar_g_ = std::pow(4.0 * M_PI, ddim / 4.0) * std::pow(kappa, nu_param) *
-            std::sqrt( std::tgamma(nu_param + ddim / 2.0) / std::tgamma(nu_param) );
+                std::sqrt( std::tgamma(nu_param + ddim / 2.0) / std::tgamma(nu_param) );
 }
 
 void SamplerUpscale::Sample()

@@ -266,6 +266,8 @@ private:
     bool hybridization_;
 
     Graph graph_;
+
+    bool use_W_;
 };
 
 template <typename T>

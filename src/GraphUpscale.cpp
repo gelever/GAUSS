@@ -46,6 +46,8 @@ GraphUpscale::GraphUpscale(Graph graph, double spect_tol, int max_evects, bool h
     MakeCoarseSolver();
     MakeFineSolver(); // TODO(gelever1): unset and let user make
 
+    use_W_ = GetFineMatrix().CheckW();
+
     timer.Click();
     setup_time_ += timer.TotalTime();
 }
@@ -162,7 +164,10 @@ void GraphUpscale::Mult(const VectorView& x, VectorView y) const
 
     coarsener_.Interpolate(sol_coarse_.GetBlock(1), y);
 
-    Orthogonalize(y);
+    if (!use_W_)
+    {
+        Orthogonalize(y);
+    }
 }
 
 void GraphUpscale::Solve(const VectorView& x, VectorView y) const
@@ -189,7 +194,10 @@ void GraphUpscale::Solve(const BlockVector& x, BlockVector& y) const
     coarse_solver_->Solve(rhs_coarse_, sol_coarse_);
     coarsener_.Interpolate(sol_coarse_, y);
 
-    Orthogonalize(y);
+    if (!use_W_)
+    {
+        Orthogonalize(y);
+    }
 }
 
 BlockVector GraphUpscale::Solve(const BlockVector& x) const
@@ -206,6 +214,7 @@ void GraphUpscale::SolveCoarse(const VectorView& x, VectorView y) const
     assert(coarse_solver_);
 
     coarse_solver_->Solve(x, y);
+    y *= -1.0;
 }
 
 Vector GraphUpscale::SolveCoarse(const VectorView& x) const
@@ -221,7 +230,7 @@ void GraphUpscale::SolveCoarse(const BlockVector& x, BlockVector& y) const
     assert(coarse_solver_);
 
     coarse_solver_->Solve(x, y);
-    //y *= -1.0;
+    y *= -1.0;
 }
 
 BlockVector GraphUpscale::SolveCoarse(const BlockVector& x) const
@@ -237,9 +246,12 @@ void GraphUpscale::SolveFine(const VectorView& x, VectorView y) const
     assert(fine_solver_);
 
     fine_solver_->Solve(x, y);
-    //y *= -1.0;
+    y *= -1.0;
 
-    //Orthogonalize(y);
+    if (!use_W_)
+    {
+        Orthogonalize(y);
+    }
 }
 
 Vector GraphUpscale::SolveFine(const VectorView& x) const
@@ -258,7 +270,10 @@ void GraphUpscale::SolveFine(const BlockVector& x, BlockVector& y) const
     fine_solver_->Solve(x, y);
     y *= -1.0;
 
-    Orthogonalize(y);
+    if (!use_W_)
+    {
+        Orthogonalize(y);
+    }
 }
 
 BlockVector GraphUpscale::SolveFine(const BlockVector& x) const
