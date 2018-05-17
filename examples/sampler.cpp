@@ -224,6 +224,15 @@ int main(int argc, char* argv[])
         }
     }
 
+    if (num_samples > 1)
+    {
+        for (int i = 0; i < fine_size; ++i)
+        {
+            m2_upscaled[i] /= (num_samples - 1);
+            m2_fine[i] /= (num_samples - 1);
+        }
+    }
+
     ParPrint(myid, std::cout << "\n---------------------\n\n");
 
     std::map<std::string, double> output_vals;
@@ -244,15 +253,6 @@ int main(int argc, char* argv[])
 
     ParPrint(myid, PrintJSON(output_vals));
 
-
-    if (num_samples > 1)
-    {
-        for (int i = 0; i < fine_size; ++i)
-        {
-            m2_upscaled[i] /= (num_samples - 1);
-            m2_fine[i] /= (num_samples - 1);
-        }
-    }
     /// [Sample]
 
     if (save_output)

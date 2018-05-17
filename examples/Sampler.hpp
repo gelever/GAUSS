@@ -124,9 +124,9 @@ void SamplerUpscale::Sample()
 {
     double g_cell_vol_sqrt = scalar_g_ * std::sqrt(cell_volume_);
 
-    for (auto& i : rhs_fine_)
+    for (auto& rhs_i : rhs_fine_)
     {
-        i = g_cell_vol_sqrt * normal_dist_.Sample();
+        rhs_i = g_cell_vol_sqrt * normal_dist_.Sample();
     }
 
     // Set Fine Coefficient
