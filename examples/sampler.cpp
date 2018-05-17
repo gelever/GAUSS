@@ -14,9 +14,21 @@
  ***********************************************************************EHEADER*/
 
 /**
-   @file mlmc.cpp
-   @brief This is an example for upscaling a graph Laplacian,
-   where we change coefficients in the model without re-coarsening.
+   @file sampler.cpp
+
+   @brief Try to do scalable hierarchical sampling with finite volumes
+
+   See Osborn, Vassilevski, and Villa, A multilevel, hierarchical sampling technique for
+   spatially correlated random fields, SISC 39 (2017) pp. S543-S562.
+
+   A simple way to run the example:
+
+   mpirun -n 4 ./sampler
+
+   I like the following runs:
+
+   examples/sampler --visualization --kappa 0.001 --coarsening-factor 3
+   examples/sampler --visualization --kappa 0.001 --coarsening-factor 2
 */
 
 #include <fstream>
@@ -51,7 +63,8 @@ int main(int argc, char* argv[])
     std::string graph_filename = "../../graphdata/fe_vertex_edge.txt";
     std::string fiedler_filename = "../../graphdata/fe_rhs.txt";
     std::string partition_filename = "../../graphdata/fe_part.txt";
-    std::string weight_filename = "../../graphdata/fe_weight_0.txt";
+    //std::string weight_filename = "../../graphdata/fe_weight_0.txt";
+    std::string weight_filename = "";
     std::string w_block_filename = "";
     bool save_output = false;
 
@@ -156,13 +169,12 @@ int main(int argc, char* argv[])
 
     // Set up GraphUpscale
     /// [Upscale]
-    Graph sampler_graph(comm, vertex_edge_global, part, one_weight, W_block);
-    Graph graph(comm, vertex_edge_global, part, weight);
+    Graph graph(comm, vertex_edge_global, part, weight, W_block);
 
     int sampler_seed = myid + 1;
-    SamplerUpscale sampler(std::move(sampler_graph), spect_tol, max_evects, hybridization,
+    SamplerUpscale sampler(std::move(graph), spect_tol, max_evects, hybridization,
                            dimension, kappa, cell_volume, sampler_seed);
-    GraphUpscale upscale(std::move(graph), spect_tol, max_evects, hybridization);
+    const auto& upscale = sampler.GetUpscale();
 
     /// [Upscale]
 
@@ -182,47 +194,87 @@ int main(int argc, char* argv[])
 
     /// [Solve]
 
-    BlockVector fine_sol = upscale.GetFineBlockVector();
-    BlockVector upscaled_sol = upscale.GetFineBlockVector();
+    Vector fine_sol = upscale.GetFineVector();
+    Vector upscaled_sol = upscale.GetFineVector();
 
-    for (int i = 0; i < num_samples; ++i)
+    int fine_size = fine_sol.size();
+
+    std::vector<double> mean_upscaled(fine_size, 0.0);
+    std::vector<double> mean_fine(fine_size, 0.0);
+
+    std::vector<double> m2_upscaled(fine_size, 0.0);
+    std::vector<double> m2_fine(fine_size, 0.0);
+
+    double max_error = 0.0;
+
+    for (int sample = 1; sample <= num_samples; ++sample)
     {
         sampler.Sample();
 
+        const auto& upscaled_coeff = sampler.GetCoefficientUpscaled();
         const auto& fine_coeff = sampler.GetCoefficientFine();
-        const auto& coarse_coeff = sampler.GetCoefficientCoarse();
 
-        upscale.MakeCoarseSolver(coarse_coeff);
-        upscale.MakeFineSolver(fine_coeff);
+        for (int i = 0; i < fine_size; ++i)
+        {
+            upscaled_sol[i] = std::log(upscaled_coeff[i]);
+            fine_sol[i] = std::log(fine_coeff[i]);
+        }
 
-        upscale.Solve(fine_rhs, upscaled_sol);
-        upscale.SolveFine(fine_rhs, fine_sol);
+        upscale.Orthogonalize(upscaled_sol);
         upscale.Orthogonalize(fine_sol);
+
+        for (int i = 0; i < fine_size; ++i)
+        {
+            double delta_c = upscaled_sol[i] - mean_upscaled[i];
+            mean_upscaled[i] += delta_c / sample;
+
+            double delta2_c = upscaled_sol[i] - mean_upscaled[i];
+            m2_upscaled[i] += delta_c * delta2_c;
+
+            double delta_f = fine_sol[i] - mean_fine[i];
+            mean_fine[i] += delta_f / sample;
+
+            double delta2_f = fine_sol[i] - mean_fine[i];
+            m2_fine[i] += delta_f * delta2_f;
+        }
+
+        double error = CompareError(comm, upscaled_sol, fine_sol);
+        max_error = std::max(error, max_error);
 
         if (save_output)
         {
             std::stringstream ss_coarse;
             std::stringstream ss_fine;
-            std::stringstream ss_coefficient;
 
-            ss_coarse << "coarse_sol_" << i << ".txt";
-            ss_fine << "fine_sol_" << i << ".txt";
-            ss_coefficient << "fine_coeff_" << i << ".txt";
+            ss_coarse << "coarse_sol_" << std::setw(5) << std::setfill('0') << sample << ".txt";
+            ss_fine << "fine_sol_" << std::setw(5) << std::setfill('0') << sample << ".txt";
 
-            upscale.WriteVertexVector(upscaled_sol.GetBlock(1), ss_coarse.str());
-            upscale.WriteVertexVector(fine_sol.GetBlock(1), ss_fine.str());
-            upscale.WriteVertexVector(sampler.GetCoefficientFine(), ss_coefficient.str());
+            upscale.WriteVertexVector(upscaled_sol, ss_coarse.str());
+            upscale.WriteVertexVector(fine_sol, ss_fine.str());
         }
+    }
 
-        upscale.ShowCoarseSolveInfo();
-        upscale.ShowFineSolveInfo();
-
-        /// [Check Error]
-        upscale.ShowErrors(upscaled_sol, fine_sol);
-        /// [Check Error]
-
+    if (num_samples > 1)
+    {
+        for (int i = 0; i < fine_size; ++i)
+        {
+            m2_upscaled[i] /= (num_samples - 1);
+            m2_fine[i] /= (num_samples - 1);
+        }
     }
     /// [Solve]
+
+    if (save_output)
+    {
+        upscale.WriteVertexVector(mean_upscaled, "mean_upscaled.txt");
+        upscale.WriteVertexVector(mean_fine, "mean_fine.txt");
+
+        if (num_samples > 1)
+        {
+            upscale.WriteVertexVector(m2_upscaled, "m2_upscaled.txt");
+            upscale.WriteVertexVector(m2_fine, "m2_fine.txt");
+        }
+    }
 
     if (save_fiedler)
     {
