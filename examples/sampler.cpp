@@ -49,7 +49,6 @@ using parlinalgcpp::LOBPCG;
 using parlinalgcpp::BoomerAMG;
 
 std::vector<int> MetisPart(const SparseMatrix& vertex_edge, int num_parts);
-Vector ComputeFiedlerVector(const MixedMatrix& mgl);
 
 int main(int argc, char* argv[])
 {
@@ -68,22 +67,13 @@ int main(int argc, char* argv[])
     std::string w_block_filename = "";
     bool save_output = false;
 
-    int isolate = -1;
     int max_evects = 4;
     double spect_tol = 1e-3;
     int num_partitions = 12;
     bool hybridization = false;
     bool metis_agglomeration = false;
 
-    bool generate_fiedler = false;
-    bool save_fiedler = false;
-
-    bool generate_graph = false;
-    int gen_vertices = 1000;
-    int mean_degree = 40;
-    double beta = 0.15;
-    int seed = 0;
-
+    int initial_seed = 1;
     int num_samples = 3;
     int dimension = 2;
     double kappa = 0.001;
@@ -97,20 +87,16 @@ int main(int argc, char* argv[])
     arg_parser.Parse(weight_filename, "--w", "Edge weight data.");
     arg_parser.Parse(w_block_filename, "--wb", "W block data.");
     arg_parser.Parse(save_output, "--save", "Save solutions.");
-    arg_parser.Parse(isolate, "--isolate", "Isolate a single vertex.");
     arg_parser.Parse(max_evects, "--m", "Maximum eigenvectors per aggregate.");
     arg_parser.Parse(spect_tol, "--t", "Spectral tolerance for eigenvalue problem.");
     arg_parser.Parse(num_partitions, "--np", "Number of partitions to generate.");
     arg_parser.Parse(hybridization, "--hb", "Enable hybridization.");
     arg_parser.Parse(metis_agglomeration, "--ma", "Enable Metis partitioning.");
-    arg_parser.Parse(generate_fiedler, "--gf", "Generate Fiedler vector.");
-    arg_parser.Parse(save_fiedler, "--sf", "Save a generated Fiedler vector.");
-    arg_parser.Parse(generate_graph, "--gg", "Generate a graph.");
-    arg_parser.Parse(gen_vertices, "--nv", "Number of vertices of generated graph.");
-    arg_parser.Parse(mean_degree, "--md", "Average vertex degree of generated graph.");
-    arg_parser.Parse(beta, "--b", "Probability of rewiring in the Watts-Strogatz model.");
-    arg_parser.Parse(seed, "--s", "Seed for random number generator.");
+    arg_parser.Parse(initial_seed, "--seed", "Seed for random number generator.");
     arg_parser.Parse(num_samples, "--ns", "Number of samples.");
+    arg_parser.Parse(dimension, "--dim", "Graph Dimension");
+    arg_parser.Parse(kappa, "--kappa", "Correlation length for Gaussian samples.");
+    arg_parser.Parse(cell_volume, "--cell-volume", "Graph Cell volume");
 
     if (!arg_parser.IsGood())
     {
@@ -122,25 +108,16 @@ int main(int argc, char* argv[])
 
     ParPrint(myid, arg_parser.ShowOptions());
 
-    /// [Load graph from file or generate one]
-    SparseMatrix vertex_edge_global;
-
-    if (generate_graph)
-    {
-        vertex_edge_global = GenerateGraph(comm, gen_vertices, mean_degree, beta, seed);
-    }
-    else
-    {
-        vertex_edge_global = ReadCSR(graph_filename);
-    }
+    /// [Load graph from file]
+    SparseMatrix vertex_edge_global = ReadCSR(graph_filename);
 
     const int nvertices_global = vertex_edge_global.Rows();
     const int nedges_global = vertex_edge_global.Cols();
-    /// [Load graph from file or generate one]
+    /// [Load graph from file]
 
     /// [Partitioning]
     std::vector<int> part;
-    if (metis_agglomeration || generate_graph)
+    if (metis_agglomeration)
     {
         assert(num_partitions >= num_procs);
         part = MetisPart(vertex_edge_global, num_partitions);
@@ -171,28 +148,14 @@ int main(int argc, char* argv[])
     /// [Upscale]
     Graph graph(comm, vertex_edge_global, part, weight, W_block);
 
-    int sampler_seed = myid + 1;
+    int sampler_seed = initial_seed + myid;
     SamplerUpscale sampler(std::move(graph), spect_tol, max_evects, hybridization,
                            dimension, kappa, cell_volume, sampler_seed);
     const auto& upscale = sampler.GetUpscale();
 
     /// [Upscale]
 
-    /// [Right Hand Side]
-    BlockVector fine_rhs = upscale.GetFineBlockVector();
-    fine_rhs.GetBlock(0) = 0.0;
-
-    if (generate_graph || generate_fiedler)
-    {
-        fine_rhs.GetBlock(1) = ComputeFiedlerVector(upscale.GetFineMatrix());
-    }
-    else
-    {
-        fine_rhs.GetBlock(1) = upscale.ReadVertexVector(fiedler_filename);
-    }
-    /// [Right Hand Side]
-
-    /// [Solve]
+    /// [Sample]
 
     Vector fine_sol = upscale.GetFineVector();
     Vector upscaled_sol = upscale.GetFineVector();
@@ -262,7 +225,7 @@ int main(int argc, char* argv[])
             m2_fine[i] /= (num_samples - 1);
         }
     }
-    /// [Solve]
+    /// [Sample]
 
     if (save_output)
     {
@@ -276,11 +239,6 @@ int main(int argc, char* argv[])
         }
     }
 
-    if (save_fiedler)
-    {
-        upscale.WriteVertexVector(fine_rhs.GetBlock(1), fiedler_filename);
-    }
-
     return 0;
 }
 
@@ -292,36 +250,4 @@ std::vector<int> MetisPart(const SparseMatrix& vertex_edge, int num_parts)
     double ubal_tol = 2.0;
 
     return Partition(vertex_vertex, num_parts, ubal_tol);
-}
-
-Vector ComputeFiedlerVector(const MixedMatrix& mgl)
-{
-    ParMatrix A = mgl.ToPrimal();
-
-    bool use_w = mgl.CheckW();
-
-    if (!use_w)
-    {
-        A.AddDiag(1.0);
-    }
-
-    BoomerAMG boomer(A);
-
-    int num_evects = 2;
-    std::vector<Vector> evects(num_evects, Vector(A.Rows()));
-    for (Vector& evect : evects)
-    {
-        evect.Randomize();
-    }
-
-    std::vector<double> evals = LOBPCG(A, evects, &boomer);
-
-    assert(static_cast<int>(evals.size()) == num_evects);
-    if (!use_w)
-    {
-        assert(std::fabs(evals[0] - 1.0) < 1e-8);
-        assert(std::fabs(evals[1] - 1.0) > 1e-8);
-    }
-
-    return std::move(evects[1]);
 }
