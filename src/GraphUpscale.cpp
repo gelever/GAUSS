@@ -46,7 +46,7 @@ GraphUpscale::GraphUpscale(Graph graph, double spect_tol, int max_evects, bool h
     MakeCoarseSolver();
     MakeFineSolver(); // TODO(gelever1): unset and let user make
 
-    use_W_ = GetFineMatrix().CheckW();
+    do_ortho_ = !GetFineMatrix().CheckW();
 
     timer.Click();
     setup_time_ += timer.TotalTime();
@@ -164,7 +164,7 @@ void GraphUpscale::Mult(const VectorView& x, VectorView y) const
 
     coarsener_.Interpolate(sol_coarse_.GetBlock(1), y);
 
-    if (!use_W_)
+    if (do_ortho_)
     {
         Orthogonalize(y);
     }
@@ -194,7 +194,7 @@ void GraphUpscale::Solve(const BlockVector& x, BlockVector& y) const
     coarse_solver_->Solve(rhs_coarse_, sol_coarse_);
     coarsener_.Interpolate(sol_coarse_, y);
 
-    if (!use_W_)
+    if (do_ortho_)
     {
         Orthogonalize(y);
     }
@@ -248,7 +248,7 @@ void GraphUpscale::SolveFine(const VectorView& x, VectorView y) const
     fine_solver_->Solve(x, y);
     y *= -1.0;
 
-    if (!use_W_)
+    if (do_ortho_)
     {
         Orthogonalize(y);
     }
@@ -270,7 +270,7 @@ void GraphUpscale::SolveFine(const BlockVector& x, BlockVector& y) const
     fine_solver_->Solve(x, y);
     y *= -1.0;
 
-    if (!use_W_)
+    if (do_ortho_)
     {
         Orthogonalize(y);
     }

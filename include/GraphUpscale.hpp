@@ -267,7 +267,7 @@ private:
 
     Graph graph_;
 
-    bool use_W_;
+    bool do_ortho_;
 };
 
 template <typename T>

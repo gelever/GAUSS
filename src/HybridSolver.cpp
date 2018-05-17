@@ -276,14 +276,14 @@ void HybridSolver::Solve(const BlockVector& Rhs, BlockVector& Sol) const
     cg_.Mult(trueHrhs_, trueMu_);
 
     timer.Click();
-    timing_ += timer.TotalTime();
+    timing_ = timer.TotalTime();
 
     if (myid_ == 0 && print_level_ > 0)
     {
         std::cout << "  Timing: PCG done in " << timing_ << "s. \n";
     }
 
-    num_iterations_ += cg_.GetNumIterations();
+    num_iterations_ = cg_.GetNumIterations();
 
     if (myid_ == 0 && print_level_ > 0)
     {

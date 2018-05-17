@@ -58,6 +58,12 @@ public:
 
     const GraphUpscale& GetUpscale() const { return upscale_; }
 
+    int CoarseTotalIters() const { return total_coarse_iters_; }
+    int FineTotalIters() const { return total_fine_iters_; }
+
+    double CoarseTotalTime() const { return total_coarse_time_; }
+    double FineTotalTime() const { return total_fine_time_; }
+
 private:
     GraphUpscale upscale_;
 
@@ -76,6 +82,12 @@ private:
     std::vector<double> coefficient_upscaled_;
 
     Vector constant_coarse_;
+
+    int total_coarse_iters_ = 0;
+    int total_fine_iters_ = 0;
+
+    double total_coarse_time_ = 0.0;
+    double total_fine_time_ = 0.0;
 };
 
 
@@ -157,6 +169,15 @@ void SamplerUpscale::Sample()
     sol_coarse_ *= constant_coarse_;
     VectorView coeff_view(coefficient_upscaled_.data(), coefficient_upscaled_.size());
     upscale_.Interpolate(sol_coarse_, coeff_view);
+
+    upscale_.ShowCoarseSolveInfo();
+    upscale_.ShowFineSolveInfo();
+
+    total_coarse_iters_ += upscale_.GetCoarseSolveIters();
+    total_fine_iters_ += upscale_.GetFineSolveIters();
+
+    total_coarse_time_ += upscale_.GetCoarseSolveTime();
+    total_fine_time_ += upscale_.GetFineSolveTime();
 }
 
 

@@ -34,6 +34,7 @@
 #include <fstream>
 #include <sstream>
 #include <mpi.h>
+#include <map>
 #include <random>
 
 #include "smoothG.hpp"
@@ -49,6 +50,8 @@ using parlinalgcpp::LOBPCG;
 using parlinalgcpp::BoomerAMG;
 
 std::vector<int> MetisPart(const SparseMatrix& vertex_edge, int num_parts);
+double Mean(const std::vector<double>& vect);
+double MeanL1(const std::vector<double>& vect);
 
 int main(int argc, char* argv[])
 {
@@ -172,6 +175,8 @@ int main(int argc, char* argv[])
 
     for (int sample = 1; sample <= num_samples; ++sample)
     {
+        ParPrint(myid, std::cout << "\n---------------------\n\n");
+        ParPrint(myid, std::cout << "Sample " << sample << " :\n");
         sampler.Sample();
 
         const auto& upscaled_coeff = sampler.GetCoefficientUpscaled();
@@ -183,8 +188,8 @@ int main(int argc, char* argv[])
             fine_sol[i] = std::log(fine_coeff[i]);
         }
 
-        upscale.Orthogonalize(upscaled_sol);
-        upscale.Orthogonalize(fine_sol);
+        //upscale.Orthogonalize(upscaled_sol);
+        //upscale.Orthogonalize(fine_sol);
 
         for (int i = 0; i < fine_size; ++i)
         {
@@ -204,6 +209,8 @@ int main(int argc, char* argv[])
         double error = CompareError(comm, upscaled_sol, fine_sol);
         max_error = std::max(error, max_error);
 
+        ParPrint(myid, std::cout << "\nError: " << error << "\n");
+
         if (save_output)
         {
             std::stringstream ss_coarse;
@@ -216,6 +223,27 @@ int main(int argc, char* argv[])
             upscale.WriteVertexVector(fine_sol, ss_fine.str());
         }
     }
+
+    ParPrint(myid, std::cout << "\n---------------------\n\n");
+
+    std::map<std::string, double> output_vals;
+
+    output_vals["fine-total-iters"] = sampler.FineTotalIters();
+    output_vals["fine-total-time"] = sampler.FineTotalTime();
+    output_vals["fine-mean-typical"] = mean_fine[fine_size / 2];
+    output_vals["fine-mean-l1"] = MeanL1(mean_fine);
+    output_vals["fine-variance-mean"] = Mean(m2_fine);
+
+    output_vals["coarse-total-iters"] = sampler.CoarseTotalIters();
+    output_vals["coarse-total-time"] = sampler.CoarseTotalTime();
+    output_vals["coarse-mean-typical"] = mean_upscaled[fine_size / 2];
+    output_vals["coarse-mean-l1"] = MeanL1(mean_upscaled);
+    output_vals["coarse-variance-mean"] = Mean(m2_upscaled);
+
+    output_vals["max-p-error"] = max_error;
+
+    ParPrint(myid, PrintJSON(output_vals));
+
 
     if (num_samples > 1)
     {
@@ -250,4 +278,15 @@ std::vector<int> MetisPart(const SparseMatrix& vertex_edge, int num_parts)
     double ubal_tol = 2.0;
 
     return Partition(vertex_vertex, num_parts, ubal_tol);
+}
+
+double Mean(const std::vector<double>& vect)
+{
+    return std::accumulate(std::begin(vect), std::end(vect), 0.0) / vect.size();
+}
+
+double MeanL1(const std::vector<double>& vect)
+{
+    return std::accumulate(std::begin(vect), std::end(vect), 0.0,
+            [](double i, double j) { return i + std::abs(j); }) / vect.size();
 }
