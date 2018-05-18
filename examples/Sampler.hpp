@@ -164,6 +164,9 @@ PDESampler::PDESampler(Graph graph, double spect_tol, int max_evects, bool hybri
     upscale_.PrintInfo();
     upscale_.ShowSetupTime();
 
+    // Denormalize the coarse constant vector
+    constant_coarse_ *= std::sqrt(upscale_.GlobalRows());
+
     double nu_param = dimension == 2 ? 1.0 : 0.5;
     double ddim = static_cast<double>(dimension);
 

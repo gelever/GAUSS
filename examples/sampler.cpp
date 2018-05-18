@@ -92,7 +92,7 @@ int main(int argc, char* argv[])
     arg_parser.Parse(hybridization, "--hb", "Enable hybridization.");
     arg_parser.Parse(metis_agglomeration, "--ma", "Enable Metis partitioning.");
     arg_parser.Parse(initial_seed, "--seed", "Seed for random number generator.");
-    arg_parser.Parse(num_samples, "--ns", "Number of samples.");
+    arg_parser.Parse(num_samples, "--num-samples", "Number of samples.");
     arg_parser.Parse(dimension, "--dim", "Graph Dimension");
     arg_parser.Parse(kappa, "--kappa", "Correlation length for Gaussian samples.");
     arg_parser.Parse(cell_volume, "--cell-volume", "Graph Cell volume");

@@ -157,10 +157,11 @@ void OrthoConstant(MPI_Comm comm, VectorView vect, int global_size);
 
     @param comm MPI Communicator
     @param vect vector to orthogonalize
-    @param constant constant vector representation
-    @param global_size global size of the vector
+    @param constant normalized constant vector representation
+
+    @warning the constant vector being normalized is critical!
 */
-void OrthoConstant(MPI_Comm comm, VectorView vect, const VectorView& constant, int global_size);
+void OrthoConstant(MPI_Comm comm, VectorView vect, const VectorView& constant);
 
 /** @brief Make all column vectors of a dense matrix orthogonal to v
 

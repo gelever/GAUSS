@@ -48,8 +48,6 @@ GraphUpscale::GraphUpscale(Graph graph, double spect_tol, int max_evects, bool h
 
     do_ortho_ = !GetFineMatrix().CheckW();
 
-    constant_coarse_ = Restrict(Vector(Rows(), 1.0));
-
     timer.Click();
     setup_time_ += timer.TotalTime();
 }
@@ -360,7 +358,7 @@ const std::vector<int>& GraphUpscale::CoarseTrueBlockOffsets() const
 
 void GraphUpscale::Orthogonalize(VectorView vect) const
 {
-    OrthoConstant(comm_, vect, GetFineMatrix().GlobalD().GlobalRows());
+    OrthoConstant(comm_, vect, GlobalRows());
 }
 
 void GraphUpscale::Orthogonalize(BlockVector& vect) const
@@ -370,7 +368,7 @@ void GraphUpscale::Orthogonalize(BlockVector& vect) const
 
 void GraphUpscale::OrthogonalizeCoarse(VectorView vect) const
 {
-    OrthoConstant(comm_, vect, GetCoarseConstant(), GetFineMatrix().GlobalD().GlobalRows());
+    OrthoConstant(comm_, vect, GetCoarseConstant());
 }
 
 void GraphUpscale::OrthogonalizeCoarse(BlockVector& vect) const
@@ -449,6 +447,16 @@ const MixedMatrix& GraphUpscale::GetMatrix(int level) const
     assert(level >= 0 && level < static_cast<int>(mgl_.size()));
 
     return mgl_[level];
+}
+
+int GraphUpscale::GlobalRows() const
+{
+    return GetFineMatrix().GlobalD().GlobalRows();
+}
+
+int GraphUpscale::GlobalCols() const
+{
+    return GetFineMatrix().GlobalD().GlobalRows();
 }
 
 void GraphUpscale::PrintInfo(std::ostream& out) const
@@ -652,6 +660,9 @@ void GraphUpscale::ShowErrors(const BlockVector& upscaled_sol,
 
 void GraphUpscale::MakeCoarseVectors()
 {
+    Vector constant_fine(Rows(), 1.0 / std::sqrt(GlobalRows()));
+    constant_coarse_ = Restrict(constant_fine);
+
     rhs_coarse_ = BlockVector(GetCoarseMatrix().Offsets());
     sol_coarse_ = BlockVector(GetCoarseMatrix().Offsets());
 }

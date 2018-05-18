@@ -62,6 +62,12 @@ public:
     /// Default Destructor
     ~GraphUpscale() = default;
 
+    /// Get global number of rows (vertex dofs)
+    int GlobalRows() const;
+
+    /// Get global number of columns (vertex dofs)
+    int GlobalCols() const;
+
     /// Extract a local fine vertex space vector from global vector
     template <typename T>
     T GetVertexVector(const T& global_vect) const;
@@ -165,7 +171,7 @@ public:
     void OrthogonalizeCoarse(VectorView vect) const;
     void OrthogonalizeCoarse(BlockVector& vect) const;
 
-    /// Get Coarse Constant Representation
+    /// Get Normalized Coarse Constant Representation
     const Vector& GetCoarseConstant() const;
 
     /// Create a coarse vertex space vector

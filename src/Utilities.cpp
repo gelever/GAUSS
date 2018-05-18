@@ -425,14 +425,14 @@ void OrthoConstant(MPI_Comm comm, VectorView vect, int global_size)
     vect -= global_sum / global_size;
 }
 
-void OrthoConstant(MPI_Comm comm, VectorView vect, const VectorView& constant, int global_size)
+void OrthoConstant(MPI_Comm comm, VectorView vect, const VectorView& constant)
 {
     double local_sum = constant.Mult(vect);
     double global_sum = 0.0;
 
     MPI_Allreduce(&local_sum, &global_sum, 1, MPI_DOUBLE, MPI_SUM, comm);
 
-    vect.Sub(global_sum / global_size, constant);
+    vect.Sub(global_sum, constant);
 }
 
 void Deflate(DenseMatrix& A, const VectorView& v)
