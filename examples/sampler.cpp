@@ -214,14 +214,8 @@ int main(int argc, char* argv[])
 
         if (save_output)
         {
-            std::stringstream ss_coarse;
-            std::stringstream ss_fine;
-
-            ss_coarse << "coarse_sol_" << std::setw(5) << std::setfill('0') << sample << ".txt";
-            ss_fine << "fine_sol_" << std::setw(5) << std::setfill('0') << sample << ".txt";
-
-            upscale.WriteVertexVector(upscaled_sol, ss_coarse.str());
-            upscale.WriteVertexVector(fine_sol, ss_fine.str());
+            SaveOutput(upscale, upscaled_sol, "coarse_sol_", sample);
+            SaveOutput(upscale, fine_sol, "fine_sol_", sample);
         }
     }
 

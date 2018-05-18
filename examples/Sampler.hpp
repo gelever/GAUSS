@@ -26,6 +26,15 @@
 namespace smoothg
 {
 
+template <typename T>
+void SaveOutput(const GraphUpscale& upscale, const T& vect, const std::string& prefix, int index)
+{
+    std::stringstream ss;
+    ss << prefix << std::setw(5) << std::setfill('0') << index << ".txt";
+
+    upscale.WriteVertexVector(vect, ss.str());
+}
+
 class NormalDistribution
 {
 public:

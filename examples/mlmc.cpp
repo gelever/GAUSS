@@ -37,7 +37,6 @@ using parlinalgcpp::LOBPCG;
 using parlinalgcpp::BoomerAMG;
 
 std::vector<int> MetisPart(const SparseMatrix& vertex_edge, int num_parts);
-Vector ComputeFiedlerVector(const MixedMatrix& mgl);
 
 int main(int argc, char* argv[])
 {
@@ -166,6 +165,7 @@ int main(int argc, char* argv[])
 
         const auto& fine_coeff = sampler.GetCoefficientFine();
         const auto& coarse_coeff = sampler.GetCoefficientCoarse();
+        const auto& upscaled_coeff = sampler.GetCoefficientUpscaled();
 
         upscale.MakeCoarseSolver(coarse_coeff);
         upscale.MakeFineSolver(fine_coeff);
@@ -175,17 +175,10 @@ int main(int argc, char* argv[])
 
         if (save_output)
         {
-            std::stringstream ss_coarse;
-            std::stringstream ss_fine;
-            std::stringstream ss_coefficient;
-
-            ss_coarse << "coarse_sol_" << i << ".txt";
-            ss_fine << "fine_sol_" << i << ".txt";
-            ss_coefficient << "fine_coeff_" << i << ".txt";
-
-            upscale.WriteVertexVector(upscaled_sol.GetBlock(1), ss_coarse.str());
-            upscale.WriteVertexVector(fine_sol.GetBlock(1), ss_fine.str());
-            upscale.WriteVertexVector(sampler.GetCoefficientFine(), ss_coefficient.str());
+            SaveOutput(upscale, upscaled_sol.GetBlock(1), "coarse_sol_", i);
+            SaveOutput(upscale, fine_sol.GetBlock(1), "fine_sol_", i);
+            SaveOutput(upscale, upscaled_coeff, "coarse_coeff_", i);
+            SaveOutput(upscale, fine_coeff, "fine_coeff__", i);
         }
 
         upscale.ShowCoarseSolveInfo();
