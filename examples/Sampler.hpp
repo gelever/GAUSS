@@ -59,7 +59,7 @@ public:
 
     ~SamplerUpscale() = default;
 
-    void Sample();
+    void Sample(bool coarse_sample = false);
 
     const std::vector<double>& GetCoefficientFine() const { return coefficient_fine_; }
     const std::vector<double>& GetCoefficientCoarse() const { return coefficient_coarse_; }
@@ -129,13 +129,28 @@ SamplerUpscale::SamplerUpscale(Graph graph, double spect_tol, int max_evects, bo
                 std::sqrt( std::tgamma(nu_param + ddim / 2.0) / std::tgamma(nu_param) );
 }
 
-void SamplerUpscale::Sample()
+void SamplerUpscale::Sample(bool coarse_sample)
 {
     double g_cell_vol_sqrt = scalar_g_ * std::sqrt(cell_volume_);
 
-    for (auto& rhs_i : rhs_fine_)
+    // Generate Samples
+    if (coarse_sample)
     {
-        rhs_i = g_cell_vol_sqrt * normal_dist_.Sample();
+        for (auto& rhs_i : rhs_coarse_)
+        {
+            rhs_i = g_cell_vol_sqrt * normal_dist_.Sample();
+        }
+
+        upscale_.Interpolate(rhs_coarse_, rhs_fine_);
+    }
+    else
+    {
+        for (auto& rhs_i : rhs_fine_)
+        {
+            rhs_i = g_cell_vol_sqrt * normal_dist_.Sample();
+        }
+
+        upscale_.Restrict(rhs_fine_, rhs_coarse_);
     }
 
     // Set Fine Coefficient
@@ -150,7 +165,6 @@ void SamplerUpscale::Sample()
     }
 
     // Set Coarse Coefficient
-    upscale_.Restrict(rhs_fine_, rhs_coarse_);
     upscale_.SolveCoarse(rhs_coarse_, sol_coarse_);
 
     int coarse_size = sol_coarse_.size();

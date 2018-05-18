@@ -81,6 +81,7 @@ int main(int argc, char* argv[])
     int dimension = 2;
     double kappa = 0.001;
     double cell_volume = 200.0;
+    bool coarse_sample = false;
 
     linalgcpp::ArgParser arg_parser(argc, argv);
 
@@ -100,6 +101,7 @@ int main(int argc, char* argv[])
     arg_parser.Parse(dimension, "--dim", "Graph Dimension");
     arg_parser.Parse(kappa, "--kappa", "Correlation length for Gaussian samples.");
     arg_parser.Parse(cell_volume, "--cell-volume", "Graph Cell volume");
+    arg_parser.Parse(coarse_sample, "--coarse-sample", "Sample on the coarse level.");
 
     if (!arg_parser.IsGood())
     {
@@ -178,7 +180,7 @@ int main(int argc, char* argv[])
         ParPrint(myid, std::cout << "\n---------------------\n\n");
         ParPrint(myid, std::cout << "Sample " << sample << " :\n");
 
-        sampler.Sample();
+        sampler.Sample(coarse_sample);
 
         const auto& upscaled_coeff = sampler.GetCoefficientUpscaled();
         const auto& fine_coeff = sampler.GetCoefficientFine();
