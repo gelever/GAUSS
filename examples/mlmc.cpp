@@ -140,8 +140,8 @@ int main(int argc, char* argv[])
     Graph graph(comm, vertex_edge_global, part, weight);
 
     int sampler_seed = initial_seed + myid;
-    SamplerUpscale sampler(std::move(sampler_graph), spect_tol, max_evects, hybridization,
-                           dimension, kappa, cell_volume, sampler_seed);
+    PDESampler sampler(std::move(sampler_graph), spect_tol, max_evects, hybridization,
+                       dimension, kappa, cell_volume, sampler_seed);
     GraphUpscale upscale(std::move(graph), spect_tol, max_evects, hybridization);
 
     /// [Upscale]

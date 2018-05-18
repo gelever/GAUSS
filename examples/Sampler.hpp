@@ -26,6 +26,12 @@
 namespace smoothg
 {
 
+/** @brief Saves output vectors to file as ("prefix" + index + ".txt")
+    @param upscale upscale object to perform permutations
+    @param vect local vector to save
+    @param prefix filename prefix
+    @param index filename suffix
+*/
 template <typename T>
 void SaveOutput(const GraphUpscale& upscale, const T& vect, const std::string& prefix, int index)
 {
@@ -35,14 +41,22 @@ void SaveOutput(const GraphUpscale& upscale, const T& vect, const std::string& p
     upscale.WriteVertexVector(vect, ss.str());
 }
 
+/** @brief Scalar normal distribution */
 class NormalDistribution
 {
 public:
+    /** @brief Constructor setting RNG paramaters
+        @param mean mean
+        @param stddev standard deviation
+        @param seed generator seed
+    */
     NormalDistribution(double mean = 0.0, double stddev = 1.0, int seed = 0)
         : generator_(seed), dist_(mean, stddev) { }
 
+    /** @brief Default Destructor */
     ~NormalDistribution() = default;
 
+    /** @brief Generate a random number */
     double Sample() { return dist_(generator_); }
 
 private:
@@ -50,27 +64,60 @@ private:
     std::normal_distribution<double> dist_;
 };
 
-class SamplerUpscale
+
+/** @brief Provides lognormal random fields with Matern covariance.
+
+    Uses technique from Osborn, Vassilevski, and Villa, A multilevel,
+    hierarchical sampling technique for spatially correlated random fields,
+    SISC 39 (2017) pp. S543-S562.
+*/
+class PDESampler
 {
 public:
 
-    SamplerUpscale(Graph graph, double spect_tol, int max_evects, bool hybridization,
-                   int dimension, double kappa, double cell_volume, int seed);
+    /** @brief Constructor w/ given graph information and upscaling params
+        @param graph Graph information
+        @param double spect_tol spectral tolerance for upscaling
+        @param max_evects maximum number of eigenvectors for upscaling
+        @param hybridization use hybridization solver
+        @param dimension spatial dimension of the mesh from which the graph originates
+        @param cell_volume size of a typical cell
+        @param kappa inverse correlation length for Matern covariance
+        @param seed seed for random number generator
+     */
+    PDESampler(Graph graph, double spect_tol, int max_evects, bool hybridization,
+               int dimension, double kappa, double cell_volume, int seed);
 
-    ~SamplerUpscale() = default;
+    /** @brief Default Destructor */
+    ~PDESampler() = default;
 
+    /** @brief Generate a new sample.
+        @param coarse_sample generate the sample on the coarse level
+    */
     void Sample(bool coarse_sample = false);
 
+    /** @brief Access the fine level coefficients */
     const std::vector<double>& GetCoefficientFine() const { return coefficient_fine_; }
+
+    /** @brief Access the coarse level coefficients */
     const std::vector<double>& GetCoefficientCoarse() const { return coefficient_coarse_; }
+
+    /** @brief Access the upscaled coefficients */
     const std::vector<double>& GetCoefficientUpscaled() const { return coefficient_upscaled_; }
 
+    /** @brief Access the GraphUpscale object */
     const GraphUpscale& GetUpscale() const { return upscale_; }
 
+    /** @brief Get the total number of coarse solver iterations. */
     int CoarseTotalIters() const { return total_coarse_iters_; }
+
+    /** @brief Get the total number of fine solver iterations. */
     int FineTotalIters() const { return total_fine_iters_; }
 
+    /** @brief Get the total solve time of the coarse solver. */
     double CoarseTotalTime() const { return total_coarse_time_; }
+
+    /** @brief Get the total solve time of the fine solver. */
     double FineTotalTime() const { return total_fine_time_; }
 
 private:
@@ -100,8 +147,8 @@ private:
 };
 
 
-SamplerUpscale::SamplerUpscale(Graph graph, double spect_tol, int max_evects, bool hybridization,
-                               int dimension, double kappa, double cell_volume, int seed)
+PDESampler::PDESampler(Graph graph, double spect_tol, int max_evects, bool hybridization,
+                       int dimension, double kappa, double cell_volume, int seed)
     : upscale_(std::move(graph), spect_tol, max_evects, hybridization),
       normal_dist_(0.0, 1.0, seed),
       cell_volume_(cell_volume),
@@ -112,15 +159,10 @@ SamplerUpscale::SamplerUpscale(Graph graph, double spect_tol, int max_evects, bo
       coefficient_fine_(upscale_.Rows()),
       coefficient_coarse_(upscale_.NumAggs()),
       coefficient_upscaled_(upscale_.Rows()),
-      constant_coarse_(upscale_.GetCoarseVector())
+      constant_coarse_(upscale_.GetCoarseConstant())
 {
     upscale_.PrintInfo();
     upscale_.ShowSetupTime();
-
-    Vector ones = upscale_.GetFineVector();
-    ones = 1.0;
-
-    upscale_.Restrict(ones, constant_coarse_);
 
     double nu_param = dimension == 2 ? 1.0 : 0.5;
     double ddim = static_cast<double>(dimension);
@@ -129,7 +171,7 @@ SamplerUpscale::SamplerUpscale(Graph graph, double spect_tol, int max_evects, bo
                 std::sqrt( std::tgamma(nu_param + ddim / 2.0) / std::tgamma(nu_param) );
 }
 
-void SamplerUpscale::Sample(bool coarse_sample)
+void PDESampler::Sample(bool coarse_sample)
 {
     double g_cell_vol_sqrt = scalar_g_ * std::sqrt(cell_volume_);
 

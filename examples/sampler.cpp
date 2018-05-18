@@ -24,11 +24,6 @@
    A simple way to run the example:
 
    mpirun -n 4 ./sampler
-
-   I like the following runs:
-
-   examples/sampler --visualization --kappa 0.001 --coarsening-factor 3
-   examples/sampler --visualization --kappa 0.001 --coarsening-factor 2
 */
 
 #include <fstream>
@@ -154,8 +149,8 @@ int main(int argc, char* argv[])
     Graph graph(comm, vertex_edge_global, part, weight, W_block);
 
     int sampler_seed = initial_seed + myid;
-    SamplerUpscale sampler(std::move(graph), spect_tol, max_evects, hybridization,
-                           dimension, kappa, cell_volume, sampler_seed);
+    PDESampler sampler(std::move(graph), spect_tol, max_evects, hybridization,
+                       dimension, kappa, cell_volume, sampler_seed);
     const auto& upscale = sampler.GetUpscale();
 
     /// [Upscale]
@@ -281,5 +276,5 @@ double Mean(const std::vector<double>& vect)
 double MeanL1(const std::vector<double>& vect)
 {
     return std::accumulate(std::begin(vect), std::end(vect), 0.0,
-            [](double i, double j) { return i + std::abs(j); }) / vect.size();
+    [](double i, double j) { return i + std::abs(j); }) / vect.size();
 }
