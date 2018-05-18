@@ -180,7 +180,7 @@ int main(int argc, char* argv[])
             SaveOutput(upscale, upscaled_sol.GetBlock(1), "coarse_sol_", i);
             SaveOutput(upscale, fine_sol.GetBlock(1), "fine_sol_", i);
             SaveOutput(upscale, upscaled_coeff, "coarse_coeff_", i);
-            SaveOutput(upscale, fine_coeff, "fine_coeff__", i);
+            SaveOutput(upscale, fine_coeff, "fine_coeff_", i);
         }
 
         upscale.ShowCoarseSolveInfo();

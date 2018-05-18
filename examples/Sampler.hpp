@@ -136,11 +136,13 @@ void SamplerUpscale::Sample(bool coarse_sample)
     // Generate Samples
     if (coarse_sample)
     {
+        // TODO(gelever1): This is placeholder coarse sampling
         for (auto& rhs_i : rhs_coarse_)
         {
             rhs_i = g_cell_vol_sqrt * normal_dist_.Sample();
         }
 
+        upscale_.OrthogonalizeCoarse(rhs_coarse_);
         upscale_.Interpolate(rhs_coarse_, rhs_fine_);
     }
     else
@@ -150,6 +152,7 @@ void SamplerUpscale::Sample(bool coarse_sample)
             rhs_i = g_cell_vol_sqrt * normal_dist_.Sample();
         }
 
+        upscale_.Orthogonalize(rhs_fine_);
         upscale_.Restrict(rhs_fine_, rhs_coarse_);
     }
 

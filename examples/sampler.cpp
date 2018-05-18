@@ -191,8 +191,8 @@ int main(int argc, char* argv[])
             fine_sol[i] = std::log(fine_coeff[i]);
         }
 
-        //upscale.Orthogonalize(upscaled_sol);
-        //upscale.Orthogonalize(fine_sol);
+        upscale.Orthogonalize(upscaled_sol);
+        upscale.Orthogonalize(fine_sol);
 
         for (int i = 0; i < fine_size; ++i)
         {
@@ -256,12 +256,8 @@ int main(int argc, char* argv[])
     {
         upscale.WriteVertexVector(mean_upscaled, "mean_upscaled.txt");
         upscale.WriteVertexVector(mean_fine, "mean_fine.txt");
-
-        if (num_samples > 1)
-        {
-            upscale.WriteVertexVector(m2_upscaled, "m2_upscaled.txt");
-            upscale.WriteVertexVector(m2_fine, "m2_fine.txt");
-        }
+        upscale.WriteVertexVector(m2_upscaled, "m2_upscaled.txt");
+        upscale.WriteVertexVector(m2_fine, "m2_fine.txt");
     }
 
     return 0;

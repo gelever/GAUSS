@@ -161,6 +161,13 @@ public:
     void Orthogonalize(VectorView vect) const;
     void Orthogonalize(BlockVector& vect) const;
 
+    /// Orthogonalize against the coarse constant vector
+    void OrthogonalizeCoarse(VectorView vect) const;
+    void OrthogonalizeCoarse(BlockVector& vect) const;
+
+    /// Get Coarse Constant Representation
+    const Vector& GetCoarseConstant() const;
+
     /// Create a coarse vertex space vector
     Vector GetCoarseVector() const;
 
@@ -259,6 +266,8 @@ protected:
 
     mutable BlockVector rhs_coarse_;
     mutable BlockVector sol_coarse_;
+
+    Vector constant_coarse_;
 
 private:
     double spect_tol_;

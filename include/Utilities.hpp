@@ -152,6 +152,16 @@ void OrthoConstant(VectorView vect);
 */
 void OrthoConstant(MPI_Comm comm, VectorView vect, int global_size);
 
+/** @brief Orthogonalize this vector from the constant vector in parallel
+    This is equivalent to shifting the vector so it has zero mean.
+
+    @param comm MPI Communicator
+    @param vect vector to orthogonalize
+    @param constant constant vector representation
+    @param global_size global size of the vector
+*/
+void OrthoConstant(MPI_Comm comm, VectorView vect, const VectorView& constant, int global_size);
+
 /** @brief Make all column vectors of a dense matrix orthogonal to v
 
     @param A matrix to deflate
