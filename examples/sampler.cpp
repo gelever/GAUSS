@@ -177,6 +177,7 @@ int main(int argc, char* argv[])
     {
         ParPrint(myid, std::cout << "\n---------------------\n\n");
         ParPrint(myid, std::cout << "Sample " << sample << " :\n");
+
         sampler.Sample();
 
         const auto& upscaled_coeff = sampler.GetCoefficientUpscaled();
