@@ -176,46 +176,27 @@ PDESampler::PDESampler(Graph graph, double spect_tol, int max_evects, bool hybri
 
 void PDESampler::Sample(bool coarse_sample)
 {
-    double g_cell_vol_sqrt = scalar_g_ * std::sqrt(cell_volume_);
+    int fine_size = sol_fine_.size();
+    int coarse_size = sol_coarse_.size();
 
     // Generate Samples
-    if (coarse_sample)
-    {
-        // TODO(gelever1): This is placeholder coarse sampling
-        for (auto& rhs_i : rhs_coarse_)
-        {
-            rhs_i = g_cell_vol_sqrt * normal_dist_.Sample();
-        }
-
-        upscale_.OrthogonalizeCoarse(rhs_coarse_);
-        upscale_.Interpolate(rhs_coarse_, rhs_fine_);
-    }
-    else
-    {
-        for (auto& rhs_i : rhs_fine_)
-        {
-            rhs_i = g_cell_vol_sqrt * normal_dist_.Sample();
-        }
-
-        upscale_.Orthogonalize(rhs_fine_);
-        upscale_.Restrict(rhs_fine_, rhs_coarse_);
-    }
-
-    // Set Fine Coefficient
-    upscale_.SolveFine(rhs_fine_, sol_fine_);
-
-    int fine_size = sol_fine_.size();
-    assert(coefficient_fine_.size() == fine_size);
+    double g_cell_vol_sqrt = scalar_g_ * std::sqrt(cell_volume_);
 
     for (int i = 0; i < fine_size; ++i)
     {
-        coefficient_fine_[i] = std::exp(sol_fine_[i]);
+        rhs_fine_[i] = g_cell_vol_sqrt * normal_dist_.Sample();
+    }
+
+    upscale_.Restrict(rhs_fine_, rhs_coarse_);
+
+    if (coarse_sample)
+    {
+        // TODO(gelever1): Implement coarse sampling
     }
 
     // Set Coarse Coefficient
     upscale_.SolveCoarse(rhs_coarse_, sol_coarse_);
 
-    int coarse_size = sol_coarse_.size();
     assert(constant_coarse_.size() == coarse_size);
 
     std::fill(std::begin(coefficient_coarse_), std::end(coefficient_coarse_), 0.0);
@@ -236,11 +217,22 @@ void PDESampler::Sample(bool coarse_sample)
 
     assert(agg_index == upscale_.NumAggs());
 
+    // Set Fine Coefficient
+    upscale_.SolveFine(rhs_fine_, sol_fine_);
+
+    assert(coefficient_fine_.size() == fine_size);
+
+    for (int i = 0; i < fine_size; ++i)
+    {
+        coefficient_fine_[i] = std::exp(sol_fine_[i]);
+    }
+
     // Set Upscaled Coefficient
     sol_coarse_ *= constant_coarse_;
     VectorView coeff_view(coefficient_upscaled_.data(), coefficient_upscaled_.size());
     upscale_.Interpolate(sol_coarse_, coeff_view);
 
+    // Show/Update Solve Information
     upscale_.ShowCoarseSolveInfo();
     upscale_.ShowFineSolveInfo();
 

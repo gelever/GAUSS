@@ -50,7 +50,8 @@ int main(int argc, char* argv[])
     std::string graph_filename = "../../graphdata/fe_vertex_edge.txt";
     std::string fiedler_filename = "../../graphdata/fe_rhs.txt";
     std::string partition_filename = "../../graphdata/fe_part.txt";
-    std::string weight_filename = "../../graphdata/fe_weight_0.txt";
+    //std::string weight_filename = "../../graphdata/fe_weight_0.txt";
+    std::string weight_filename = "";
     std::string w_block_filename = "";
     bool save_output = false;
 
@@ -158,7 +159,7 @@ int main(int argc, char* argv[])
     BlockVector fine_sol = upscale.GetFineBlockVector();
     BlockVector upscaled_sol = upscale.GetFineBlockVector();
 
-    for (int i = 0; i < num_samples; ++i)
+    for (int i = 1; i <= num_samples; ++i)
     {
         ParPrint(myid, std::cout << "\n---------------------\n\n");
         ParPrint(myid, std::cout << "Sample " << i << " :\n");

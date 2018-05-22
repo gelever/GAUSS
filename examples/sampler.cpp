@@ -186,8 +186,8 @@ int main(int argc, char* argv[])
             fine_sol[i] = std::log(fine_coeff[i]);
         }
 
-        upscale.Orthogonalize(upscaled_sol);
-        upscale.Orthogonalize(fine_sol);
+        //upscale.Orthogonalize(upscaled_sol);
+        //upscale.Orthogonalize(fine_sol);
 
         for (int i = 0; i < fine_size; ++i)
         {
