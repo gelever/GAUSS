@@ -26,7 +26,7 @@ namespace smoothg
 
 HybridSolver::HybridSolver(const MixedMatrix& mgl)
     :
-    MGLSolver(mgl.Offsets()), comm_(mgl.GlobalD().GetComm()), myid_(mgl.GlobalD().GetMyId()),
+    MGLSolver(mgl),
     agg_vertexdof_(mgl.GetAggVertexDof()),
     agg_edgedof_(mgl.GetElemDof()),
     num_aggs_(agg_edgedof_.Rows()),
@@ -35,7 +35,7 @@ HybridSolver::HybridSolver(const MixedMatrix& mgl)
     MinvDT_(num_aggs_), MinvCT_(num_aggs_),
     AinvDMinvCT_(num_aggs_), Ainv_(num_aggs_),
     hybrid_elem_(num_aggs_), Ainv_f_(num_aggs_),
-    agg_weights_(num_aggs_, 1.0), use_w_(mgl.CheckW())
+    agg_weights_(num_aggs_, 1.0)
 {
     SparseMatrix edgedof_multiplier = MakeEdgeDofMultiplier();
     SparseMatrix multiplier_edgedof = edgedof_multiplier.Transpose();

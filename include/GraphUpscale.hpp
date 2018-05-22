@@ -33,6 +33,7 @@
 
 #include "MinresBlockSolver.hpp"
 #include "HybridSolver.hpp"
+#include "SPDSolver.hpp"
 
 namespace smoothg
 {

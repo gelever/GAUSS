@@ -77,6 +77,7 @@ void GraphUpscale::MakeFineSolver()
     {
         mm.AssembleM();
         fine_solver_ = make_unique<MinresBlockSolver>(mm);
+        //fine_solver_ = make_unique<SPDSolver>(mm);
     }
 }
 
@@ -116,6 +117,7 @@ void GraphUpscale::MakeFineSolver(const std::vector<double>& agg_weights)
     {
         mm.AssembleM(agg_weights);
         fine_solver_ = make_unique<MinresBlockSolver>(mm);
+        //fine_solver_ = make_unique<SPDSolver>(mm);
     }
 }
 
@@ -477,7 +479,6 @@ double GraphUpscale::OperatorComplexity() const
     {
         nnz_fine = GetFineMatrix().GlobalNNZ();
     }
-
 
     double op_comp = 1.0 + (nnz_coarse / (double) nnz_fine);
 
