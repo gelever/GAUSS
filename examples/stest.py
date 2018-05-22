@@ -198,7 +198,7 @@ def make_tests():
          {"finest-div-error": 0.22228470008233389,
           "finest-p-error": 0.22265174467689006,
           "finest-u-error": 0.22168973853676807,
-          "operator-complexity": 1.016509834901651}]
+          "operator-complexity": 1.040268292682927}]
 
     tests["samplegraph4"] = \
         [["./generalgraph",
@@ -323,7 +323,7 @@ def make_tests():
          {"finest-div-error": 0.22228470008233389,
           "finest-p-error": 0.22265174467689006,
           "finest-u-error": 0.22168973853676807,
-          "operator-complexity": 1.016509834901651}]
+          "operator-complexity": 1.040268292682927}]
 
     tests["parsamplegraph4"] = \
         [["mpirun", "-n", num_procs, "./generalgraph",
