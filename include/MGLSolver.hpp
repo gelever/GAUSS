@@ -37,8 +37,8 @@ public:
     /** @brief Default Constructor */
     MGLSolver() = default;
 
-    /** @brief Constructor settting offsets for block vectors
-        @param offsets block vector offsets
+    /** @brief Constructor from a mixed matrix
+        @param mgl mixed matrix information
     */
     MGLSolver(const MixedMatrix& mgl);
 

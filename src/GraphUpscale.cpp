@@ -69,16 +69,8 @@ void GraphUpscale::MakeFineSolver()
 {
     auto& mm = GetFineMatrix();
 
-    if (hybridization_)
-    {
-        fine_solver_ = make_unique<HybridSolver>(mm);
-    }
-    else
-    {
-        mm.AssembleM();
-        fine_solver_ = make_unique<MinresBlockSolver>(mm);
-        //fine_solver_ = make_unique<SPDSolver>(mm);
-    }
+    mm.AssembleM();
+    fine_solver_ = make_unique<SPDSolver>(mm);
 }
 
 void GraphUpscale::MakeCoarseSolver(const std::vector<double>& agg_weights)
@@ -103,22 +95,8 @@ void GraphUpscale::MakeFineSolver(const std::vector<double>& agg_weights)
 {
     auto& mm = GetFineMatrix();
 
-    if (hybridization_)
-    {
-        if (!fine_solver_)
-        {
-            fine_solver_ = make_unique<HybridSolver>(mm);
-        }
-
-        auto& hb = dynamic_cast<HybridSolver&>(*fine_solver_);
-        hb.UpdateAggScaling(agg_weights);
-    }
-    else
-    {
-        mm.AssembleM(agg_weights);
-        fine_solver_ = make_unique<MinresBlockSolver>(mm);
-        //fine_solver_ = make_unique<SPDSolver>(mm);
-    }
+    mm.AssembleM(agg_weights);
+    fine_solver_ = make_unique<SPDSolver>(mm);
 }
 
 Vector GraphUpscale::ReadVertexVector(const std::string& filename) const
