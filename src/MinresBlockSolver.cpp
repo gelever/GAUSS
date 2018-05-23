@@ -81,6 +81,84 @@ MinresBlockSolver::MinresBlockSolver(const MixedMatrix& mgl)
     nnz_ = M_.nnz() + DT_.nnz() + D_.nnz() + W_.nnz();
 }
 
+MinresBlockSolver::MinresBlockSolver(const MixedMatrix& mgl, const std::vector<int>& elim_dofs)
+    : MGLSolver(mgl), M_(mgl.GlobalM()), D_(mgl.GlobalD()), W_(mgl.GlobalW()),
+      edge_true_edge_(mgl.EdgeTrueEdge()),
+      op_(mgl.TrueOffsets()), prec_(mgl.TrueOffsets()),
+      true_rhs_(mgl.TrueOffsets()), true_sol_(mgl.TrueOffsets())
+{
+    std::vector<double> M_diag_inv(M_.GetDiag().GetDiag());
+
+    if (!use_w_ && myid_ == 0)
+    {
+        D_.EliminateRow(0);
+    }
+
+    SparseMatrix D2 = mgl.LocalD();
+
+    std::vector<int> edge_dofs;
+    for (auto&& dof : elim_dofs)
+    {
+        auto edges = mgl.LocalD().GetIndices(dof);
+        edge_dofs.insert(std::end(edge_dofs), std::begin(edges), std::end(edges));
+        //printf("Elim: %d / %d\n", dof, D.Rows());
+        //D.EliminateRow(dof);
+    }
+
+    for (auto&& dof : edge_dofs)
+    {
+        D2.EliminateCol(dof);
+    }
+
+    ParMatrix D2_g(comm_, D2);
+
+    D_ = D2_g.Mult(mgl.EdgeTrueEdge());
+
+    DT_ = D_.Transpose();
+
+    ParMatrix MinvDT = DT_;
+    MinvDT.ScaleRows(M_diag_inv);
+    ParMatrix schur_block = D_.Mult(MinvDT);
+
+    if (!use_w_)
+    {
+        CooMatrix elim_dof(D_.Rows(), D_.Rows());
+
+        if (myid_ == 0)
+        {
+            elim_dof.Add(0, 0, 1.0);
+        }
+
+        SparseMatrix W = elim_dof.ToSparse();
+        W_ = ParMatrix(D_.GetComm(), D_.GetRowStarts(), std::move(W));
+    }
+    else
+    {
+        schur_block = parlinalgcpp::ParSub(schur_block, W_);
+    }
+
+    M_prec_ = parlinalgcpp::ParDiagScale(M_);
+    schur_prec_ = parlinalgcpp::BoomerAMG(std::move(schur_block));
+
+    op_.SetBlock(0, 0, M_);
+    op_.SetBlock(0, 1, DT_);
+    op_.SetBlock(1, 0, D_);
+    op_.SetBlock(1, 1, W_);
+
+    prec_.SetBlock(0, 0, M_prec_);
+    prec_.SetBlock(1, 1, schur_prec_);
+
+    pminres_ = linalgcpp::PMINRESSolver(op_, prec_, max_num_iter_, rtol_,
+                                        atol_, 0, parlinalgcpp::ParMult);
+
+    if (myid_ == 0)
+    {
+        SetPrintLevel(print_level_);
+    }
+
+    nnz_ = M_.nnz() + DT_.nnz() + D_.nnz() + W_.nnz();
+}
+
 
 MinresBlockSolver::MinresBlockSolver(const MinresBlockSolver& other) noexcept
     : MGLSolver(other), op_(other.op_), prec_(other.prec_),

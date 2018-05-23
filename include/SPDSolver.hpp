@@ -63,6 +63,8 @@ public:
     */
     SPDSolver(const MixedMatrix& mgl);
 
+    SPDSolver(const MixedMatrix& mgl, const std::vector<int>& elim_dofs);
+
     /** @brief Copy Constructor */
     SPDSolver(const SPDSolver& other) noexcept;
 

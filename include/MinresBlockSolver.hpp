@@ -66,6 +66,8 @@ public:
     */
     MinresBlockSolver(const MixedMatrix& mgl);
 
+    MinresBlockSolver(const MixedMatrix& mgl, const std::vector<int>& elim_dofs);
+
     /** @brief Copy Constructor */
     MinresBlockSolver(const MinresBlockSolver& other) noexcept;
 
