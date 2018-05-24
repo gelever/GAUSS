@@ -75,37 +75,28 @@ SPDSolver::SPDSolver(const MixedMatrix& mgl, const std::vector<int>& elim_dofs)
     std::vector<double> M_diag(mgl.GlobalM().GetDiag().GetDiag());
     std::vector<double> diag(mgl.LocalD().Rows(), 0.0);
 
-    ParMatrix D = mgl.GlobalD();
+    SparseMatrix D_elim = mgl.LocalD();
 
     if (myid_ == 0 && !use_w_)
     {
         diag[0] = 1.0;
-        D.EliminateRow(0);
+        D_elim.EliminateRow(0);
     }
 
-    SparseMatrix D2 = mgl.LocalD();
 
-    std::vector<int> edge_dofs;
     for (auto&& dof : elim_dofs)
     {
-        auto edges = mgl.LocalD().GetIndices(dof);
-        edge_dofs.insert(std::end(edge_dofs), std::begin(edges), std::end(edges));
-        //printf("Elim: %d / %d\n", dof, D.Rows());
-        diag[dof] = 1.0;
-        //D.EliminateRow(dof);
+        D_elim.EliminateCol(dof);
     }
 
-    for (auto&& dof : edge_dofs)
-    {
-        D2.EliminateCol(dof);
-    }
+    ParMatrix D_elim_global(comm_, mgl.GlobalD().GetRowStarts(),
+                            mgl.EdgeTrueEdge().GetRowStarts(), std::move(D_elim));
 
-    ParMatrix D2_g(comm_, D2);
 
-    ParMatrix D_true = D2_g.Mult(mgl.EdgeTrueEdge());
 
-    //ParMatrix MinvDT = D.Transpose();
-    ParMatrix MinvDT = D_true.Transpose();
+    ParMatrix D = D_elim_global.Mult(mgl.EdgeTrueEdge());
+
+    ParMatrix MinvDT = D.Transpose();
     MinvDT.InverseScaleRows(M_diag);
 
 
@@ -126,7 +117,7 @@ SPDSolver::SPDSolver(const MixedMatrix& mgl, const std::vector<int>& elim_dofs)
     prec_ = parlinalgcpp::BoomerAMG(A_);
 
     pcg_ = linalgcpp::PCGSolver(A_, prec_, max_num_iter_, rtol_,
-            atol_, 0, parlinalgcpp::ParMult);
+                                atol_, 0, parlinalgcpp::ParMult);
 
     if (myid_ == 0)
     {

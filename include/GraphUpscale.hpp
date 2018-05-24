@@ -107,6 +107,14 @@ public:
     /// Create Coarse Level Solver with eliminated vertices
     void MakeCoarseSolver(const std::vector<int>& elim_dofs);
 
+    /// Create Weighted Fine Level Solver with eliminated vertices
+    void MakeFineSolver(const std::vector<double>& agg_weights,
+                        const std::vector<int>& elim_dofs);
+
+    /// Create Weighted Coarse Level Solver with eliminated vertices
+    void MakeCoarseSolver(const std::vector<double>& agg_weights,
+                          const std::vector<int>& elim_dofs);
+
     /// Get number of aggregates
     int NumAggs() const { return coarsener_.GetGraphTopology().agg_vertex_local_.Rows(); }
 
@@ -271,9 +279,6 @@ private:
     bool hybridization_;
 
     Graph graph_;
-
-    std::vector<int> elim_dofs_;
-    int global_elim_dofs_ = 0;
 };
 
 template <typename T>

@@ -172,6 +172,7 @@ Graph::Graph(SparseMatrix vertex_edge_local, ParMatrix edge_true_edge,
     if (static_cast<int>(weight_local_.size()) != num_edges)
     {
         MakeLocalWeight(std::vector<double>());
+        printf("MAKING LOCAL WEIGHT");
     }
 }
 

@@ -79,7 +79,10 @@ void GraphUpscale::MakeCoarseSolver(const std::vector<double>& agg_weights)
 
     if (hybridization_)
     {
-        assert(coarse_solver_);
+        if (!coarse_solver_)
+        {
+            MakeCoarseSolver();
+        }
 
         auto& hb = dynamic_cast<HybridSolver&>(*coarse_solver_);
         hb.UpdateAggScaling(agg_weights);
@@ -103,34 +106,34 @@ void GraphUpscale::MakeCoarseSolver(const std::vector<int>& elim_dofs)
 {
     auto& mm = GetCoarseMatrix();
 
-    /*
     if (hybridization_)
     {
-        assert(coarse_solver_);
-
-        auto& hb = dynamic_cast<HybridSolver&>(*coarse_solver_);
-        hb.UpdateAggScaling(agg_weights);
+        coarse_solver_ = make_unique<HybridSolver>(mm);
     }
     else
-        */
     {
-        Vector test = GetFineVector();
-        test = 0.0;
-        for (auto&& dof : elim_dofs)
-            test[dof] = 1.0;
+        BlockVector fine_dofs = GetFineBlockVector();
+        fine_dofs = 0.0;
 
-        Vector c = Restrict(test);
+        for (auto&& dof : elim_dofs)
+        {
+            fine_dofs.GetBlock(0)[dof] = 1.0;
+        }
+
+        BlockVector coarse_dofs = Restrict(fine_dofs);
 
         std::vector<int> c_elim;
+        int num_edges = coarse_dofs.GetBlock(0).size();
 
-        for (int i = 0; i < c.size(); ++i)
+        for (int i = 0; i < num_edges; ++i)
         {
-            if (std::fabs(c[i]) > 1e-8)
+            if (std::fabs(coarse_dofs[i]) > 1e-8)
+            {
                 c_elim.push_back(i);
+            }
         }
 
         mm.AssembleM();
-        //coarse_solver_ = make_unique<MinresBlockSolver>(mm, elim_dofs);
         coarse_solver_ = make_unique<MinresBlockSolver>(mm, c_elim);
     }
 }
@@ -141,15 +144,58 @@ void GraphUpscale::MakeFineSolver(const std::vector<int>& elim_dofs)
 
     mm.AssembleM();
     fine_solver_ = make_unique<SPDSolver>(mm, elim_dofs);
-    //fine_solver_ = make_unique<MinresBlockSolver>(mm, elim_dofs);
+}
 
-    int local_dofs = elim_dofs.size();
+void GraphUpscale::MakeCoarseSolver(const std::vector<double>& agg_weights,
+                                    const std::vector<int>& elim_dofs)
+{
+    auto& mm = GetCoarseMatrix();
 
-    MPI_Allreduce(&local_dofs,  &global_elim_dofs_, 1, MPI_INT, MPI_SUM, comm_);
+    if (hybridization_)
+    {
+        if (!coarse_solver_)
+        {
+            MakeCoarseSolver();
+        }
 
-    elim_dofs_ = elim_dofs;
+        auto& hb = dynamic_cast<HybridSolver&>(*coarse_solver_);
+        hb.UpdateAggScaling(agg_weights);
+    }
+    else
+    {
+        BlockVector fine_dofs = GetFineBlockVector();
+        fine_dofs = 0.0;
 
+        for (auto&& dof : elim_dofs)
+        {
+            fine_dofs.GetBlock(0)[dof] = 1.0;
+        }
 
+        BlockVector coarse_dofs = Restrict(fine_dofs);
+
+        std::vector<int> c_elim;
+        int num_edges = coarse_dofs.GetBlock(0).size();
+
+        for (int i = 0; i < num_edges; ++i)
+        {
+            if (std::fabs(coarse_dofs[i]) > 1e-8)
+            {
+                c_elim.push_back(i);
+            }
+        }
+
+        mm.AssembleM(agg_weights);
+        coarse_solver_ = make_unique<MinresBlockSolver>(mm, c_elim);
+    }
+}
+
+void GraphUpscale::MakeFineSolver(const std::vector<double>& agg_weights,
+                                  const std::vector<int>& elim_dofs)
+{
+    auto& mm = GetFineMatrix();
+
+    mm.AssembleM(agg_weights);
+    fine_solver_ = make_unique<SPDSolver>(mm, elim_dofs);
 }
 
 Vector GraphUpscale::ReadVertexVector(const std::string& filename) const
@@ -375,13 +421,7 @@ const std::vector<int>& GraphUpscale::CoarseTrueBlockOffsets() const
 
 void GraphUpscale::Orthogonalize(VectorView vect) const
 {
-    //OrthoConstant(comm_, vect, GetFineMatrix().GlobalD().GlobalRows());
-
-    for (auto&& dof : elim_dofs_)
-    {
-        vect[dof] = 0.0;
-    }
-    OrthoConstant(comm_, vect, GetFineMatrix().GlobalD().GlobalRows() - global_elim_dofs_);
+    OrthoConstant(comm_, vect, GetFineMatrix().GlobalD().GlobalRows());
 }
 
 void GraphUpscale::Orthogonalize(BlockVector& vect) const
