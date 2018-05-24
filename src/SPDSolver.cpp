@@ -25,48 +25,8 @@ namespace smoothg
 {
 
 SPDSolver::SPDSolver(const MixedMatrix& mgl)
-    : MGLSolver(mgl)
+    : SPDSolver(mgl, {})
 {
-    std::vector<double> M_diag(mgl.GlobalM().GetDiag().GetDiag());
-
-    if (!use_w_)
-    {
-        ParMatrix D = mgl.GlobalD();
-
-        if (myid_ == 0)
-        {
-            D.EliminateRow(0);
-        }
-
-        ParMatrix MinvDT = D.Transpose();
-        MinvDT.InverseScaleRows(M_diag);
-
-        A_ = D.Mult(MinvDT);
-
-        MinvDT_ = mgl.EdgeTrueEdge().Mult(MinvDT);
-    }
-    else
-    {
-        const auto& D = mgl.GlobalD();
-        ParMatrix MinvDT = D.Transpose();
-        MinvDT.InverseScaleRows(M_diag);
-
-        A_ = parlinalgcpp::ParSub(D.Mult(MinvDT), mgl.GlobalW());
-
-        MinvDT_ = mgl.EdgeTrueEdge().Mult(MinvDT);
-    }
-
-    prec_ = parlinalgcpp::BoomerAMG(A_);
-
-    pcg_ = linalgcpp::PCGSolver(A_, prec_, max_num_iter_, rtol_,
-                                atol_, 0, parlinalgcpp::ParMult);
-
-    if (myid_ == 0)
-    {
-        SetPrintLevel(print_level_);
-    }
-
-    nnz_ = A_.nnz();
 }
 
 SPDSolver::SPDSolver(const MixedMatrix& mgl, const std::vector<int>& elim_dofs)
@@ -83,22 +43,24 @@ SPDSolver::SPDSolver(const MixedMatrix& mgl, const std::vector<int>& elim_dofs)
         D_elim.EliminateRow(0);
     }
 
-
-    for (auto&& dof : elim_dofs)
+    if (elim_dofs.size() > 0)
     {
-        D_elim.EliminateCol(dof);
+        std::vector<int> marker(D_elim.Cols(), 0);
+
+        for (auto&& dof : elim_dofs)
+        {
+            marker[dof] = 1;
+        }
+
+        D_elim.EliminateCol(marker);
     }
 
     ParMatrix D_elim_global(comm_, mgl.GlobalD().GetRowStarts(),
                             mgl.EdgeTrueEdge().GetRowStarts(), std::move(D_elim));
 
-
-
     ParMatrix D = D_elim_global.Mult(mgl.EdgeTrueEdge());
-
     ParMatrix MinvDT = D.Transpose();
     MinvDT.InverseScaleRows(M_diag);
-
 
     if (use_w_)
     {

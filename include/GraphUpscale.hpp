@@ -58,7 +58,7 @@ public:
        @param hybridization use hybridization as solver
     */
     GraphUpscale(Graph graph, double spect_tol = 0.001, int max_evects = 4,
-                 bool hybridization = false);
+                 bool hybridization = false, const std::vector<int>& elim_edge_dofs = {});
 
     /// Default Destructor
     ~GraphUpscale() = default;
@@ -100,20 +100,6 @@ public:
 
     /// Create Weighted Coarse Level Solver
     void MakeCoarseSolver(const std::vector<double>& agg_weights);
-
-    /// Create Fine Level Solver with eliminated vertices
-    void MakeFineSolver(const std::vector<int>& elim_dofs);
-
-    /// Create Coarse Level Solver with eliminated vertices
-    void MakeCoarseSolver(const std::vector<int>& elim_dofs);
-
-    /// Create Weighted Fine Level Solver with eliminated vertices
-    void MakeFineSolver(const std::vector<double>& agg_weights,
-                        const std::vector<int>& elim_dofs);
-
-    /// Create Weighted Coarse Level Solver with eliminated vertices
-    void MakeCoarseSolver(const std::vector<double>& agg_weights,
-                          const std::vector<int>& elim_dofs);
 
     /// Get number of aggregates
     int NumAggs() const { return coarsener_.GetGraphTopology().agg_vertex_local_.Rows(); }
@@ -272,6 +258,9 @@ protected:
 
     mutable BlockVector rhs_coarse_;
     mutable BlockVector sol_coarse_;
+
+    std::vector<int> fine_elim_dofs_;
+    std::vector<int> coarse_elim_dofs_;
 
 private:
     double spect_tol_;

@@ -43,10 +43,14 @@ MinresBlockSolver::MinresBlockSolver(const MixedMatrix& mgl, const std::vector<i
         D_elim.EliminateRow(0);
     }
 
+    std::vector<int> marker(D_elim.Cols(), 0);
+
     for (auto&& dof : elim_dofs)
     {
-        D_elim.EliminateCol(dof);
+        marker[dof] = 1;
     }
+
+    D_elim.EliminateCol(marker);
 
     ParMatrix D_elim_g(comm_, D_elim);
 

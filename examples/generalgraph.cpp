@@ -181,8 +181,6 @@ int main(int argc, char* argv[])
         upscale.WriteVertexVector(fine_rhs.GetBlock(1), fiedler_filename);
     }
 
-    upscale.WriteVertexVector(fine_sol.GetBlock(1), "fine_sol.txt");
-
     return 0;
 }
 
