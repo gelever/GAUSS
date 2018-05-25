@@ -230,6 +230,14 @@ void MixedMatrix::AssembleM()
     CooMatrix M_coo(M_size, M_size);
 
     int num_aggs = M_elem_.size();
+    int nnz = 0;
+
+    for (const auto& elem : M_elem_)
+    {
+        nnz += elem.Rows() * elem.Cols();
+    }
+
+    M_coo.Reserve(nnz);
 
     for (int i = 0; i < num_aggs; ++i)
     {
@@ -251,6 +259,14 @@ void MixedMatrix::AssembleM(const std::vector<double>& agg_weight)
     CooMatrix M_coo(M_size, M_size);
 
     int num_aggs = M_elem_.size();
+    int nnz = 0;
+
+    for (const auto& elem : M_elem_)
+    {
+        nnz += elem.Rows() * elem.Cols();
+    }
+
+    M_coo.Reserve(nnz);
 
     for (int i = 0; i < num_aggs; ++i)
     {
