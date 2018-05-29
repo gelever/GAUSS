@@ -141,9 +141,9 @@ void SPDSolver::Solve(const BlockVector& rhs, BlockVector& sol) const
     sol.GetBlock(1) *= -1.0;
 
     timer.Click();
-    timing_ += timer.TotalTime();
+    timing_ = timer.TotalTime();
 
-    num_iterations_ += pcg_.GetNumIterations();
+    num_iterations_ = pcg_.GetNumIterations();
 }
 
 void SPDSolver::SetPrintLevel(int print_level)

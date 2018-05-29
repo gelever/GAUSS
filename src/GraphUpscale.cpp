@@ -48,6 +48,8 @@ GraphUpscale::GraphUpscale(Graph graph, double spect_tol, int max_evects, bool h
     MakeCoarseSolver();
     MakeFineSolver(); // TODO(gelever1): unset and let user make
 
+    do_ortho_ = !GetFineMatrix().CheckW();
+
     timer.Click();
     setup_time_ += timer.TotalTime();
 }
@@ -134,16 +136,6 @@ BlockVector GraphUpscale::ReadEdgeBlockVector(const std::string& filename) const
     return vect;
 }
 
-void GraphUpscale::WriteVertexVector(const VectorView& vect, const std::string& filename) const
-{
-    WriteVector(comm_, vect, filename, global_vertices_, graph_.vertex_map_);
-}
-
-void GraphUpscale::WriteEdgeVector(const VectorView& vect, const std::string& filename) const
-{
-    WriteVector(comm_, vect, filename, global_edges_, graph_.edge_map_);
-}
-
 void GraphUpscale::Mult(const VectorView& x, VectorView y) const
 {
     assert(coarse_solver_);
@@ -155,9 +147,12 @@ void GraphUpscale::Mult(const VectorView& x, VectorView y) const
 
     coarse_solver_->Solve(rhs_coarse_, sol_coarse_);
 
-    coarsener_.Interpolate(sol_coarse_.GetBlock(1), y);
+    if (do_ortho_)
+    {
+        OrthogonalizeCoarse(sol_coarse_);
+    }
 
-    Orthogonalize(y);
+    coarsener_.Interpolate(sol_coarse_.GetBlock(1), y);
 }
 
 void GraphUpscale::Solve(const VectorView& x, VectorView y) const
@@ -182,9 +177,13 @@ void GraphUpscale::Solve(const BlockVector& x, BlockVector& y) const
     rhs_coarse_.GetBlock(1) *= -1.0;
 
     coarse_solver_->Solve(rhs_coarse_, sol_coarse_);
-    coarsener_.Interpolate(sol_coarse_, y);
 
-    Orthogonalize(y);
+    if (do_ortho_)
+    {
+        OrthogonalizeCoarse(sol_coarse_);
+    }
+
+    coarsener_.Interpolate(sol_coarse_, y);
 }
 
 BlockVector GraphUpscale::Solve(const BlockVector& x) const
@@ -201,6 +200,12 @@ void GraphUpscale::SolveCoarse(const VectorView& x, VectorView y) const
     assert(coarse_solver_);
 
     coarse_solver_->Solve(x, y);
+    y *= -1.0;
+
+    if (do_ortho_)
+    {
+        OrthogonalizeCoarse(y);
+    }
 }
 
 Vector GraphUpscale::SolveCoarse(const VectorView& x) const
@@ -217,6 +222,11 @@ void GraphUpscale::SolveCoarse(const BlockVector& x, BlockVector& y) const
 
     coarse_solver_->Solve(x, y);
     y *= -1.0;
+
+    if (do_ortho_)
+    {
+        OrthogonalizeCoarse(y);
+    }
 }
 
 BlockVector GraphUpscale::SolveCoarse(const BlockVector& x) const
@@ -234,7 +244,10 @@ void GraphUpscale::SolveFine(const VectorView& x, VectorView y) const
     fine_solver_->Solve(x, y);
     y *= -1.0;
 
-    Orthogonalize(y);
+    if (do_ortho_)
+    {
+        Orthogonalize(y);
+    }
 }
 
 Vector GraphUpscale::SolveFine(const VectorView& x) const
@@ -253,7 +266,10 @@ void GraphUpscale::SolveFine(const BlockVector& x, BlockVector& y) const
     fine_solver_->Solve(x, y);
     y *= -1.0;
 
-    Orthogonalize(y);
+    if (do_ortho_)
+    {
+        Orthogonalize(y);
+    }
 }
 
 BlockVector GraphUpscale::SolveFine(const BlockVector& x) const
@@ -327,12 +343,27 @@ const std::vector<int>& GraphUpscale::CoarseTrueBlockOffsets() const
 
 void GraphUpscale::Orthogonalize(VectorView vect) const
 {
-    OrthoConstant(comm_, vect, GetFineMatrix().GlobalD().GlobalRows());
+    OrthoConstant(comm_, vect, GlobalRows());
 }
 
 void GraphUpscale::Orthogonalize(BlockVector& vect) const
 {
     Orthogonalize(vect.GetBlock(1));
+}
+
+void GraphUpscale::OrthogonalizeCoarse(VectorView vect) const
+{
+    OrthoConstant(comm_, vect, GetCoarseConstant());
+}
+
+void GraphUpscale::OrthogonalizeCoarse(BlockVector& vect) const
+{
+    OrthogonalizeCoarse(vect.GetBlock(1));
+}
+
+const Vector& GraphUpscale::GetCoarseConstant() const
+{
+    return constant_coarse_;
 }
 
 Vector GraphUpscale::GetCoarseVector() const
@@ -401,6 +432,16 @@ const MixedMatrix& GraphUpscale::GetMatrix(int level) const
     assert(level >= 0 && level < static_cast<int>(mgl_.size()));
 
     return mgl_[level];
+}
+
+int GraphUpscale::GlobalRows() const
+{
+    return GetFineMatrix().GlobalD().GlobalRows();
+}
+
+int GraphUpscale::GlobalCols() const
+{
+    return GetFineMatrix().GlobalD().GlobalRows();
 }
 
 void GraphUpscale::PrintInfo(std::ostream& out) const
@@ -603,6 +644,9 @@ void GraphUpscale::ShowErrors(const BlockVector& upscaled_sol,
 
 void GraphUpscale::MakeCoarseVectors()
 {
+    Vector constant_fine(Rows(), 1.0 / std::sqrt(GlobalRows()));
+    constant_coarse_ = Restrict(constant_fine);
+
     rhs_coarse_ = BlockVector(GetCoarseMatrix().Offsets());
     sol_coarse_ = BlockVector(GetCoarseMatrix().Offsets());
 
