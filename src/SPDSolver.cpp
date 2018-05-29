@@ -25,36 +25,56 @@ namespace smoothg
 {
 
 SPDSolver::SPDSolver(const MixedMatrix& mgl)
+    : SPDSolver(mgl, {})
+{
+}
+
+SPDSolver::SPDSolver(const MixedMatrix& mgl, const std::vector<int>& elim_dofs)
     : MGLSolver(mgl)
 {
     std::vector<double> M_diag(mgl.GlobalM().GetDiag().GetDiag());
+    std::vector<double> diag(mgl.LocalD().Rows(), 0.0);
 
-    if (!use_w_)
+    SparseMatrix D_elim = mgl.LocalD();
+
+    if (myid_ == 0 && !use_w_)
     {
-        ParMatrix D = mgl.GlobalD();
+        diag[0] = 1.0;
+        D_elim.EliminateRow(0);
+    }
 
-        if (myid_ == 0)
+    if (elim_dofs.size() > 0)
+    {
+        std::vector<int> marker(D_elim.Cols(), 0);
+
+        for (auto&& dof : elim_dofs)
         {
-            D.EliminateRow(0);
+            marker[dof] = 1;
         }
 
-        ParMatrix MinvDT = D.Transpose();
-        MinvDT.InverseScaleRows(M_diag);
+        D_elim.EliminateCol(marker);
+    }
 
-        A_ = D.Mult(MinvDT);
+    ParMatrix D_elim_global(comm_, mgl.GlobalD().GetRowStarts(),
+                            mgl.EdgeTrueEdge().GetRowStarts(), std::move(D_elim));
 
-        MinvDT_ = mgl.EdgeTrueEdge().Mult(MinvDT);
+    ParMatrix D = D_elim_global.Mult(mgl.EdgeTrueEdge());
+    ParMatrix MinvDT = D.Transpose();
+    MinvDT.InverseScaleRows(M_diag);
+
+    if (use_w_)
+    {
+        A_ = parlinalgcpp::ParSub(D.Mult(MinvDT), mgl.GlobalW());
     }
     else
     {
-        const auto& D = mgl.GlobalD();
-        ParMatrix MinvDT = D.Transpose();
-        MinvDT.InverseScaleRows(M_diag);
-
-        A_ = parlinalgcpp::ParSub(D.Mult(MinvDT), mgl.GlobalW());
-
-        MinvDT_ = mgl.EdgeTrueEdge().Mult(MinvDT);
+        A_ = D.Mult(MinvDT);
     }
+
+    A_.AddDiag(diag);
+
+    MinvDT_ = mgl.EdgeTrueEdge().Mult(MinvDT);
+
 
     prec_ = parlinalgcpp::BoomerAMG(A_);
 
@@ -121,9 +141,9 @@ void SPDSolver::Solve(const BlockVector& rhs, BlockVector& sol) const
     sol.GetBlock(1) *= -1.0;
 
     timer.Click();
-    timing_ += timer.TotalTime();
+    timing_ = timer.TotalTime();
 
-    num_iterations_ += pcg_.GetNumIterations();
+    num_iterations_ = pcg_.GetNumIterations();
 }
 
 void SPDSolver::SetPrintLevel(int print_level)
