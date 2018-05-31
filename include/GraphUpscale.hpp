@@ -33,6 +33,7 @@
 
 #include "MinresBlockSolver.hpp"
 #include "HybridSolver.hpp"
+#include "SPDSolver.hpp"
 
 namespace smoothg
 {
@@ -57,7 +58,7 @@ public:
        @param hybridization use hybridization as solver
     */
     GraphUpscale(Graph graph, double spect_tol = 0.001, int max_evects = 4,
-                 bool hybridization = false);
+                 bool hybridization = false, const std::vector<int>& elim_edge_dofs = {});
 
     /// Default Destructor
     ~GraphUpscale() = default;
@@ -275,6 +276,9 @@ protected:
 
     Vector constant_coarse_;
 
+    std::vector<int> fine_elim_dofs_;
+    std::vector<int> coarse_elim_dofs_;
+
 private:
     double spect_tol_;
     int max_evects_;
@@ -308,7 +312,6 @@ void GraphUpscale::WriteEdgeVector(const T& vect, const std::string& filename) c
 {
     WriteVector(comm_, vect, filename, global_edges_, graph_.edge_map_);
 }
-
 
 } // namespace smoothg
 

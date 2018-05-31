@@ -25,21 +25,38 @@ namespace smoothg
 {
 
 MinresBlockSolver::MinresBlockSolver(const MixedMatrix& mgl)
-    : MGLSolver(mgl.Offsets()), M_(mgl.GlobalM()), D_(mgl.GlobalD()), W_(mgl.GlobalW()),
-      edge_true_edge_(mgl.EdgeTrueEdge()),
-      comm_(M_.GetComm()), myid_(M_.GetMyId()),
-      op_(mgl.TrueOffsets()), prec_(mgl.TrueOffsets()),
-      true_rhs_(mgl.TrueOffsets()), true_sol_(mgl.TrueOffsets()),
-      use_w_(mgl.CheckW())
+    : MinresBlockSolver(mgl, {})
 {
+}
+
+MinresBlockSolver::MinresBlockSolver(const MixedMatrix& mgl, const std::vector<int>& elim_dofs)
+    : MGLSolver(mgl), M_(mgl.GlobalM()), D_(mgl.GlobalD()), W_(mgl.GlobalW()),
+      edge_true_edge_(mgl.EdgeTrueEdge()),
+      op_(mgl.TrueOffsets()), prec_(mgl.TrueOffsets()),
+      true_rhs_(mgl.TrueOffsets()), true_sol_(mgl.TrueOffsets())
+{
+    std::vector<double> M_diag(M_.GetDiag().GetDiag());
+    SparseMatrix D_elim = mgl.LocalD();
+
     if (!use_w_ && myid_ == 0)
     {
-        D_.EliminateRow(0);
+        D_elim.EliminateRow(0);
     }
 
+    std::vector<int> marker(D_elim.Cols(), 0);
+
+    for (auto&& dof : elim_dofs)
+    {
+        marker[dof] = 1;
+    }
+
+    D_elim.EliminateCol(marker);
+
+    ParMatrix D_elim_g(comm_, D_elim);
+
+    D_ = D_elim_g.Mult(mgl.EdgeTrueEdge());
     DT_ = D_.Transpose();
 
-    std::vector<double> M_diag(M_.GetDiag().GetDiag());
     ParMatrix MinvDT = DT_;
     MinvDT.InverseScaleRows(M_diag);
     ParMatrix schur_block = D_.Mult(MinvDT);

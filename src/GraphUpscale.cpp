@@ -23,14 +23,16 @@
 namespace smoothg
 {
 
-GraphUpscale::GraphUpscale(Graph graph, double spect_tol, int max_evects, bool hybridization)
+GraphUpscale::GraphUpscale(Graph graph, double spect_tol, int max_evects, bool hybridization,
+                           const std::vector<int>& edge_elim_dofs)
     : Operator(graph.vertex_edge_local_.Rows()),
       comm_(graph.edge_true_edge_.GetComm()),
       myid_(graph.edge_true_edge_.GetMyId()),
       global_vertices_(graph.global_vertices_),
       global_edges_(graph.global_edges_),
-      setup_time_(0), spect_tol_(spect_tol),
-      max_evects_(max_evects), hybridization_(hybridization),
+      setup_time_(0), fine_elim_dofs_(edge_elim_dofs),
+      spect_tol_(spect_tol), max_evects_(max_evects),
+      hybridization_(hybridization),
       graph_(std::move(graph))
 {
     Timer timer(Timer::Start::True);
@@ -63,23 +65,16 @@ void GraphUpscale::MakeCoarseSolver()
     else
     {
         mm.AssembleM();
-        coarse_solver_ = make_unique<MinresBlockSolver>(mm);
+        coarse_solver_ = make_unique<MinresBlockSolver>(mm, coarse_elim_dofs_);
     }
 }
 
 void GraphUpscale::MakeFineSolver()
 {
     auto& mm = GetFineMatrix();
-    mm.AssembleM();
 
-    if (hybridization_)
-    {
-        fine_solver_ = make_unique<HybridSolver>(mm);
-    }
-    else
-    {
-        fine_solver_ = make_unique<MinresBlockSolver>(mm);
-    }
+    mm.AssembleM();
+    fine_solver_ = make_unique<SPDSolver>(mm, fine_elim_dofs_);
 }
 
 void GraphUpscale::MakeCoarseSolver(const std::vector<double>& agg_weights)
@@ -88,7 +83,10 @@ void GraphUpscale::MakeCoarseSolver(const std::vector<double>& agg_weights)
 
     if (hybridization_)
     {
-        assert(coarse_solver_);
+        if (!coarse_solver_)
+        {
+            MakeCoarseSolver();
+        }
 
         auto& hb = dynamic_cast<HybridSolver&>(*coarse_solver_);
         hb.UpdateAggScaling(agg_weights);
@@ -96,29 +94,16 @@ void GraphUpscale::MakeCoarseSolver(const std::vector<double>& agg_weights)
     else
     {
         mm.AssembleM(agg_weights);
-        coarse_solver_ = make_unique<MinresBlockSolver>(mm);
+        coarse_solver_ = make_unique<MinresBlockSolver>(mm, coarse_elim_dofs_);
     }
 }
 
 void GraphUpscale::MakeFineSolver(const std::vector<double>& agg_weights)
 {
     auto& mm = GetFineMatrix();
+
     mm.AssembleM(agg_weights);
-
-    if (hybridization_)
-    {
-        if (!fine_solver_)
-        {
-            fine_solver_ = make_unique<HybridSolver>(mm);
-        }
-
-        auto& hb = dynamic_cast<HybridSolver&>(*fine_solver_);
-        hb.UpdateAggScaling(agg_weights);
-    }
-    else
-    {
-        fine_solver_ = make_unique<MinresBlockSolver>(mm);
-    }
+    fine_solver_ = make_unique<SPDSolver>(mm, fine_elim_dofs_);
 }
 
 Vector GraphUpscale::ReadVertexVector(const std::string& filename) const
@@ -519,7 +504,6 @@ double GraphUpscale::OperatorComplexity() const
         nnz_fine = GetFineMatrix().GlobalNNZ();
     }
 
-
     double op_comp = 1.0 + (nnz_coarse / (double) nnz_fine);
 
     return op_comp;
@@ -665,6 +649,26 @@ void GraphUpscale::MakeCoarseVectors()
 
     rhs_coarse_ = BlockVector(GetCoarseMatrix().Offsets());
     sol_coarse_ = BlockVector(GetCoarseMatrix().Offsets());
+
+    BlockVector fine_dofs = GetFineBlockVector();
+    fine_dofs = 0.0;
+
+    for (auto&& dof : fine_elim_dofs_)
+    {
+        fine_dofs.GetBlock(0)[dof] = 1.0;
+    }
+
+    BlockVector coarse_dofs = Restrict(fine_dofs);
+
+    int num_edges = coarse_dofs.GetBlock(0).size();
+
+    for (int i = 0; i < num_edges; ++i)
+    {
+        if (std::fabs(coarse_dofs[i]) > 1e-8)
+        {
+            coarse_elim_dofs_.push_back(i);
+        }
+    }
 }
 
 
