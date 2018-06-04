@@ -35,6 +35,8 @@ using parlinalgcpp::ParCG;
 using parlinalgcpp::BoomerAMG;
 using parlinalgcpp::ParaSails;
 
+std::vector<int> MetisPart(const SparseMatrix& vertex_edge, int num_parts);
+
 /// @brief Computes DMinvDt + shift * I
 class ShiftedDMinvDt : public ParOperator
 {
@@ -121,11 +123,14 @@ int main(int argc, char* argv[])
 
     int num_vertices_global = vertex_edge.Rows();
     int num_edges_global = vertex_edge.Cols();
+    int num_parts = std::max(1.0, (num_vertices_global / coarse_factor) + 0.5);
+
+    std::vector<int> part = MetisPart(vertex_edge, num_parts);
 
     ParPrint(myid, std::cout << "\nUpscaling:" << std::endl);
 
-    GraphUpscale upscale(comm, vertex_edge, coarse_factor,
-                         spect_tol, max_evects, hybridization);
+    Graph graph(comm, vertex_edge, part);
+    GraphUpscale upscale(graph, spect_tol, max_evects, hybridization);
 
     upscale.ShowSetupTime();
     ParPrint(myid, std::cout << "\nEigensolving:" << std::endl);
@@ -146,14 +151,12 @@ int main(int argc, char* argv[])
     }
     else
     {
-        UpscaleCoarseSolve upscale_coarse(upscale);
-        upscale.AssembleCoarseM();
+        MixedMatrix mm(upscale.GetCoarseMatrix());
+        mm.AssembleM();
 
-        ShiftedDMinvDt A_c(upscale.GetCoarseMatrix().GlobalM(),
-                           upscale.GetCoarseMatrix().GlobalD(),
-                           shift);
+        ShiftedDMinvDt A_c(mm.GlobalM(), mm.GlobalD(), shift);
 
-        std::vector<Vector> evects_c(num_modes, Vector(upscale_coarse.Rows()));
+        std::vector<Vector> evects_c(num_modes, Vector(mm.GlobalD().Rows()));
 
         for (auto& evect : evects_c)
         {
@@ -161,6 +164,7 @@ int main(int argc, char* argv[])
             evect.Normalize();
         }
 
+        UpscaleCoarseSolve upscale_coarse(upscale);
         auto evals = LOBPCG(A_c, evects_c, &upscale_coarse, verbose);
 
         for (auto eval : evals)
@@ -191,5 +195,15 @@ int main(int argc, char* argv[])
     ParPrint(myid, std::cout << "\nEigen Solve Time: " << timer.TotalTime() << "\n");
 
     return EXIT_SUCCESS;
+}
+
+std::vector<int> MetisPart(const SparseMatrix& vertex_edge, int num_parts)
+{
+    SparseMatrix edge_vertex = vertex_edge.Transpose();
+    SparseMatrix vertex_vertex = vertex_edge.Mult(edge_vertex);
+
+    double ubal_tol = 1.2;
+
+    return Partition(vertex_vertex, num_parts, ubal_tol);
 }
 

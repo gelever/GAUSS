@@ -279,14 +279,6 @@ protected:
     std::vector<int> fine_elim_dofs_;
     std::vector<int> coarse_elim_dofs_;
 
-    /// Force assembles fine M from element matrices
-    /** @warning this does not remake solver! */
-    void AssembleFineM();
-
-    /// Force assembles coarse M from element matrices
-    /** @warning this does not remake solver! */
-    void AssembleCoarseM();
-
 private:
     double spect_tol_;
     int max_evects_;
