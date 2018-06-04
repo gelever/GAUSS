@@ -48,7 +48,7 @@ class ShiftedDMinvDt : public ParOperator
         */
         ShiftedDMinvDt(const ParMatrix& M, const ParMatrix& D, double shift = 1.0)
             : ParOperator(D.GetComm(), D.GetRowStarts()),
-              M_prec_(M, false, true, true, 0.0, 0.1, 0.10),
+              M_prec_(M, false, false, true, 0.0, 0.1, 0.10),
               M_solver_(M, M_prec_, 5000 /* max_iter */ , 1e-12 /* rel tol */,
                         1e-16 /* abs tol */, false /* verbose */, parlinalgcpp::ParMult),
               D_(D), DTx_(D_.Cols()), MinvDTx_(D_.Cols()),
@@ -133,7 +133,9 @@ int main(int argc, char* argv[])
     Graph graph(comm, vertex_edge, part);
     GraphUpscale upscale(graph, spect_tol, max_evects, hybridization);
 
+    upscale.PrintInfo();
     upscale.ShowSetupTime();
+
     ParPrint(myid, std::cout << "\nEigensolving:" << std::endl);
 
     Timer timer(Timer::Start::True);
