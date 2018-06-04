@@ -40,6 +40,9 @@ target_link_libraries(mlmc smoothG)
 add_executable(mleigen mleigen.cpp)
 target_link_libraries(mleigen smoothG)
 
+add_executable(sampler sampler.cpp)
+target_link_libraries(sampler smoothG
+
 if (NOT DEFINED SMOOTHG_TEST_TOL)
     set(SMOOTHG_TEST_TOL 1e-4)
 endif()
