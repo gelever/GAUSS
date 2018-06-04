@@ -72,7 +72,7 @@ add_library(smoothG
     src/MinresBlockSolver.cpp
     src/MixedMatrix.cpp
     src/SharedEntityComm.cpp
-    src/Upscale.cpp
+    src/SPDSolver.cpp
     src/Utilities.cpp
 )
 
@@ -82,7 +82,8 @@ set_target_properties(smoothG PROPERTIES
         CXX_EXTENSIONS NO
 )
 
-target_compile_options(smoothG PRIVATE $<$<CXX_COMPILER_ID:GNU>:-Wall -O2>)
+target_compile_options(smoothG PRIVATE $<$<CXX_COMPILER_ID:GNU>:-Wall -Wextra -Wpedantic -O2>)
+target_compile_options(smoothG PRIVATE $<$<CXX_COMPILER_ID:Clang>:-Wall -Wextra -Wpedantic -O2>)
 
 target_link_libraries(smoothG
     PUBLIC

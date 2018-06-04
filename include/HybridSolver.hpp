@@ -78,25 +78,16 @@ class HybridSolver : public MGLSolver
 {
 public:
     /**
-       @brief Constructor for fine-level hybridiziation solver.
+       @brief Constructor for hybridiziation solver.
 
-       @param mgL Mixed matrices for the graph Laplacian in the fine level
+       @param mgL Mixed matrices for the graph Laplacian
     */
-    HybridSolver(const ElemMixedMatrix<std::vector<double>>& mgL);
-
-    /**
-       @brief Constructor for coarse-level hybridiziation solver.
-
-       @param mgL Mixed matrices for the graph Laplacian in the coarse level
-       @param mgLc Mixed graph Laplacian Coarsener from fine to coarse level
-    */
-    HybridSolver(const ElemMixedMatrix<DenseMatrix>& mgl,
-                 const GraphCoarsen& coarsener);
+    HybridSolver(const MixedMatrix& mgL);
 
     virtual ~HybridSolver() = default;
 
     /// Wrapper for solving the saddle point system through hybridization
-    void Solve(const BlockVector& Rhs, BlockVector& Sol) const;
+    void Solve(const BlockVector& Rhs, BlockVector& Sol) const override;
 
     /// Transform original RHS to the RHS of the hybridized system
     void RHSTransform(const BlockVector& OriginalRHS, VectorView HybridRHS) const;
@@ -138,24 +129,17 @@ public:
 
 private:
 
-    template <typename T>
-    SparseMatrix AssembleHybridSystem(
-        const MixedMatrix& mgl,
-        const std::vector<T>& M_el,
-        const std::vector<int>& j_multiplier_edgedof);
+    SparseMatrix AssembleHybridSystem(const MixedMatrix& mgl,
+                                      const std::vector<int>& j_multiplier_edgedof);
 
-    SparseMatrix MakeEdgeDofMultiplier(const MixedMatrix& mgl,
-                                       const GraphCoarsen& coarsener) const;
+    SparseMatrix MakeEdgeDofMultiplier() const;
 
-    SparseMatrix MakeLocalC(int agg, const MixedMatrix& mgl,
+    SparseMatrix MakeLocalC(int agg, const ParMatrix& edge_true_edge,
                             const std::vector<int>& j_multiplier_edgedof,
                             std::vector<int>& edge_map,
                             std::vector<bool>& edge_marker) const;
 
     void InitSolver(SparseMatrix local_hybrid);
-
-    MPI_Comm comm_;
-    int myid_;
 
     SparseMatrix agg_vertexdof_;
     SparseMatrix agg_edgedof_;
@@ -186,9 +170,8 @@ private:
     mutable Vector trueMu_;
     mutable Vector Hrhs_;
     mutable Vector Mu_;
-
-    bool use_w_;
 };
+
 
 } // namespace smoothg
 

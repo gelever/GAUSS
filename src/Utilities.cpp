@@ -425,6 +425,16 @@ void OrthoConstant(MPI_Comm comm, VectorView vect, int global_size)
     vect -= global_sum / global_size;
 }
 
+void OrthoConstant(MPI_Comm comm, VectorView vect, const VectorView& constant)
+{
+    double local_sum = constant.Mult(vect);
+    double global_sum = 0.0;
+
+    MPI_Allreduce(&local_sum, &global_sum, 1, MPI_DOUBLE, MPI_SUM, comm);
+
+    vect.Sub(global_sum, constant);
+}
+
 void Deflate(DenseMatrix& A, const VectorView& v)
 {
     int rows = A.Rows();
@@ -743,7 +753,7 @@ SparseMatrix Add(double alpha, const SparseMatrix& A, double beta, const SparseM
 
     CooMatrix coo(A.Rows(), A.Cols());
 
-    auto add_mat = [&coo](double scale, const SparseMatrix& mat)
+    auto add_mat = [&coo](double scale, const SparseMatrix & mat)
     {
         const auto& indptr = mat.GetIndptr();
         const auto& indices = mat.GetIndices();

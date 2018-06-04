@@ -46,17 +46,23 @@ public:
         @param global_weight Global edge weights
         @param W_global optional global W block
     */
-    MixedMatrix(const Graph& graph, const std::vector<double>& global_weight,
-                const SparseMatrix& W_global = SparseMatrix());
+    MixedMatrix(const Graph& graph);
 
     /** @brief Constructor with given local matrices
-        @param M_local Local M
+        @param M_elem Local M element matrices
+        @param elem_dof element to dof relationship
         @param D_local Local D
         @param W_local Local W
         @param edge_true_edge Edge to true edge relationship
+
+        @todo(gelever1) are there too many parameters here???
+        @param agg_vertexdof_ aggregate to vertex dof
+        @param face_facedof_ face to face dof
     */
-    MixedMatrix(SparseMatrix M_local, SparseMatrix D_local, SparseMatrix W_local,
-                ParMatrix edge_true_edge);
+    MixedMatrix(std::vector<DenseMatrix> M_elem, SparseMatrix elem_dof,
+                SparseMatrix D_local, SparseMatrix W_local,
+                ParMatrix edge_true_edge, SparseMatrix agg_vertexdof_,
+                SparseMatrix face_facedof_);
 
     /** @brief Default Destructor */
     virtual ~MixedMatrix() noexcept = default;
@@ -68,10 +74,30 @@ public:
     MixedMatrix(MixedMatrix&& other) noexcept;
 
     /** @brief Assignment Operator */
-    MixedMatrix& operator=(MixedMatrix other) noexcept;
+    MixedMatrix& operator=(MixedMatrix&& other) noexcept;
 
     /** @brief Swap two mixed matrices */
     friend void swap(MixedMatrix& lhs, MixedMatrix& rhs) noexcept;
+
+    /** @brief Assemble M from element matrices */
+    void AssembleM();
+
+    /** @brief Assemble scaled M from element matrices
+        @param agg_weight weights per aggregate
+    */
+    void AssembleM(const std::vector<double>& agg_weight);
+
+    /** @brief Access element matrices */
+    const std::vector<DenseMatrix>& GetElemM() const { return M_elem_; }
+
+    /** @brief Access element to dof relationship */
+    const SparseMatrix& GetElemDof() const { return elem_dof_; }
+
+    /** @brief Access aggregate to vertex dof relationship */
+    const SparseMatrix& GetAggVertexDof() const { return agg_vertexdof_; }
+
+    /** @brief Access face to face dof relationship */
+    const SparseMatrix& GetFaceFaceDof() const { return face_facedof_; }
 
     /* @brief Local size of mixed matrix, number of edges + number of vertices */
     int Rows() const;
@@ -129,19 +155,12 @@ public:
     const std::vector<int>& TrueOffsets() const { return true_offsets_; }
 
 protected:
-
-    std::vector<double> MakeLocalWeight(const ParMatrix& edge_true_edge,
-                                        const ParMatrix& edge_edge,
-                                        const std::vector<int>& edge_map,
-                                        const std::vector<double>& global_weight);
+    void Init();
 
     SparseMatrix MakeLocalD(const ParMatrix& edge_true_edge,
-                            const SparseMatrix& vertex_edge);
+                            const SparseMatrix& vertex_edge) const;
 
-    SparseMatrix MakeLocalW(const Graph& graph,
-                            const SparseMatrix& W_global);
-
-    void Init();
+    ParMatrix edge_true_edge_;
 
     // Local blocks
     SparseMatrix M_local_;
@@ -153,159 +172,18 @@ protected:
     ParMatrix D_global_;
     ParMatrix W_global_;
 
-    ParMatrix edge_true_edge_;
-
     std::vector<int> offsets_;
     std::vector<int> true_offsets_;
-};
 
-/**
-   @brief Mixed matrix such that M is kept as element matrices,
-          with the option to assemble.
-
-          Two types of element matrices are supported:
-          vector for when M is diagonal and dense matrix otherwise.
-*/
-template <typename T>
-class ElemMixedMatrix : public MixedMatrix
-{
-public:
-    /** @brief Generates local matrices given global graph information
-        @param graph Global graph information
-        @param global_weight Global edge weights
-        @param W_global optional global W block
-    */
-    ElemMixedMatrix(const Graph& graph, const std::vector<double>& global_weight,
-                    const SparseMatrix& W_global = SparseMatrix());
-
-    /** @brief Constructor with given local matrices
-        @param M_elem Local M element matrices
-        @param elem_dof element to dof relationship
-        @param D_local Local D
-        @param W_local Local W
-        @param edge_true_edge Edge to true edge relationship
-    */
-    ElemMixedMatrix(std::vector<T> M_elem, SparseMatrix elem_dof,
-                    SparseMatrix D_local, SparseMatrix W_local,
-                    ParMatrix edge_true_edge);
-
-    /** @brief Default Destructor */
-    virtual ~ElemMixedMatrix() noexcept = default;
-
-    /** @brief Copy Constructor */
-    ElemMixedMatrix(const ElemMixedMatrix& other) noexcept;
-
-    /** @brief Move Constructor */
-    ElemMixedMatrix(ElemMixedMatrix&& other) noexcept;
-
-    /** @brief Assignment Operator */
-    ElemMixedMatrix& operator=(ElemMixedMatrix other) noexcept;
-
-    /** @brief Swap two mixed matrices */
-    template <typename U>
-    friend void swap(ElemMixedMatrix<U>& lhs, ElemMixedMatrix<U>& rhs) noexcept;
-
-    /** @brief Assemble M from element matrices */
-    void AssembleM();
-
-    /** @brief Assemble scaled M from element matrices
-        @param agg_weight weights per aggregate
-    */
-    void AssembleM(const std::vector<double>& agg_weight);
-
-    /** @brief Access element matrices */
-    const std::vector<T>& GetElemM() const { return M_elem_; }
-
-    /** @brief Access element to dof relationship */
-    const SparseMatrix& GetElemDof() const { return elem_dof_; }
-
-private:
-    std::vector<T> M_elem_;
+    // Element information
+    std::vector<DenseMatrix> M_elem_;
     SparseMatrix elem_dof_;
+
+    // More information from coarsener
+    // @todo(gelever1): find gooder names for these???
+    SparseMatrix agg_vertexdof_;
+    SparseMatrix face_facedof_;
 };
-
-template <typename T>
-ElemMixedMatrix<T>::ElemMixedMatrix(std::vector<T> M_elem, SparseMatrix elem_dof,
-                                    SparseMatrix D_local, SparseMatrix W_local,
-                                    ParMatrix edge_true_edge)
-    : MixedMatrix(SparseMatrix(), std::move(D_local),
-                  std::move(W_local), std::move(edge_true_edge)),
-      M_elem_(std::move(M_elem)), elem_dof_(std::move(elem_dof))
-{
-}
-
-template <typename T>
-ElemMixedMatrix<T>::ElemMixedMatrix(const ElemMixedMatrix<T>& other) noexcept
-    : MixedMatrix(other), M_elem_(other.M_elem_), elem_dof_(other.elem_dof_)
-{
-
-}
-
-template <typename T>
-ElemMixedMatrix<T>::ElemMixedMatrix(ElemMixedMatrix<T>&& other) noexcept
-{
-    swap(*this, other);
-}
-
-template <typename T>
-ElemMixedMatrix<T>& ElemMixedMatrix<T>::operator=(ElemMixedMatrix<T> other) noexcept
-{
-    swap(*this, other);
-
-    return *this;
-}
-
-template <typename T>
-void swap(ElemMixedMatrix<T>& lhs, ElemMixedMatrix<T>& rhs) noexcept
-{
-    swap(static_cast<MixedMatrix&>(lhs), static_cast<MixedMatrix&>(rhs));
-
-    swap(lhs.M_elem_, rhs.M_elem_);
-    swap(lhs.elem_dof_, rhs.elem_dof_);
-}
-
-template <typename T>
-void ElemMixedMatrix<T>::AssembleM()
-{
-    int M_size = D_local_.Cols();
-    CooMatrix M_coo(M_size, M_size);
-
-    int num_aggs = M_elem_.size();
-
-    for (int i = 0; i < num_aggs; ++i)
-    {
-        std::vector<int> dofs = elem_dof_.GetIndices(i);
-
-        M_coo.Add(dofs, dofs, M_elem_[i]);
-    }
-
-    M_local_ = M_coo.ToSparse();
-    ParMatrix M_d(edge_true_edge_.GetComm(), edge_true_edge_.GetRowStarts(), M_local_);
-    M_global_ = parlinalgcpp::RAP(M_d, edge_true_edge_);
-}
-
-template <typename T>
-void ElemMixedMatrix<T>::AssembleM(const std::vector<double>& agg_weight)
-{
-    assert(agg_weight.size() == M_elem_.size());
-
-    int M_size = D_local_.Cols();
-    CooMatrix M_coo(M_size, M_size);
-
-    int num_aggs = M_elem_.size();
-
-    for (int i = 0; i < num_aggs; ++i)
-    {
-        double scale = 1.0 / agg_weight[i];
-        std::vector<int> dofs = elem_dof_.GetIndices(i);
-
-        M_coo.Add(dofs, dofs, scale, M_elem_[i]);
-    }
-
-    M_local_ = M_coo.ToSparse();
-    ParMatrix M_d(edge_true_edge_.GetComm(), edge_true_edge_.GetRowStarts(), M_local_);
-    M_global_ = parlinalgcpp::RAP(M_d, edge_true_edge_);
-}
 
 } // namespace smoothg
 
