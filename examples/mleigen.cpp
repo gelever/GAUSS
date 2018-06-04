@@ -31,7 +31,7 @@ using linalgcpp::ReadCSR;
 
 using parlinalgcpp::ParOperator;
 using parlinalgcpp::LOBPCG;
-using parlinalgcpp::ParCG;
+using linalgcpp::PCGSolver;
 using parlinalgcpp::BoomerAMG;
 using parlinalgcpp::ParaSails;
 
@@ -48,8 +48,9 @@ class ShiftedDMinvDt : public ParOperator
         */
         ShiftedDMinvDt(const ParMatrix& M, const ParMatrix& D, double shift = 1.0)
             : ParOperator(D.GetComm(), D.GetRowStarts()),
-              M_prec_(M, false, 1, 1, 0.0, 0.1, 0.05),
-              M_solver_(M, M_prec_, 5000 /* max_iter */ , 1e-8 /* tol */),
+              M_prec_(M, false, true, true, 0.0, 0.1, 0.10),
+              M_solver_(M, M_prec_, 5000 /* max_iter */ , 1e-12 /* rel tol */,
+                        1e-16 /* abs tol */, false /* verbose */, parlinalgcpp::ParMult),
               D_(D), DTx_(D_.Cols()), MinvDTx_(D_.Cols()),
               shift_(shift) { }
 
@@ -68,7 +69,7 @@ class ShiftedDMinvDt : public ParOperator
 
     private:
         ParaSails M_prec_;
-        ParCG M_solver_;
+        PCGSolver M_solver_;
         ParMatrix D_;
 
         mutable Vector DTx_;
