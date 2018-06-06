@@ -85,6 +85,8 @@ public:
     */
     double Compute(SparseMatrix& A, DenseMatrix& evects);
 
+    double BlockCompute(SparseMatrix M, SparseMatrix D, DenseMatrix& evects);
+
     /**
        Given symmetric matrices \f$ A, B \f$, find the eigenvectors
        corresponding to the smallest few eigenvalues of the generalized eigen

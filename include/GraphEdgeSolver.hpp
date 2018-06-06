@@ -73,8 +73,10 @@ public:
        @param D matrix \f$ D \f$ in the formula in the class description
 
     */
+    /*
     GraphEdgeSolver(const std::vector<double>& M_data,
                     const SparseMatrix& D);
+                    */
 
     /** @brief Default Destructor */
     ~GraphEdgeSolver() noexcept = default;
@@ -194,10 +196,10 @@ public:
                     DenseMatrix& u_sol) const;
 
 private:
-    SparseMatrix MinvDT_;
-    SparseSolver Ainv_;
+    SparseSolver block_Ainv_;
 
-    mutable Vector vect_sol_;
+    mutable BlockVector rhs_;
+    mutable BlockVector sol_;
 };
 
 } // namespace smoothg

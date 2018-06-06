@@ -125,6 +125,11 @@ void GraphCoarsen::ComputeVertexTargets(const ParMatrix& M_ext_global,
     DenseMatrix evects;
     LocalEigenSolver eigs(max_evects_, spect_tol_);
 
+    DenseMatrix DT;
+    DenseMatrix Minv;
+    DenseMatrix MinvDT;
+    DenseMatrix DT_evect;
+
     for (int agg = 0; agg < num_aggs; ++agg)
     {
         std::vector<int> edge_dofs_ext = GetExtDofs(gt_.agg_ext_edge_, agg);
@@ -139,26 +144,38 @@ void GraphCoarsen::ComputeVertexTargets(const ParMatrix& M_ext_global,
 
         SparseMatrix M_sub = M_ext.GetSubMatrix(edge_dofs_ext, edge_dofs_ext, col_marker_);
         SparseMatrix D_sub = D_ext.GetSubMatrix(vertex_dofs_ext, edge_dofs_ext, col_marker_);
-        SparseMatrix D_sub_T = D_sub.Transpose();
 
-        D_sub_T.InverseScaleRows(M_sub);
-
-        SparseMatrix DMinvDT = D_sub.Mult(D_sub_T);
-
-        eigs.Compute(DMinvDT, evects);
+        eigs.BlockCompute(M_sub, D_sub, evects);
 
         if (evects.Cols() > 1)
         {
-            DenseMatrix evects_ortho = evects.GetCol(1, evects.Cols());
-            agg_ext_sigma_[agg] = D_sub_T.Mult(evects_ortho);
+               DenseMatrix evects_ortho = evects.GetCol(1, evects.Cols());
+
+               DT_evect.SetSize(D_sub.Cols(), evects_ortho.Cols());
+               D_sub.MultAT(evects_ortho, DT_evect);
+
+               DenseMatrix MinvDT_evect(DT_evect.Rows(), DT_evect.Cols());
+
+               SparseSolver Minv(M_sub);
+
+               // TODO(gelever1): define this in SparseSolver::Mult(const DenseMatrix)
+               // or something of the sort
+               for (int i = 0; i < DT_evect.Cols(); ++i)
+               {
+                   auto in_vect = DT_evect.GetColView(i);
+                   auto out_vect = MinvDT_evect.GetColView(i);
+                   Minv.Mult(in_vect, out_vect);
+               }
+
+               agg_ext_sigma_[agg] = std::move(MinvDT_evect);
         }
         else
         {
-            agg_ext_sigma_[agg].SetSize(D_sub_T.Rows(), 0);
+            agg_ext_sigma_[agg].SetSize(M_sub.Rows(), 0);
         }
 
         DenseMatrix evects_restricted = RestrictLocal(evects, col_marker_,
-                                                      vertex_dofs_ext, vertex_dofs_local);
+                vertex_dofs_ext, vertex_dofs_local);
 
         VectorView first_vect = evects_restricted.GetColView(0);
         vertex_targets_[agg] = smoothg::Orthogonalize(evects_restricted, first_vect, 1, max_evects_);
@@ -312,7 +329,8 @@ void GraphCoarsen::ComputeEdgeTargets(const MixedMatrix& mgl,
         const auto& D_local = shared ? Combine(face_D, num_face_edges) : face_D[0];
         const int split = shared ? face_D[0].Rows() : GetSplit(face);
 
-        GraphEdgeSolver solver(M_local, D_local);
+        // TODO(gelever1): M still assumed diagonal here
+        GraphEdgeSolver solver(SparseMatrix(M_local), D_local);
         Vector one_neg_one = MakeOneNegOne(D_local.Rows(), split);
 
         Vector pv_sol = solver.Mult(one_neg_one);
