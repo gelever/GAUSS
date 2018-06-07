@@ -144,11 +144,10 @@ private:
 
     Vect2D<DenseMatrix> CollectSigma(const SparseMatrix& face_edge);
     Vect2D<SparseMatrix> CollectD(const SparseMatrix& D_local);
-    Vect2D<std::vector<double>> CollectM(const SparseMatrix& M_local);
+    Vect2D<SparseMatrix> CollectM(const SparseMatrix& M_local);
 
-    std::vector<double> Combine(const std::vector<std::vector<double>>& face_M,
-                                int num_face_edges) const;
-    SparseMatrix Combine(const std::vector<SparseMatrix>& face_D, int num_face_edges) const;
+    SparseMatrix CombineM(const std::vector<SparseMatrix>& face_M, int num_face_edges) const;
+    SparseMatrix CombineD(const std::vector<SparseMatrix>& face_D, int num_face_edges) const;
 
     Vector MakeOneNegOne(int size, int split) const;
 
