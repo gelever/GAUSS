@@ -512,7 +512,7 @@ void SharedEntityComm<T>::BroadcastSizes(std::vector<T>& mats)
 
 /// Helper function to check for valid value in a map
 inline
-int FindEntity(const std::unordered_map<int, int> true_entity_to_entity, int true_entity)
+int FindEntity(const std::unordered_map<int, int>& true_entity_to_entity, int true_entity)
 {
     auto iter = true_entity_to_entity.find(true_entity);
 
