@@ -510,17 +510,6 @@ void SharedEntityComm<T>::BroadcastSizes(std::vector<T>& mats)
                 header_requests_.data(), header_statuses.data());
 }
 
-/// Helper function to check for valid value in a map
-inline
-int FindEntity(const std::unordered_map<int, int>& true_entity_to_entity, int true_entity)
-{
-    auto iter = true_entity_to_entity.find(true_entity);
-
-    assert(iter != true_entity_to_entity.end());
-
-    return iter->second;
-}
-
 template <class T>
 void SharedEntityComm<T>::BroadcastData(std::vector<T>& mats)
 {
@@ -545,7 +534,7 @@ void SharedEntityComm<T>::BroadcastData(std::vector<T>& mats)
         int owner = entity_master_[offd_T_indices[i]];
 
         int true_entity = recv_headers_[i].back();
-        int entity = FindEntity(true_entity_to_entity, true_entity);
+        int entity = true_entity_to_entity.at(true_entity);
 
         mats[entity] = ReceiveData(recv_headers_[i], owner,
                                    ENTITY_MESSAGE_TAG,
