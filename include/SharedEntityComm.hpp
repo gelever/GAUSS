@@ -40,6 +40,8 @@
 #ifndef __SHAREDENTITYCOMM_HPP__
 #define __SHAREDENTITYCOMM_HPP__
 
+#include <unordered_map>
+
 #include "linalgcpp.hpp"
 #include "parlinalgcpp.hpp"
 
@@ -510,7 +512,7 @@ void SharedEntityComm<T>::BroadcastSizes(std::vector<T>& mats)
 
 /// Helper function to check for valid value in a map
 inline
-int FindEntity(const std::map<int, int> true_entity_to_entity, int true_entity)
+int FindEntity(const std::unordered_map<int, int> true_entity_to_entity, int true_entity)
 {
     auto iter = true_entity_to_entity.find(true_entity);
 
@@ -529,7 +531,8 @@ void SharedEntityComm<T>::BroadcastData(std::vector<T>& mats)
     int num_recv = entity_offd.Cols();
     assert(num_recv == num_slave_comms_);
 
-    std::map<int, int> true_entity_to_entity;
+    std::unordered_map<int, int> true_entity_to_entity;
+    true_entity_to_entity.reserve(num_recv);
 
     for (int i = 0; i < num_recv; ++i)
     {
