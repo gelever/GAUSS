@@ -530,6 +530,15 @@ double LocalEigenSolver::BlockCompute(
 
     CheckNotConverged(max_num_evects, num_converged);
 
+    //evects.Print("EVECTS:");
+
+    assert(evects.Rows() > 0 && evects.Cols() > 0);
+    if (evects(0, 0) < 0)
+    {
+        auto vect = evects.GetColView(0);
+        vect *= -1.0;
+    }
+
     if (rel_tol_ < 1.0 && max_num_evects > 1)
     {
         // Find the largest eigenvalue

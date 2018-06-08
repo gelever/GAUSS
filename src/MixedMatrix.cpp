@@ -26,6 +26,7 @@ namespace smoothg
 MixedMatrix::MixedMatrix(const Graph& graph)
     : vertex_vdof(SparseIdentity(graph.vertex_edge_local_.Rows())),
       vertex_edof(graph.vertex_edge_local_),
+      vertex_bdof(SparseMatrix(graph.vertex_edge_local_.Rows(), graph.vertex_edge_local_.Cols())),
       edge_edof(SparseIdentity(graph.vertex_edge_local_.Cols())),
       edge_true_edge_(graph.edge_true_edge_),
       D_local_(MakeLocalD(graph.edge_true_edge_, graph.vertex_edge_local_)),
@@ -119,6 +120,7 @@ void MixedMatrix::Init()
 MixedMatrix::MixedMatrix(const MixedMatrix& other) noexcept
     : vertex_vdof(other.vertex_vdof),
       vertex_edof(other.vertex_edof),
+      vertex_bdof(other.vertex_bdof),
       edge_edof(other.edge_edof),
       edge_true_edge_(other.edge_true_edge_),
       M_local_(other.M_local_),
@@ -171,6 +173,7 @@ void swap(MixedMatrix& lhs, MixedMatrix& rhs) noexcept
 
     swap(lhs.vertex_vdof, rhs.vertex_vdof);
     swap(lhs.vertex_edof, rhs.vertex_edof);
+    swap(lhs.vertex_bdof, rhs.vertex_bdof);
     swap(lhs.edge_edof, rhs.edge_edof);
 }
 

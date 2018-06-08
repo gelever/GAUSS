@@ -156,6 +156,7 @@ public:
 
     SparseMatrix vertex_vdof;
     SparseMatrix vertex_edof;
+    SparseMatrix vertex_bdof;
     SparseMatrix edge_edof;
 
 protected:

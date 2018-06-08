@@ -40,9 +40,30 @@ GraphUpscale::GraphUpscale(Graph graph, double spect_tol, int max_evects, bool h
     mgl_.emplace_back(graph_);
     GetFineMatrix().AssembleM(); // Coarsening requires assembled M, for now
 
-    coarsener_ = GraphCoarsen(graph_, GetFineMatrix(), max_evects_, spect_tol_);
+    GraphTopology gt(graph_);
+
+    coarsener_ = GraphCoarsen(gt, GetFineMatrix(), max_evects_, spect_tol_);
 
     mgl_.push_back(coarsener_.Coarsen(GetFineMatrix()));
+
+
+    /*
+    printf("STARTING MULTILEVEL TEST:\n");
+    double coarsen_factor = 2.0;
+    GraphTopology gt_c(gt, coarsen_factor);
+
+    GetCoarseMatrix().AssembleM();
+
+    printf("NUM AGGS: %d -> %d\n", gt.agg_vertex_local_.Rows(), gt_c.agg_vertex_local_.Rows());
+    GraphCoarsen gc_c(gt_c, GetCoarseMatrix(), max_evects_, spect_tol_);
+    MixedMatrix mm = gc_c.Coarsen(GetCoarseMatrix());
+    mm.AssembleM();
+
+    mm.LocalM().PrintDense("Coarse M:");
+    mm.LocalD().PrintDense("Coarse D:");
+
+    printf("END MULTILEVEL TEST:\n");
+    */
 
     MakeCoarseVectors();
     MakeCoarseSolver();
