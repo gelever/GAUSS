@@ -65,7 +65,7 @@ public:
     */
     GraphTopology(const SparseMatrix& vertex_edge,
                   const std::vector<int>& partition,
-                  const ParMatrix& edge_true_edge);
+                  ParMatrix edge_true_edge);
 
     /** @brief Default Destructor */
     ~GraphTopology() noexcept = default;
@@ -95,12 +95,13 @@ public:
     ParMatrix face_edge_;      // Face to false edge
     ParMatrix agg_ext_vertex_; // Aggregate to extended vertex
     ParMatrix agg_ext_edge_;   // Aggregate to extended edge
+    ParMatrix edge_true_edge_;   // Edge to true edge
 
 private:
     void Init(const SparseMatrix& vertex_edge,
               const std::vector<int>& partition,
               const ParMatrix& edge_edge,
-              const ParMatrix& edge_true_edge);
+              ParMatrix edge_true_edge);
 
     SparseMatrix MakeFaceAggInt(const ParMatrix& agg_agg);
 

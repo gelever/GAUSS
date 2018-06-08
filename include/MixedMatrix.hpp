@@ -154,6 +154,10 @@ public:
     /* @brief Block true offsets */
     const std::vector<int>& TrueOffsets() const { return true_offsets_; }
 
+    SparseMatrix vertex_vdof;
+    SparseMatrix vertex_edof;
+    SparseMatrix edge_edof;
+
 protected:
     void Init();
 

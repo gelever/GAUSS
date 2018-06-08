@@ -24,7 +24,10 @@ namespace smoothg
 {
 
 MixedMatrix::MixedMatrix(const Graph& graph)
-    : edge_true_edge_(graph.edge_true_edge_),
+    : vertex_vdof(SparseIdentity(graph.vertex_edge_local_.Rows())),
+      vertex_edof(graph.vertex_edge_local_),
+      edge_edof(SparseIdentity(graph.vertex_edge_local_.Cols())),
+      edge_true_edge_(graph.edge_true_edge_),
       D_local_(MakeLocalD(graph.edge_true_edge_, graph.vertex_edge_local_)),
       W_local_(graph.W_local_),
       elem_dof_(graph.vertex_edge_local_),
@@ -114,7 +117,10 @@ void MixedMatrix::Init()
 }
 
 MixedMatrix::MixedMatrix(const MixedMatrix& other) noexcept
-    : edge_true_edge_(other.edge_true_edge_),
+    : vertex_vdof(other.vertex_vdof),
+      vertex_edof(other.vertex_edof),
+      edge_edof(other.edge_edof),
+      edge_true_edge_(other.edge_true_edge_),
       M_local_(other.M_local_),
       D_local_(other.D_local_),
       W_local_(other.W_local_),
@@ -123,6 +129,8 @@ MixedMatrix::MixedMatrix(const MixedMatrix& other) noexcept
       W_global_(other.W_global_),
       offsets_(other.offsets_),
       true_offsets_(other.true_offsets_),
+      M_elem_(other.M_elem_),
+      elem_dof_(other.elem_dof_),
       agg_vertexdof_(other.agg_vertexdof_),
       face_facedof_(other.face_facedof_)
 {
@@ -160,6 +168,10 @@ void swap(MixedMatrix& lhs, MixedMatrix& rhs) noexcept
 
     swap(lhs.agg_vertexdof_, rhs.agg_vertexdof_);
     std::swap(lhs.face_facedof_, rhs.face_facedof_);
+
+    swap(lhs.vertex_vdof, rhs.vertex_vdof);
+    swap(lhs.vertex_edof, rhs.vertex_edof);
+    swap(lhs.edge_edof, rhs.edge_edof);
 }
 
 int MixedMatrix::Rows() const

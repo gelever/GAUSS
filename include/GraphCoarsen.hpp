@@ -58,6 +58,18 @@ public:
     GraphCoarsen(const Graph& graph, const MixedMatrix& mgl,
                  int max_evects, double spect_tol);
 
+    /** @brief Construtor from graph topology
+
+        @param gt precomputed graph topology
+        @param mgl Fine level mixed matrix
+        @param max_evects maximum number of eigenvectors per aggregate
+        @param spect_tol spectral tolerance used to determine how many eigenvectors
+                         to keep per aggregate
+    */
+    GraphCoarsen(GraphTopology gt, const MixedMatrix& mgl,
+                 int max_evects, double spect_tol);
+
+
     /** @brief Default Destructor */
     ~GraphCoarsen() noexcept = default;
 
@@ -192,6 +204,19 @@ private:
     std::vector<DenseMatrix> vertex_targets_;
     std::vector<DenseMatrix> edge_targets_;
     std::vector<DenseMatrix> agg_ext_sigma_;
+
+    ////////////////////
+    // Temp Stuff
+    SparseMatrix agg_vertexdof_;
+    SparseMatrix agg_edgedof_;
+    SparseMatrix face_edgedof_;
+
+    ParMatrix agg_edof_;
+
+    ParMatrix agg_ext_vdof_;
+    ParMatrix agg_ext_edof_;
+    // End Temp Stuff
+    //////////////////
 
     mutable std::vector<int> col_marker_;
 

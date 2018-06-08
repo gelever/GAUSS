@@ -41,20 +41,22 @@ GraphTopology::GraphTopology(const GraphTopology& fine_topology, double coarseni
 
 GraphTopology::GraphTopology(const SparseMatrix& vertex_edge,
                              const std::vector<int>& partition,
-                             const ParMatrix& edge_true_edge)
+                             ParMatrix edge_true_edge)
 {
     const auto true_edge_edge = edge_true_edge.Transpose();
     const auto edge_edge = edge_true_edge.Mult(true_edge_edge);
 
-    Init(vertex_edge, partition, edge_edge, edge_true_edge);
+    Init(vertex_edge, partition, edge_edge, std::move(edge_true_edge));
 }
 
 void GraphTopology::Init(const SparseMatrix& vertex_edge,
                          const std::vector<int>& partition,
                          const ParMatrix& edge_edge,
-                         const ParMatrix& edge_true_edge)
+                         ParMatrix edge_true_edge)
 {
-    MPI_Comm comm = edge_true_edge.GetComm();
+    edge_true_edge_ = std::move(edge_true_edge);
+
+    MPI_Comm comm = edge_true_edge_.GetComm();
 
     agg_vertex_local_ = MakeAggVertex(partition);
 
@@ -101,12 +103,13 @@ void GraphTopology::Init(const SparseMatrix& vertex_edge,
     face_true_face_ = MakeEntityTrueEntity(face_face_);
 
     ParMatrix vertex_edge_d(comm, vertex_starts, edge_starts, vertex_edge);
-    ParMatrix vertex_true_edge = vertex_edge_d.Mult(edge_true_edge);
+    ParMatrix vertex_true_edge = vertex_edge_d.Mult(edge_true_edge_);
     ParMatrix edge_vertex = vertex_true_edge.Transpose();
-    ParMatrix agg_edge = agg_edge_d.Mult(edge_true_edge);
+    ParMatrix agg_edge = agg_edge_d.Mult(edge_true_edge_);
 
     agg_ext_vertex_ = agg_edge.Mult(edge_vertex);
     agg_ext_vertex_ = 1.0;
+    vertex_true_edge = 1.0;
 
     ParMatrix agg_ext_edge_ext = agg_ext_vertex_.Mult(vertex_true_edge);
     agg_ext_edge_ = RestrictInterior(agg_ext_edge_ext);
@@ -122,7 +125,8 @@ GraphTopology::GraphTopology(const GraphTopology& other) noexcept
       face_true_face_(other.face_true_face_),
       face_edge_(other.face_edge_),
       agg_ext_vertex_(other.agg_ext_vertex_),
-      agg_ext_edge_(other.agg_ext_edge_)
+      agg_ext_edge_(other.agg_ext_edge_),
+      edge_true_edge_(other.edge_true_edge_)
 {
 
 }
@@ -152,6 +156,7 @@ void swap(GraphTopology& lhs, GraphTopology& rhs) noexcept
     swap(lhs.face_edge_, rhs.face_edge_);
     swap(lhs.agg_ext_vertex_, rhs.agg_ext_vertex_);
     swap(lhs.agg_ext_edge_, rhs.agg_ext_edge_);
+    swap(lhs.edge_true_edge_, rhs.edge_true_edge_);
 }
 
 SparseMatrix GraphTopology::MakeFaceAggInt(const ParMatrix& agg_agg)
