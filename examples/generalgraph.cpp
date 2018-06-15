@@ -170,6 +170,19 @@ int main(int argc, char* argv[])
 
     BlockVector fine_sol = upscale.SolveFine(fine_rhs);
     upscale.ShowFineSolveInfo();
+
+    /*
+    Vector sol_up = upscale.GetFineVector();
+    Vector sol_up2 = upscale.GetFineVector();
+    Vector sol_up3 = upscale.GetFineVector();
+
+    upscale.Mult(fine_rhs.GetBlock(1), sol_up, sol_up2, sol_up3);
+
+    upscale.WriteVertexVector(fine_sol.GetBlock(1), "fine_sol.txt");
+    upscale.WriteVertexVector(sol_up, "mid_sol.txt");
+    upscale.WriteVertexVector(sol_up2, "low_sol.txt");
+    upscale.WriteVertexVector(sol_up3, "low_low_sol.txt");
+    */
     /// [Solve]
 
     /// [Check Error]

@@ -108,7 +108,7 @@ void GraphEdgeSolver::Mult(const VectorView& input, VectorView sigma_sol, Vector
 
     u_sol = sol_.GetBlock(1);
     u_sol *= -1.0;
-    SubAvg(u_sol);
+    //SubAvg(u_sol);
 }
 
 DenseMatrix GraphEdgeSolver::Mult(const DenseMatrix& input) const

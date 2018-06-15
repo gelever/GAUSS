@@ -151,19 +151,29 @@ private:
     void ComputeVertexTargets(const ParMatrix& M_ext, const ParMatrix& D_ext);
     void ComputeEdgeTargets(const MixedMatrix& mgl,
                             const ParMatrix& face_edge_perm);
-    void ScaleEdgeTargets(const SparseMatrix& D_local);
+    //void ScaleEdgeTargets(const SparseMatrix& D_local);
+    void ScaleEdgeTargets(const MixedMatrix& mgl);
 
 
     Vect2D<DenseMatrix> CollectSigma(const SparseMatrix& face_edge);
+    Vect2D<Vector> CollectConstant(const MixedMatrix& mgl);
     Vect2D<SparseMatrix> CollectD(const MixedMatrix& mgl);
     Vect2D<SparseMatrix> CollectM(const SparseMatrix& M_local);
 
     SparseMatrix CombineM(const std::vector<SparseMatrix>& face_M, int num_face_edges) const;
     SparseMatrix CombineD(const std::vector<SparseMatrix>& face_D, int num_face_edges) const;
+    Vector CombineConstant(const std::vector<Vector>& face_rhs) const;
 
+    Vector MakeOneNegOne(const Vector& constant, int split) const;
     Vector MakeOneNegOne(int size, int split) const;
 
     int GetSplit(int face) const;
+
+    void BuildAggFaceM(const MixedMatrix& mgl, int face, int agg,
+                      const SparseMatrix& vertex_agg,
+                      const SparseMatrix& edge_vertex,
+                      std::vector<int>& col_marker,
+                      DenseMatrix& M_local) const;
 
     void BuildAggBubbleDof();
     void BuildFaceCoarseDof();

@@ -136,6 +136,8 @@ DenseMatrix Orthogonalize(DenseMatrix& mat, VectorView vect, int offset, int max
 */
 void OrthoConstant(DenseMatrix& mat);
 
+void OrthoConstant(DenseMatrix& mat, const VectorView& constant);
+
 /** @brief Orthogonalize this vector from the constant vector.
     This is equivalent to shifting the vector so it has zero mean.
 

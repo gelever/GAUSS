@@ -542,10 +542,19 @@ double LocalEigenSolver::BlockCompute(
     if (rel_tol_ < 1.0 && max_num_evects > 1)
     {
         // Find the largest eigenvalue
+        /*
         ARSymStdEig_<double, BlockAdapter>
         eigvalueprob(n, 1, &block_adapter, &BlockAdapter::AMultOP,
                      "LM", ncv, tolerance_, max_iterations_);
         eigvalueprob.Eigenvalues(eig_max_ptr_);
+        */
+
+        for (auto& eval : evals_)
+        {
+            //eval = std::fabs(1.0 / eval);
+        }
+
+        eig_max_ = 10.0;
 
         int num_evects = FindNumberOfEigenPairs(evals_, max_num_evects, eig_max_);
         EigenPairsSetSizeAndData(n, num_evects, evals_, evects);

@@ -410,6 +410,20 @@ void OrthoConstant(DenseMatrix& mat)
     }
 }
 
+void OrthoConstant(DenseMatrix& mat, const VectorView& constant)
+{
+    int cols = mat.Cols();
+
+    Vector vect(constant);
+    Normalize(vect);
+
+    for (int i = 0; i < cols; ++i)
+    {
+        VectorView col = mat.GetColView(i);
+        col.Sub(col.Mult(vect), vect);
+    }
+}
+
 void OrthoConstant(VectorView vect)
 {
     SubAvg(vect);

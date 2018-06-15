@@ -58,7 +58,7 @@ public:
        @param hybridization use hybridization as solver
     */
     GraphUpscale(Graph graph, double spect_tol = 0.001, int max_evects = 4,
-                 bool hybridization = false, const std::vector<int>& elim_edge_dofs = {});
+                 bool hybridization = false, int num_levels = 2, const std::vector<int>& elim_edge_dofs = {});
 
     /// Default Destructor
     ~GraphUpscale() = default;
@@ -110,10 +110,12 @@ public:
     void MakeCoarseSolver(const std::vector<double>& agg_weights);
 
     /// Get number of aggregates
-    int NumAggs() const { return coarsener_.GetGraphTopology().agg_vertex_local_.Rows(); }
+    int NumAggs() const { return coarsener_.front().GetGraphTopology().agg_vertex_local_.Rows(); }
 
     /// Wrapper for applying the upscaling, in linalgcpp terminology
     void Mult(const VectorView& x, VectorView y) const override;
+    void Mult(const VectorView& x, VectorView y, VectorView y2) const;
+    void Mult(const VectorView& x, VectorView y, VectorView y2, VectorView y3) const;
 
     /// Wrapper for applying the upscaling
     void Solve(const VectorView& x, VectorView y) const;
@@ -255,13 +257,13 @@ public:
                     const BlockVector& fine_sol) const;
 
 protected:
-    void MakeCoarseVectors();
-
     std::vector<MixedMatrix> mgl_;
-
-    GraphCoarsen coarsener_;
-    std::unique_ptr<MGLSolver> coarse_solver_;
-    std::unique_ptr<MGLSolver> fine_solver_;
+    std::vector<GraphCoarsen> coarsener_;
+    std::vector<std::unique_ptr<MGLSolver>> solver_;
+    mutable std::vector<BlockVector> rhs_;
+    mutable std::vector<BlockVector> sol_;
+    std::vector<Vector> constant_rep_;
+    std::vector<std::vector<int>> elim_dofs_;
 
     MPI_Comm comm_;
     int myid_;
@@ -270,14 +272,6 @@ protected:
     int global_edges_;
 
     double setup_time_;
-
-    mutable BlockVector rhs_coarse_;
-    mutable BlockVector sol_coarse_;
-
-    Vector constant_coarse_;
-
-    std::vector<int> fine_elim_dofs_;
-    std::vector<int> coarse_elim_dofs_;
 
 private:
     double spect_tol_;

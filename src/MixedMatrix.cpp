@@ -28,6 +28,7 @@ MixedMatrix::MixedMatrix(const Graph& graph)
       vertex_edof(graph.vertex_edge_local_),
       vertex_bdof(SparseMatrix(graph.vertex_edge_local_.Rows(), graph.vertex_edge_local_.Cols())),
       edge_edof(SparseIdentity(graph.vertex_edge_local_.Cols())),
+      constant_vect_(graph.vertex_edge_local_.Rows(), 1.0),
       edge_true_edge_(graph.edge_true_edge_),
       D_local_(MakeLocalD(graph.edge_true_edge_, graph.vertex_edge_local_)),
       W_local_(graph.W_local_),
@@ -122,6 +123,7 @@ MixedMatrix::MixedMatrix(const MixedMatrix& other) noexcept
       vertex_edof(other.vertex_edof),
       vertex_bdof(other.vertex_bdof),
       edge_edof(other.edge_edof),
+      constant_vect_(other.constant_vect_),
       edge_true_edge_(other.edge_true_edge_),
       M_local_(other.M_local_),
       D_local_(other.D_local_),
@@ -175,6 +177,7 @@ void swap(MixedMatrix& lhs, MixedMatrix& rhs) noexcept
     swap(lhs.vertex_edof, rhs.vertex_edof);
     swap(lhs.vertex_bdof, rhs.vertex_bdof);
     swap(lhs.edge_edof, rhs.edge_edof);
+    swap(lhs.constant_vect_, rhs.constant_vect_);
 }
 
 int MixedMatrix::Rows() const
@@ -238,6 +241,18 @@ ParMatrix MixedMatrix::ToPrimal() const
     }
 
     return A;
+}
+
+SparseMatrix MixedMatrix::AssembleElem(int elem)
+{
+    int M_size = D_local_.Cols();
+    CooMatrix M_coo(M_size, M_size);
+
+    std::vector<int> dofs = elem_dof_.GetIndices(elem);
+    M_coo.Add(dofs, dofs, M_elem_[elem]);
+
+    M_coo.EliminateZeros(1e-15);
+    return M_coo.ToSparse();
 }
 
 void MixedMatrix::AssembleM()
