@@ -219,14 +219,10 @@ private:
     // Temp Stuff
     SparseMatrix agg_vertexdof_;
     SparseMatrix agg_edgedof_;
-    SparseMatrix agg_bubbledof_;
     SparseMatrix face_edgedof_;
-
-    ParMatrix agg_edof_;
 
     ParMatrix agg_ext_vdof_;
     ParMatrix agg_ext_edof_;
-    ParMatrix agg_ext_bdof_;
     // End Temp Stuff
     //////////////////
 
