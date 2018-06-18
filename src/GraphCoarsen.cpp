@@ -1218,14 +1218,14 @@ std::vector<DenseMatrix> GraphCoarsen::BuildElemM(const MixedMatrix& mgl,
 
     std::vector<int> agg_indices;
 
-    //SparseMatrix edge_vertex = mgl.LocalD().Transpose();
-    //SparseMatrix vertex_agg = gt_.agg_vertex_local_.Transpose();
+    SparseMatrix edge_vertex = mgl.LocalD().Transpose();
+    SparseMatrix vertex_agg = gt_.agg_vertex_local_.Transpose();
     //SparseMatrix edof_vertex = mgl.vertex_edof.Transpose();
     //SparseMatrix edof_vdof = edof_vertex.Mult(mgl.vertex_vdof);
     //SparseMatrix vertex_agg = agg_vertexdof_.Transpose();
     //SparseMatrix edof_vertex = mgl.vertex_edof.Transpose();
-    SparseMatrix edge_vertex = mgl.edge_edof.Mult(mgl.vertex_edof.Transpose());
-    SparseMatrix vertex_agg = gt_.agg_vertex_local_.Transpose();
+    //SparseMatrix edge_vertex = mgl.edge_edof.Mult(mgl.vertex_edof.Transpose());
+    //SparseMatrix vertex_agg = gt_.agg_vertex_local_.Transpose();
 
     for (int face = 0; face < num_faces; ++face)
     {
@@ -1240,13 +1240,15 @@ std::vector<DenseMatrix> GraphCoarsen::BuildElemM(const MixedMatrix& mgl,
 
         for (auto agg : aggs)
         {
+            //BuildAggregateFaceM(mgl, agg, fine_dofs, vertex_agg, edge_vertex, col_marker_, M_local);
+            BuildAggregateFaceM(mgl, agg, fine_edges, vertex_agg, edge_vertex, col_marker_, M_local);
             //BuildAggFaceM(mgl, face, agg, vertex_agg, edge_vertex, col_marker_, M_local);
 
-            ///*
+            /*
             auto test = mgl.LocalM().GetSubMatrix(fine_dofs, fine_dofs, col_marker_);
             test /= 2.0;
             test.ToDense(M_local);
-            //*/
+            */
             //if (!fine) M_local.Print("M submatrix:", std::cout, 8, 3);
             //if (!fine) edge_target_T.Print("Edge taret", std::cout, 8, 3);
 
@@ -1383,7 +1385,7 @@ MixedMatrix GraphCoarsen::Coarsen(const MixedMatrix& mgl) const
 
     // Debug Checks
     {
-        double test_tol = 1e-10;
+        double test_tol = 1e-12;
 
         // PTP should be identity
         {

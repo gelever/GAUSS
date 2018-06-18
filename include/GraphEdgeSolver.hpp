@@ -198,6 +198,10 @@ public:
 private:
     SparseSolver block_Ainv_;
 
+    SparseMatrix MinvDT_;
+
+    bool is_diag_;
+
     mutable BlockVector rhs_;
     mutable BlockVector sol_;
 };

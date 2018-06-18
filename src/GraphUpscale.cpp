@@ -75,6 +75,7 @@ GraphUpscale::GraphUpscale(Graph graph, double spect_tol, int max_evects, bool h
 
         ParPrint(myid_, printf("Coarsening: %d -> %d, evects: %d\n", gts.back().agg_vertex_local_.Cols(),
                     gts.back().agg_vertex_local_.Rows(), num_evects));
+
         coarsener_.emplace_back(gts.back(), mgl_.back(), num_evects, spect_tol_);
         mgl_.push_back(coarsener_.back().Coarsen(mgl_.back()));
 
@@ -98,7 +99,14 @@ GraphUpscale::GraphUpscale(Graph graph, double spect_tol, int max_evects, bool h
             }
         }
 
-        solver_.push_back(make_unique<MinresBlockSolver>(mgl_.back(), elim_dofs_.back()));
+        if (hybridization)
+        {
+            solver_.push_back(make_unique<HybridSolver>(mgl_.back()));
+        }
+        else
+        {
+            solver_.push_back(make_unique<MinresBlockSolver>(mgl_.back(), elim_dofs_.back()));
+        }
 
         if (i != num_levels - 1)
         {
@@ -124,7 +132,6 @@ void GraphUpscale::MakeCoarseSolver()
     else
     {
         mm.AssembleM();
-        //coarse_solver_ = make_unique<MinresBlockSolver>(mm, coarse_elim_dofs_);
         solver_[1] = make_unique<MinresBlockSolver>(mm, elim_dofs_[1]);
     }
 }

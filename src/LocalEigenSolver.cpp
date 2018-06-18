@@ -244,6 +244,35 @@ void LocalEigenSolver::Compute(
     dtrtrs_(&uplo_, &trans_, &diag_, &n, &m, b, &n, evects.GetData(), &n, &info_);
 }
 
+void LocalEigenSolver::DenseBlockCompute(const SparseMatrix& M, const SparseMatrix& D,
+                                         std::vector<double>& evals, DenseMatrix& evects)
+{
+    if (IsDiag(M))
+    {
+        D.TransposeDense(DT_);
+        DT_.InverseScaleRows(M.GetData());
+
+        DMinvDT_.SetSize(D.Rows(), D.Rows());
+        D.Mult(DT_, DMinvDT_);
+    }
+    else
+    {
+        M.ToDense(Minv_);
+        Minv_.Invert();
+
+        DMinv_.SetSize(D.Rows(), Minv_.Cols());
+        DMinvDT_.SetSize(D.Rows());
+
+        D.Mult(Minv_, DMinv_);
+        D.TransposeDense(DT_);
+
+        DMinv_.Mult(DT_, DMinvDT_);
+    }
+
+    Compute(DMinvDT_, evals, evects);
+}
+
+
 #if SMOOTHG_USE_ARPACK
 /// Adapter for applying the action of a certain operator in ARPACK
 class ARPACK_operator_adapter
@@ -513,9 +542,20 @@ void LocalEigenSolver::Compute(
     }
 }
 
-double LocalEigenSolver::BlockCompute(
-    SparseMatrix M, SparseMatrix D, DenseMatrix& evects)
+void LocalEigenSolver::SparseBlockCompute(SparseMatrix M, SparseMatrix D,
+                                    std::vector<double>& evals, DenseMatrix& evects)
 {
+    if (IsDiag(M))
+    {
+        SparseMatrix MinvDT = D.Transpose();
+        MinvDT.InverseScaleRows(M.GetData());
+
+        SparseMatrix A = D.Mult(MinvDT);
+        Compute(A, evals, evects);
+
+        return;
+    }
+
     int n = D.Rows();
     int max_num_evects = (max_num_evects_ == -1 ) ? n - 1 : std::min(n - 1, max_num_evects_);
     int ncv = ComputeNCV(n, max_num_evects, num_arnoldi_vectors_);
@@ -525,7 +565,7 @@ double LocalEigenSolver::BlockCompute(
     ARSymStdEig<double, BlockAdapter>
     eigprob(n, max_num_evects, &block_adapter, &BlockAdapter::MultOP,
             -shift_, "LM", ncv, tolerance_, max_iterations_);
-    auto data_ptr = EigenPairsSetSizeAndData(n, max_num_evects, evals_, evects);
+    auto data_ptr = EigenPairsSetSizeAndData(n, max_num_evects, evals, evects);
     int num_converged = eigprob.EigenValVectors(data_ptr[0], data_ptr[1]);
 
     CheckNotConverged(max_num_evects, num_converged);
@@ -549,18 +589,11 @@ double LocalEigenSolver::BlockCompute(
         eigvalueprob.Eigenvalues(eig_max_ptr_);
         */
 
-        for (auto& eval : evals_)
-        {
-            //eval = std::fabs(1.0 / eval);
-        }
-
         eig_max_ = 10.0;
 
-        int num_evects = FindNumberOfEigenPairs(evals_, max_num_evects, eig_max_);
-        EigenPairsSetSizeAndData(n, num_evects, evals_, evects);
+        int num_evects = FindNumberOfEigenPairs(evals, max_num_evects, eig_max_);
+        EigenPairsSetSizeAndData(n, num_evects, evals, evects);
     }
-
-    return evals_.front();
 }
 
 template<>
@@ -618,6 +651,22 @@ double LocalEigenSolver::Compute(SparseMatrix& A, DenseMatrix& evects)
     return evals_[0];
 }
 
+double LocalEigenSolver::BlockCompute(SparseMatrix M, SparseMatrix D, DenseMatrix& evects)
+{
+#if SMOOTHG_USE_ARPACK
+    if (D.Rows() > size_offset_)
+    {
+        SparseBlockCompute(std::move(M), std::move(D), evals_, evects);
+    }
+    else
+#endif
+    {
+        DenseBlockCompute(M, D, evals_, evects);
+    }
+
+    return evals_[0];
+}
+
 double LocalEigenSolver::Compute(
     SparseMatrix& A, SparseMatrix& B, DenseMatrix& evects)
 {
@@ -633,6 +682,7 @@ double LocalEigenSolver::Compute(
         B.ToDense(dense_B_);
         Compute(dense_A_, dense_B_, evals_, evects);
     }
+
     return evals_[0];
 }
 

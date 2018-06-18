@@ -901,4 +901,31 @@ std::vector<int> GetElementColoring(const SparseMatrix& el_el)
     return colors;
 }
 
+bool IsDiag(const SparseMatrix& mat)
+{
+    if (mat.Rows() != mat.Cols() || mat.nnz() != mat.Rows())
+    {
+        return false;
+    }
+
+    const auto& indptr = mat.GetIndptr();
+    const auto& indices = mat.GetIndices();
+
+    int rows = mat.Rows();
+
+    for (int i = 0; i < rows; ++i)
+    {
+        for (int j = indptr[i]; j < indptr[i + 1]; ++j)
+        {
+            if (indices[j] != i)
+            {
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
+
+
 } // namespace smoothg

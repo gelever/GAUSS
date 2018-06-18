@@ -395,6 +395,9 @@ T GetSubVector(const T& global_vect, const std::vector<int>& map)
     return local_vect;
 }
 
+/// Check if sparse matrix is diagonal
+bool IsDiag(const SparseMatrix& mat);
+
 } //namespace smoothg
 
 #endif // __UTILITIES_HPP__
