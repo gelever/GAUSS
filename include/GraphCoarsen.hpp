@@ -151,7 +151,6 @@ private:
     void ComputeVertexTargets(const ParMatrix& M_ext, const ParMatrix& D_ext);
     void ComputeEdgeTargets(const MixedMatrix& mgl,
                             const ParMatrix& face_edge_perm);
-    //void ScaleEdgeTargets(const SparseMatrix& D_local);
     void ScaleEdgeTargets(const MixedMatrix& mgl);
 
 
@@ -216,14 +215,14 @@ private:
     std::vector<DenseMatrix> agg_ext_sigma_;
 
     ////////////////////
-    // Temp Stuff
+    // ML Stuff
     SparseMatrix agg_vertexdof_;
     SparseMatrix agg_edgedof_;
     SparseMatrix face_edgedof_;
 
     ParMatrix agg_ext_vdof_;
     ParMatrix agg_ext_edof_;
-    // End Temp Stuff
+    // End ML Stuff
     //////////////////
 
     mutable std::vector<int> col_marker_;

@@ -30,9 +30,6 @@ GraphCoarsen::GraphCoarsen(const Graph& graph, const MixedMatrix& mgl,
 
 }
 
-
-bool fine = true;
-
 GraphCoarsen::GraphCoarsen(GraphTopology gt, const MixedMatrix& mgl,
                            int max_evects, double spect_tol)
     : gt_(std::move(gt)),
@@ -866,7 +863,7 @@ void GraphCoarsen::BuildPedge(const MixedMatrix& mgl)
         P_edge.Add(face_fine_dofs, face_coarse_dofs, -1.0, edge_targets_[face]);
     }
 
-    //P_edge.EliminateZeros(1e-10);
+    P_edge.EliminateZeros(1e-10);
     P_edge_ = P_edge.ToSparse();
 }
 
@@ -1168,24 +1165,6 @@ void GraphCoarsen::BuildAggFaceM(const MixedMatrix& mgl, int face, int agg,
         M_local.AddSubMatrix(local_indices, local_indices, sub);
 
         ClearMarker(col_marker, fine_dofs);
-        if (!fine)
-        {
-            //using linalgcpp::operator<<;
-            //std::cout << "Face dofs:" << edge_dofs;
-            //std::cout << "local indices:" << local_indices;
-            //submat.Print("Sub matrix:");
-        }
-        //*/
-
-    }
-
-
-
-    if (!fine && M_local.Rows() < 80)
-    {
-        //using linalgcpp::operator<<;
-        //std::cout << "Face dofs:" << fine_dofs;
-        //M_local.Print("M face:", std::cout, 6, 2);
     }
 }
 
@@ -1394,46 +1373,51 @@ MixedMatrix GraphCoarsen::Coarsen(const MixedMatrix& mgl) const
 
     mm.AssembleM();
 
-    //if (P_vertex_.Rows() < 80 && MyId() == 0)
-    //if (P_vertex_.Rows() < 80 && MyId() == 0 && false)
     {
-        SparseMatrix P_vertex_T = P_vertex_.Transpose();
         SparseMatrix P_edge_T = P_edge_.Transpose();
-
         SparseMatrix M_c = P_edge_T.Mult(mgl.LocalM()).Mult(P_edge_);
-        SparseMatrix D_c = P_vertex_T.Mult(mgl.LocalD()).Mult(P_edge_);
 
         mm.M_local_ = M_c;
         mm.M_global_ = parlinalgcpp::RAP(ParMatrix(mgl.GlobalM().GetComm(), M_c), edge_true_edge);
-
-        /*
-        P_vertex_T.Mult(P_vertex_).PrintDense("PT P");
-        P_edge_.PrintDense("P edge");
-        P_vertex_.PrintDense("P vertex");
-
-        int num_agg = gt_.agg_vertex_local_.Rows();
-
-        for (int i = 0; i < num_agg; ++i)
-        {
-            mm.AssembleElem(i).PrintDense("Elem");
-        }
-
-        mm.LocalM().ToDense().Print("M c Assemble:", std::cout, 15, 10);
-        M_c.ToDense().Print("M c RAP:", std::cout, 15, 10);
-        D_c.ToDense().Print("D c RAP:", std::cout, 15, 10);
-        mm.constant_vect_.Print("Coarse constant");
-
-        auto m_diff = (M_c.ToDense() - mm.LocalM().ToDense());
-        m_diff.Print("M c Diff:", std::cout, 15, 10);
-
-        //auto m_tst = P_edge_.Mult(m_diff).Mult(P_edge_T.ToDense());
-        //m_tst.Print("M mid Diff:", std::cout, 8, 4);
-
-        (D_c.ToDense() - mm.LocalD().ToDense()).Print("D c Diff:", std::cout, 15, 10);
-        */
     }
 
-    fine = false;
+    // Debug Checks
+    {
+        double test_tol = 1e-10;
+
+        // PTP should be identity
+        {
+            Vector vertex_test_vect(P_vertex_.Cols());
+            vertex_test_vect.Randomize();
+
+            Vector identity_diff = P_vertex_.MultAT(P_vertex_.Mult(vertex_test_vect));
+            identity_diff -= vertex_test_vect;
+
+            if (std::fabs(identity_diff.L2Norm()) > test_tol)
+            {
+                printf("%d Warning: PTP difference %.8e\n", MyId(), identity_diff.L2Norm());
+            }
+        }
+
+        // PU PU^T D sigma = D P sigma
+        {
+            Vector edge_test_vect(P_edge_.Cols());
+            edge_test_vect.Randomize();
+
+            Vector D_P_sigma = mgl.LocalD().Mult(P_edge_.Mult(edge_test_vect));
+            Vector PU_D_P_sigma = P_vertex_.Mult(P_vertex_.MultAT(D_P_sigma));
+
+            Vector edge_diff = PU_D_P_sigma - D_P_sigma;
+
+            if (std::fabs(edge_diff.L2Norm()) > test_tol)
+            {
+                printf("%d Warning: Pu Pu^T D P sigma = D P sigma difference %.8e\n", MyId(), edge_diff.L2Norm());
+            }
+        }
+
+    }
+
+
 
     return mm;
 }

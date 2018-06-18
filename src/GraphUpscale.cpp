@@ -58,7 +58,7 @@ GraphUpscale::GraphUpscale(Graph graph, double spect_tol, int max_evects, bool h
 
         for (auto&& dof : elim_dofs_.back())
         {
-            elim_vect.GetBlock(0)[dof] = 10.0;
+            elim_vect.GetBlock(0)[dof] = 100.0;
         }
 
         rhs_.emplace_back(mgl_.back().Offsets());
@@ -70,12 +70,12 @@ GraphUpscale::GraphUpscale(Graph graph, double spect_tol, int max_evects, bool h
     // Coarse Levels
     for (int i = 1; i < num_levels; ++i)
     {
-        ParPrint(myid_, printf("Coarsening: %d -> %d\n", gts.back().agg_vertex_local_.Cols(),
-                    gts.back().agg_vertex_local_.Rows()));
-        //coarsener_.emplace_back(gts.back(), mgl_.back(), max_evects_, spect_tol_);
-        coarsener_.emplace_back(gts.back(), mgl_.back(), i + max_evects_, spect_tol_);
-        //coarsener_.emplace_back(gts.back(), mgl_.back(), 5 + i + max_evects_, spect_tol_);
-        //coarsener_.emplace_back(gts.back(), mgl_.back(), (i / 2) + max_evects_, spect_tol_);
+        int num_evects = max_evects;
+        //int num_evects = max_evects + i;
+
+        ParPrint(myid_, printf("Coarsening: %d -> %d, evects: %d\n", gts.back().agg_vertex_local_.Cols(),
+                    gts.back().agg_vertex_local_.Rows(), num_evects));
+        coarsener_.emplace_back(gts.back(), mgl_.back(), num_evects, spect_tol_);
         mgl_.push_back(coarsener_.back().Coarsen(mgl_.back()));
 
         rhs_.emplace_back(mgl_.back().Offsets());
