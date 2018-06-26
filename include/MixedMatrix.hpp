@@ -82,9 +82,6 @@ public:
     /** @brief Assemble M from element matrices */
     void AssembleM();
 
-    ///DEBUG!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    SparseMatrix AssembleElem(int elem);
-
     /** @brief Assemble scaled M from element matrices
         @param agg_weight weights per aggregate
     */
@@ -164,9 +161,6 @@ public:
 
     Vector constant_vect_;
 
-    SparseMatrix M_local_;
-    ParMatrix M_global_;
-
 protected:
     void Init();
 
@@ -176,12 +170,12 @@ protected:
     ParMatrix edge_true_edge_;
 
     // Local blocks
-    //SparseMatrix M_local_;
+    SparseMatrix M_local_;
     SparseMatrix D_local_;
     SparseMatrix W_local_;
 
     // Global blocks
-    //ParMatrix M_global_;
+    ParMatrix M_global_;
     ParMatrix D_global_;
     ParMatrix W_global_;
 

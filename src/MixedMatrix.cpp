@@ -243,18 +243,6 @@ ParMatrix MixedMatrix::ToPrimal() const
     return A;
 }
 
-SparseMatrix MixedMatrix::AssembleElem(int elem)
-{
-    int M_size = D_local_.Cols();
-    CooMatrix M_coo(M_size, M_size);
-
-    std::vector<int> dofs = elem_dof_.GetIndices(elem);
-    M_coo.Add(dofs, dofs, M_elem_[elem]);
-
-    M_coo.EliminateZeros(1e-15);
-    return M_coo.ToSparse();
-}
-
 void MixedMatrix::AssembleM()
 {
     int M_size = D_local_.Cols();

@@ -28,6 +28,9 @@ namespace smoothg
 GraphEdgeSolver::GraphEdgeSolver(const SparseMatrix& M, const SparseMatrix& D)
     : is_diag_(IsDiag(M))
 {
+    assert(M.Rows() > 0);
+    assert(D.Rows() > 0);
+
     if (is_diag_)
     {
         rhs_ = BlockVector({0, 0, D.Rows()});
@@ -48,13 +51,15 @@ GraphEdgeSolver::GraphEdgeSolver(const SparseMatrix& M, const SparseMatrix& D)
 
         linalgcpp::BlockMatrix<double> block({0, M.Rows(), M.Rows() + D.Rows()});
 
+        int elim_dof = 0;
+
         CooMatrix W_coo(D.Rows(), D.Rows());
-        W_coo.Add(0, 0, 1);
+        W_coo.Add(elim_dof, elim_dof, 1);
 
         SparseMatrix W = W_coo.ToSparse();
 
         SparseMatrix D_elim(D);
-        D_elim.EliminateRow(0);
+        D_elim.EliminateRow(elim_dof);
         SparseMatrix DT_elim = D_elim.Transpose();
 
         block.SetBlock(0, 0, M);

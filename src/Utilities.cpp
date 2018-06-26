@@ -927,5 +927,39 @@ bool IsDiag(const SparseMatrix& mat)
     return true;
 }
 
+void GetSubMatrix(const SparseMatrix& mat, const std::vector<int>& rows,
+                  const std::vector<int>& cols, std::vector<int>& col_map,
+                  DenseMatrix& dense_mat)
+{
+    SetMarker(col_map, cols);
+
+    int num_rows = rows.size();
+    int num_cols = cols.size();
+
+    dense_mat.SetSize(num_rows, num_cols);
+    dense_mat = 0.0;
+
+    const auto& indptr = mat.GetIndptr();
+    const auto& indices = mat.GetIndices();
+    const auto& data = mat.GetData();
+
+    for (int i = 0; i < num_rows; ++i)
+    {
+        int row = rows[i];
+
+        for (int j = indptr[row]; j < indptr[row + 1]; ++j)
+        {
+            int col = col_map[indices[j]];
+
+            if (col > -1)
+            {
+                dense_mat(i, col) = data[j];
+            }
+        }
+    }
+
+    ClearMarker(col_map, cols);
+}
+
 
 } // namespace smoothg

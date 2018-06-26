@@ -80,7 +80,8 @@ LocalEigenSolver::LocalEigenSolver(
     num_arnoldi_vectors_(-1),
     tolerance_(1e-10),
     max_iterations_(1000),
-    shift_(-1e-6)  // shift_ may need to be adjusted
+    shift_(-1.0)  // shift_ may need to be adjusted
+    //shift_(-1e-6)  // shift_ may need to be adjusted
 {
 }
 
@@ -573,7 +574,7 @@ void LocalEigenSolver::SparseBlockCompute(SparseMatrix M, SparseMatrix D,
     //evects.Print("EVECTS:");
 
     assert(evects.Rows() > 0 && evects.Cols() > 0);
-    if (evects(0, 0) < 0)
+    if (evects(0, 0) < 0 && std::fabs(evects(0, 0)) > 1e-8 )
     {
         auto vect = evects.GetColView(0);
         vect *= -1.0;

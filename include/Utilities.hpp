@@ -398,6 +398,11 @@ T GetSubVector(const T& global_vect, const std::vector<int>& map)
 /// Check if sparse matrix is diagonal
 bool IsDiag(const SparseMatrix& mat);
 
+/// Extract dense submatrix
+void GetSubMatrix(const SparseMatrix& mat, const std::vector<int>& rows,
+                  const std::vector<int>& cols, std::vector<int>& col_map,
+                  DenseMatrix& dense_mat);
+
 } //namespace smoothg
 
 #endif // __UTILITIES_HPP__

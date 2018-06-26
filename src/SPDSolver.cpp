@@ -72,12 +72,9 @@ SPDSolver::SPDSolver(const MixedMatrix& mgl, const std::vector<int>& elim_dofs)
     }
 
     A_.AddDiag(diag);
-
     MinvDT_ = mgl.EdgeTrueEdge().Mult(MinvDT);
 
-
     prec_ = parlinalgcpp::BoomerAMG(A_);
-
     pcg_ = linalgcpp::PCGSolver(A_, prec_, max_num_iter_, rtol_,
                                 atol_, 0, parlinalgcpp::ParMult);
 
@@ -127,7 +124,7 @@ void SPDSolver::Solve(const BlockVector& rhs, BlockVector& sol) const
     Timer timer(Timer::Start::True);
 
     rhs_.GetBlock(1) = rhs.GetBlock(1);
-    sol_ = 0.0;
+    sol.GetBlock(1) *= -1.0;
 
     if (!use_w_ && myid_ == 0)
     {
@@ -136,8 +133,7 @@ void SPDSolver::Solve(const BlockVector& rhs, BlockVector& sol) const
 
     pcg_.Mult(rhs_.GetBlock(1), sol.GetBlock(1));
 
-    MinvDT_.Mult(sol.GetBlock(1), sol.GetBlock(0));
-
+    MinvDT_.Mult(sol.GetBlock(1), sol.GetBlock(0)); // should this be negative too?
     sol.GetBlock(1) *= -1.0;
 
     timer.Click();

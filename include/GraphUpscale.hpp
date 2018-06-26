@@ -118,6 +118,9 @@ public:
     void MultMultiLevel(const BlockVector& x, std::vector<BlockVector>& sols) const;
     std::vector<BlockVector> MultMultiLevel(const BlockVector& x) const;
 
+    void MultMultiGrid(const BlockVector& x, BlockVector& y) const;
+    BlockVector MultMultiGrid(const BlockVector& x) const;
+
     /// Wrapper for applying the upscaling
     void Solve(const VectorView& x, VectorView y) const;
     Vector Solve(const VectorView& x) const;
@@ -256,6 +259,8 @@ public:
     /// Displays error to stdout on processor 0
     void ShowErrors(const BlockVector& upscaled_sol,
                     const BlockVector& fine_sol) const;
+
+    ParMatrix ToPrimal() const;
 
 protected:
     std::vector<MixedMatrix> mgl_;

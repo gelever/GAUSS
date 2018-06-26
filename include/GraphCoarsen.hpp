@@ -227,11 +227,7 @@ private:
 
     mutable std::vector<int> col_marker_;
 
-    std::vector<DenseMatrix> B_potential_;
-
     std::vector<std::vector<double>> D_trace_sum_;
-    std::vector<std::vector<DenseMatrix>> D_trace_;
-    std::vector<std::vector<DenseMatrix>> F_potential_;
 };
 
 } // namespace smoothg

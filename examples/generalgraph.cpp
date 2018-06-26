@@ -58,6 +58,7 @@ int main(int argc, char* argv[])
     int num_partitions = 12;
     bool hybridization = false;
     bool metis_agglomeration = false;
+    int num_levels = 2;
 
     bool generate_fiedler = false;
     bool save_fiedler = false;
@@ -81,6 +82,7 @@ int main(int argc, char* argv[])
     arg_parser.Parse(num_partitions, "--np", "Number of partitions to generate.");
     arg_parser.Parse(hybridization, "--hb", "Enable hybridization.");
     arg_parser.Parse(metis_agglomeration, "--ma", "Enable Metis partitioning.");
+    arg_parser.Parse(num_levels, "--nl", "Number of levels.");
     arg_parser.Parse(generate_fiedler, "--gf", "Generate Fiedler vector.");
     arg_parser.Parse(save_fiedler, "--sf", "Save a generated Fiedler vector.");
     arg_parser.Parse(generate_graph, "--gg", "Generate a graph.");
@@ -143,7 +145,7 @@ int main(int argc, char* argv[])
     // Set up GraphUpscale
     /// [Upscale]
     Graph graph(comm, vertex_edge_global, global_partitioning, weight);
-    GraphUpscale upscale(graph, spect_tol, max_evects, hybridization);
+    GraphUpscale upscale(graph, spect_tol, max_evects, hybridization, num_levels);
 
     upscale.PrintInfo();
     upscale.ShowSetupTime();
@@ -165,15 +167,22 @@ int main(int argc, char* argv[])
     /// [Right Hand Side]
 
     /// [Solve]
-    BlockVector upscaled_sol = upscale.Solve(fine_rhs);
-    upscale.ShowCoarseSolveInfo();
+    auto sols = upscale.MultMultiLevel(fine_rhs);
 
-    BlockVector fine_sol = upscale.SolveFine(fine_rhs);
     upscale.ShowFineSolveInfo();
+    upscale.ShowCoarseSolveInfo();
     /// [Solve]
 
     /// [Check Error]
-    upscale.ShowErrors(upscaled_sol, fine_sol);
+    upscale.Orthogonalize(sols[0]);
+
+    for (int i = 1; i < num_levels; ++i)
+    {
+        ParPrint(myid, std::cout << "Level " << i << " errors: \n");
+        upscale.Orthogonalize(sols[i]);
+        upscale.ShowErrors(sols[i], sols[0]);
+    }
+
     /// [Check Error]
 
     if (save_fiedler)
