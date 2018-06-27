@@ -98,6 +98,9 @@ GraphUpscale::GraphUpscale(Graph graph, double spect_tol, int max_evects, bool h
 
     do_ortho_ = !GetFineMatrix().CheckW();
 
+    //do_ortho_ = false;
+    //printf("\n\n\n!!!!!!!!!! ORTHO TURNED OFF !!!!!!!!!!!!!!\n\n\n");
+
     timer.Click();
     setup_time_ += timer.TotalTime();
 }
@@ -235,7 +238,6 @@ void GraphUpscale::MultMultiLevel(const BlockVector& x, std::vector<BlockVector>
 BlockVector GraphUpscale::MultMultiGrid(const BlockVector& x) const
 {
     BlockVector sol = GetFineBlockVector();
-
     sol = 0.0;
 
     MultMultiGrid(x, sol);
@@ -256,7 +258,6 @@ void GraphUpscale::MultMultiGrid(const BlockVector& x, BlockVector& sol) const
         coarsener_[i].Restrict(sol_[i], sol_[i + 1]);
     }
 
-
     int num_levels = solver_.size();
 
     for (int i = num_levels - 1; i >= 0; --i)
@@ -264,7 +265,13 @@ void GraphUpscale::MultMultiGrid(const BlockVector& x, BlockVector& sol) const
         rhs_[i].GetBlock(1) *= -1.0;
         sol_[i].GetBlock(1) *= -1.0;
 
+        //int max_iter = (i == 0) ? 5000 : std::pow(2.0, i + 3);
+        //solver_[i]->SetMaxIter(max_iter);
+        //ParPrint(MyId(), printf("Level %d Max Iter: %d\n", i, max_iter));
+
         solver_[i]->Solve(rhs_[i], sol_[i]);
+
+        //solver_[i]->SetMaxIter(5000);
 
         if (do_ortho_)
         {
@@ -425,18 +432,15 @@ void GraphUpscale::SolveFine(const BlockVector& x, BlockVector& y) const
     //y = 0.0;
     //y.GetBlock(1) *= -1.0;
     //y *= -1.0;
-    printf("Edge Initial sol: %.12e\n", y.GetBlock(0)[1]);
-    printf("Vertex Initial sol: %.12e\n", y.GetBlock(1)[1]);
+    //y *= -1.0;
 
     solver_[0]->Solve(x, y);
-    y.GetBlock(1) *= -1.0;
-
-    printf("Final sol: %.12e\n", y.GetBlock(0)[1]);
-    printf("Final sol: %.12e\n", y.GetBlock(1)[1]);
-
     //y.GetBlock(1) *= -1.0;
 
-    //y *= -1.0;
+    y *= -1.0;
+
+
+    //y.GetBlock(1) *= -1.0;
 
     if (do_ortho_)
     {

@@ -36,14 +36,7 @@ GraphTopology::GraphTopology(const GraphTopology& fine_topology, double coarseni
     const auto& vertex_edge = fine_topology.agg_face_local_;
     const auto& part = PartitionAAT(vertex_edge, coarsening_factor, 1.0);
 
-    /*
-    using linalgcpp::operator<<;
-    std::cout << "Part: " << part;
-    std::cout << "DANGER!!!!!!!" << part;
-    */
-
     Init(vertex_edge, part, fine_topology.face_face_, fine_topology.face_true_face_);
-    //Init(vertex_edge, {0, 0, 1, 1}, fine_topology.face_face_, fine_topology.face_true_face_);
 }
 
 GraphTopology::GraphTopology(const SparseMatrix& vertex_edge,

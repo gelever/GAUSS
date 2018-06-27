@@ -151,7 +151,7 @@ void MinresBlockSolver::Solve(const BlockVector& rhs, BlockVector& sol) const
 
     if (!use_w_ && myid_ == 0)
     {
-        true_rhs_.GetBlock(1)[0] = 0.0;
+        //true_rhs_.GetBlock(1)[0] = 0.0;
     }
 
     pminres_.Mult(true_rhs_, true_sol_);

@@ -124,7 +124,6 @@ void SPDSolver::Solve(const BlockVector& rhs, BlockVector& sol) const
     Timer timer(Timer::Start::True);
 
     rhs_.GetBlock(1) = rhs.GetBlock(1);
-    sol.GetBlock(1) *= -1.0;
 
     if (!use_w_ && myid_ == 0)
     {
