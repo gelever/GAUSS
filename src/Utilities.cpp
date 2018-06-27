@@ -961,5 +961,62 @@ void GetSubMatrix(const SparseMatrix& mat, const std::vector<int>& rows,
     ClearMarker(col_map, cols);
 }
 
+void OffsetMult(const linalgcpp::Operator& A, const DenseMatrix& input, DenseMatrix& output, int offset)
+{
+    assert(offset >= 0);
+    assert(offset < input.Cols());
+
+    int cols = input.Cols();
+    int off_cols = cols - offset;
+
+    output.SetSize(A.Rows(), off_cols);
+
+    for (int i = 0; i < off_cols; ++i)
+    {
+        A.Mult(input.GetColView(i + offset), output.GetColView(i));
+    }
+}
+
+void OffsetMultAT(const linalgcpp::Operator& A, const DenseMatrix& input, DenseMatrix& output, int offset)
+{
+    assert(offset >= 0);
+    assert(offset < input.Cols());
+
+    int cols = input.Cols();
+    int off_cols = cols - offset;
+
+    output.SetSize(A.Cols(), off_cols);
+
+    for (int i = 0; i < off_cols; ++i)
+    {
+        A.MultAT(input.GetColView(i + offset), output.GetColView(i));
+    }
+}
+
+DenseMatrix OuterProduct(VectorView lhs, VectorView rhs)
+{
+    DenseMatrix out;
+
+    OuterProduct(lhs, rhs, out);
+
+    return out;
+}
+
+void OuterProduct(VectorView lhs, VectorView rhs, DenseMatrix& product)
+{
+    int rows = lhs.size();
+    int cols = rhs.size();
+
+    product.SetSize(rows, cols);
+
+    for (int j = 0; j < cols; ++j)
+    {
+        for (int i = 0; i < rows; ++i)
+        {
+            product(i, j) = lhs[i] * rhs[j];
+        }
+    }
+}
+
 
 } // namespace smoothg

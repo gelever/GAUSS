@@ -178,6 +178,7 @@ private:
     void BuildFaceCoarseDof();
     void BuildPvertex();
     void BuildPedge(const MixedMatrix& mgl);
+    void BuildQedge(const MixedMatrix& mgl);
 
     // These only depend on GraphTopology and are sent directly to
     // the coarse mixed matrix
@@ -200,11 +201,14 @@ private:
 
     ParMatrix MakeExtPermutation(const ParMatrix& parmat) const;
 
+    void DebugChecks(const MixedMatrix& mgl) const;
+
     GraphTopology gt_;
 
     int max_evects_;
     double spect_tol_;
 
+    SparseMatrix Q_edge_;
     SparseMatrix P_edge_;
     SparseMatrix P_vertex_;
     SparseMatrix face_cdof_;

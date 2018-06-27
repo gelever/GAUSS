@@ -81,6 +81,9 @@ GraphCoarsen::GraphCoarsen(GraphTopology gt, const MixedMatrix& mgl,
     BuildAggBubbleDof();
     BuildPvertex();
     BuildPedge(mgl);
+    BuildQedge(mgl);
+
+    DebugChecks(mgl);
 }
 
 GraphCoarsen::GraphCoarsen(const GraphCoarsen& other) noexcept
@@ -199,15 +202,7 @@ void GraphCoarsen::ComputeVertexTargets(const ParMatrix& M_ext_global,
                else
                {
                    SparseSolver Minv(M_sub);
-
-                   // TODO(gelever1): define this in SparseSolver::Mult(const DenseMatrix)
-                   // or something of the sort
-                   for (int i = 0; i < DT_evect.Cols(); ++i)
-                   {
-                       auto in_vect = DT_evect.GetColView(i);
-                       auto out_vect = MinvDT_evect.GetColView(i);
-                       Minv.Mult(in_vect, out_vect);
-                   }
+                   OffsetMult(Minv, DT_evect, MinvDT_evect, 0);
                }
 
                agg_ext_sigma_[agg] = std::move(MinvDT_evect);
@@ -432,6 +427,8 @@ void GraphCoarsen::ScaleEdgeTargets(const MixedMatrix& mgl)
     Vector one;
     Vector oneD;
 
+    DenseMatrix sigma_face;
+
     for (int face = 0; face < num_faces; ++face)
     {
         DenseMatrix& edge_traces(edge_targets_[face]);
@@ -469,6 +466,13 @@ void GraphCoarsen::ScaleEdgeTargets(const MixedMatrix& mgl)
             double alpha = oneD.Mult(trace);
 
             trace.Sub(alpha * beta, pv_trace);
+        }
+
+        if (num_traces > 1)
+        {
+            edge_traces.GetCol(1, num_traces, sigma_face);
+            sigma_face.SVD();
+            edge_traces.SetCol(1, sigma_face);
         }
     }
 }
@@ -865,6 +869,109 @@ void GraphCoarsen::BuildPedge(const MixedMatrix& mgl)
     P_edge_ = P_edge.ToSparse();
 }
 
+void GraphCoarsen::BuildQedge(const MixedMatrix& mgl)
+{
+    const SparseMatrix& agg_vertex = agg_vertexdof_;
+    const SparseMatrix& agg_edge = agg_edgedof_;
+    const SparseMatrix& agg_face = gt_.agg_face_local_;
+    const SparseMatrix& face_edge = face_edgedof_;
+    const SparseMatrix& face_agg = gt_.face_agg_local_;
+
+    int num_aggs = agg_vertex.Rows();
+    int num_faces = face_edge.Rows();
+    int num_edges = face_edge.Cols();
+    int num_coarse_dofs = agg_bubble_dof_.Cols();
+
+    CooMatrix Q_edge(num_edges, num_coarse_dofs);
+    Q_edge.Reserve(ComputeNNZ(gt_, agg_bubble_dof_, face_cdof_));
+
+    DenseMatrix Q_i;
+
+    DenseMatrix sigma_f;
+    DenseMatrix DT_one_sigma_f_PV;
+
+    Vector sigma_f_PV;
+    Vector one_rep;
+    Vector one_D;
+
+    for (int agg = 0; agg < num_aggs; ++agg)
+    {
+        if (vertex_targets_[agg].Cols() <= 1)
+        {
+            continue;
+        }
+
+        std::vector<int> edge_dofs = agg_edge.GetIndices(agg);
+        std::vector<int> vertex_dofs = agg_vertex.GetIndices(agg);
+        std::vector<int> faces = agg_face.GetIndices(agg);
+
+        for (auto&& face : faces)
+        {
+            auto face_dofs = face_edge.GetIndices(face);
+            edge_dofs.insert(std::end(edge_dofs), std::begin(face_dofs), std::end(face_dofs));
+        }
+
+        SparseMatrix D_transfer = mgl.LocalD().GetSubMatrix(vertex_dofs, edge_dofs, col_marker_);
+        OffsetMultAT(D_transfer, vertex_targets_[agg], Q_i, 1);
+
+        std::vector<int> cdofs = agg_bubble_dof_.GetIndices(agg);
+        Q_edge.Add(edge_dofs, cdofs, Q_i);
+    }
+
+    for (int face = 0; face < num_faces; ++face)
+    {
+        int agg = face_agg.GetIndices(face)[0];
+
+        std::vector<int> face_fine_dofs = face_edge.GetIndices(face);
+        std::vector<int> face_coarse_dofs = face_cdof_.GetIndices(face);
+        std::vector<int> vertex_dofs = agg_vertex.GetIndices(agg);
+
+        const auto& trace = edge_targets_[face];
+        Vector PV_trace = trace.GetCol(0);
+
+        mgl.constant_vect_.GetSubVector(vertex_dofs, one_rep);
+
+        SparseMatrix D_transfer = mgl.LocalD().GetSubMatrix(vertex_dofs, face_fine_dofs, col_marker_);
+
+        one_D.SetSize(D_transfer.Cols());
+        D_transfer.MultAT(one_rep, one_D);
+
+        double one_D_PV = one_D.Mult(PV_trace);
+        if (std::fabs(one_D_PV) - 1.0 > 1e-8)
+        {
+            PV_trace /= one_D_PV;
+        }
+
+        Q_i.SetSize(trace.Rows(), trace.Cols());
+
+        if (trace.Cols() > 1)
+        {
+            trace.GetCol(1, trace.Cols(), sigma_f);
+
+            sigma_f_PV.SetSize(sigma_f.Cols());
+            sigma_f.MultAT(PV_trace, sigma_f_PV);
+            OuterProduct(one_D, sigma_f_PV, DT_one_sigma_f_PV);
+            DT_one_sigma_f_PV /= one_D_PV;
+
+            sigma_f -= DT_one_sigma_f_PV;
+
+            Q_i.SetCol(1, sigma_f);
+        }
+
+        if (one_D_PV < 0)
+        {
+            one_D *= -1.0;
+        }
+
+        Q_i.SetCol(0, one_D);
+
+        Q_edge.Add(face_fine_dofs, face_coarse_dofs, -1.0, Q_i);
+    }
+
+    //Q_edge.EliminateZeros(1e-10);
+    Q_edge_ = Q_edge.ToSparse();
+}
+
 SparseMatrix GraphCoarsen::BuildAggCDofVertex() const
 {
     //TODO(gelever1): do this proper
@@ -1204,48 +1311,62 @@ MixedMatrix GraphCoarsen::Coarsen(const MixedMatrix& mgl) const
     mm.edge_edof = 1.0;
     mm.constant_vect_ = P_vertex_.MultAT(mgl.constant_vect_);
 
-    // Debug Checks
-    /*
+    return mm;
+}
+
+void GraphCoarsen::DebugChecks(const MixedMatrix& mgl) const
+{
+    double test_tol = 1e-12;
+
+    // PTP should be identity
     {
-        double test_tol = 1e-12;
+        Vector vertex_test_vect(P_vertex_.Cols());
+        vertex_test_vect.Randomize();
 
-        // PTP should be identity
+        Vector identity_diff = P_vertex_.MultAT(P_vertex_.Mult(vertex_test_vect));
+        identity_diff -= vertex_test_vect;
+
+        double norm = identity_diff.L2Norm() / vertex_test_vect.L2Norm();
+
+        if (std::fabs(norm) > test_tol)
         {
-            Vector vertex_test_vect(P_vertex_.Cols());
-            vertex_test_vect.Randomize();
-
-            Vector identity_diff = P_vertex_.MultAT(P_vertex_.Mult(vertex_test_vect));
-            identity_diff -= vertex_test_vect;
-
-            double norm = identity_diff.L2Norm() / vertex_test_vect.L2Norm();
-
-            if (std::fabs(norm) > test_tol)
-            {
-                printf("%d Warning: PTP difference %.8e\n", MyId(), norm);
-            }
-        }
-
-        // PU PU^T D sigma = D P sigma
-        {
-            Vector edge_test_vect(P_edge_.Cols());
-            edge_test_vect.Randomize();
-
-            Vector D_P_sigma = mgl.LocalD().Mult(P_edge_.Mult(edge_test_vect));
-            Vector PU_D_P_sigma = P_vertex_.Mult(P_vertex_.MultAT(D_P_sigma));
-
-            Vector edge_diff = PU_D_P_sigma - D_P_sigma;
-
-            double norm = edge_diff.L2Norm() / D_P_sigma.L2Norm();
-
-            if (std::fabs(norm) > test_tol)
-            {
-                printf("%d Warning: Pu Pu^T D P sigma = D P sigma difference %.8e\n", MyId(), norm);
-            }
+            printf("%d Warning: PTP difference %.8e\n", MyId(), norm);
         }
     }
-    */
 
-    return mm;
+    // PU PU^T D sigma = D P sigma
+    {
+        Vector edge_test_vect(P_edge_.Cols());
+        edge_test_vect.Randomize();
+
+        Vector D_P_sigma = mgl.LocalD().Mult(P_edge_.Mult(edge_test_vect));
+        Vector PU_D_P_sigma = P_vertex_.Mult(P_vertex_.MultAT(D_P_sigma));
+
+        Vector edge_diff = PU_D_P_sigma - D_P_sigma;
+
+        double norm = edge_diff.L2Norm() / D_P_sigma.L2Norm();
+
+        if (std::fabs(norm) > test_tol)
+        {
+            printf("%d Warning: Pu Pu^T D P sigma = D P sigma difference %.8e\n", MyId(), norm);
+        }
+    }
+
+    // Q^T P = I
+    {
+        Vector test(P_edge_.Cols());
+        test.Randomize();
+
+        Vector diff = Q_edge_.MultAT(P_edge_.Mult(test));
+        diff -= test;
+
+        double norm = diff.L2Norm();
+
+        if (std::fabs(norm) > test_tol)
+        {
+            printf("%d Warning: Q^T Psigma = I difference %.8e\n", MyId(), norm);
+        }
+    }
 }
 
 Vector GraphCoarsen::Interpolate(const VectorView& coarse_vect) const
