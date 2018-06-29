@@ -497,6 +497,16 @@ BlockVector GraphUpscale::Restrict(const BlockVector& x) const
     return coarsener_[0].Restrict(x);
 }
 
+void GraphUpscale::Project(const BlockVector& x, BlockVector& y) const
+{
+    coarsener_[0].Project(x, y);
+}
+
+BlockVector GraphUpscale::Project(const BlockVector& x) const
+{
+    return coarsener_[0].Project(x);
+}
+
 const std::vector<int>& GraphUpscale::FineBlockOffsets() const
 {
     return GetFineMatrix().Offsets();

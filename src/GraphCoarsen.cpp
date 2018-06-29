@@ -79,9 +79,11 @@ GraphCoarsen::GraphCoarsen(GraphTopology gt, const MixedMatrix& mgl,
 
     BuildFaceCoarseDof();
     BuildAggBubbleDof();
+
     BuildPvertex();
-    BuildPedge(mgl);
+
     BuildQedge(mgl);
+    BuildPedge(mgl);
 
     DebugChecks(mgl);
 }
@@ -90,6 +92,7 @@ GraphCoarsen::GraphCoarsen(const GraphCoarsen& other) noexcept
     : gt_(other.gt_),
       max_evects_(other.max_evects_),
       spect_tol_(other.spect_tol_),
+      Q_edge_(other.Q_edge_),
       P_edge_(other.P_edge_),
       P_vertex_(other.P_vertex_),
       face_cdof_(other.face_cdof_),
@@ -129,6 +132,7 @@ void swap(GraphCoarsen& lhs, GraphCoarsen& rhs) noexcept
     std::swap(lhs.max_evects_, rhs.max_evects_);
     std::swap(lhs.spect_tol_, rhs.spect_tol_);
 
+    swap(lhs.Q_edge_, rhs.Q_edge_);
     swap(lhs.P_edge_, rhs.P_edge_);
     swap(lhs.P_vertex_, rhs.P_vertex_);
     swap(lhs.face_cdof_, rhs.face_cdof_);
@@ -1316,7 +1320,7 @@ MixedMatrix GraphCoarsen::Coarsen(const MixedMatrix& mgl) const
 
 void GraphCoarsen::DebugChecks(const MixedMatrix& mgl) const
 {
-    double test_tol = 1e-12;
+    double test_tol = 1e-10;
 
     // PTP should be identity
     {
@@ -1365,6 +1369,24 @@ void GraphCoarsen::DebugChecks(const MixedMatrix& mgl) const
         if (std::fabs(norm) > test_tol)
         {
             printf("%d Warning: Q^T Psigma = I difference %.8e\n", MyId(), norm);
+        }
+    }
+
+    // D (P Q^T)_edge  = (P PT)_vertex D
+    {
+        Vector test(P_edge_.Rows());
+        test.Randomize();
+
+        Vector sigma_proj = mgl.LocalD().Mult(P_edge_.Mult(Q_edge_.MultAT(test)));
+        Vector u_proj = P_vertex_.Mult(P_vertex_.MultAT(mgl.LocalD().Mult(test)));
+
+        Vector diff = sigma_proj - u_proj;
+
+        double norm = diff.L2Norm();
+
+        if (std::fabs(norm) > test_tol)
+        {
+            printf("%d Warning: D PQT = PPT D difference %.8e\n", MyId(), norm);
         }
     }
 }
@@ -1418,6 +1440,22 @@ BlockVector GraphCoarsen::Restrict(const BlockVector& fine_vect) const
 void GraphCoarsen::Restrict(const BlockVector& fine_vect, BlockVector& coarse_vect) const
 {
     P_edge_.MultAT(fine_vect.GetBlock(0), coarse_vect.GetBlock(0));
+    P_vertex_.MultAT(fine_vect.GetBlock(1), coarse_vect.GetBlock(1));
+}
+
+BlockVector GraphCoarsen::Project(const BlockVector& fine_vect) const
+{
+    std::vector<int> coarse_offsets = {0, Q_edge_.Cols(), Q_edge_.Cols() + P_vertex_.Cols()};
+    BlockVector coarse_vect(coarse_offsets);
+
+    Project(fine_vect, coarse_vect);
+
+    return coarse_vect;
+}
+
+void GraphCoarsen::Project(const BlockVector& fine_vect, BlockVector& coarse_vect) const
+{
+    Q_edge_.MultAT(fine_vect.GetBlock(0), coarse_vect.GetBlock(0));
     P_vertex_.MultAT(fine_vect.GetBlock(1), coarse_vect.GetBlock(1));
 }
 

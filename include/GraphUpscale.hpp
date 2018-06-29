@@ -162,6 +162,10 @@ public:
     void Restrict(const BlockVector& x, BlockVector& y) const;
     BlockVector Restrict(const BlockVector& x) const;
 
+    /// Project a fine vector to the coarse level, in mixed form
+    void Project(const BlockVector& x, BlockVector& y) const;
+    BlockVector Project(const BlockVector& x) const;
+
     /// Get block offsets
     const std::vector<int>& FineBlockOffsets() const;
     const std::vector<int>& CoarseBlockOffsets() const;

@@ -138,6 +138,18 @@ public:
     */
     void Restrict(const BlockVector& fine_vect, BlockVector& coarse_vect) const;
 
+    /** @brief Project a fine level mixed form vector to the coarse level
+        @param fine_vect fine level mixed form vector
+        @returns coarse_vect projected mixed form vector
+    */
+    BlockVector Project(const BlockVector& fine_vect) const;
+
+    /** @brief Project a fine level mixed form vector to the coarse level
+        @param fine_vect fine level mixed form vector
+        @param coarse_vect projected mixed form vector
+    */
+    void Project(const BlockVector& fine_vect, BlockVector& coarse_vect) const;
+
     /** @brief Get the face to coarse dof relationship */
     const SparseMatrix& GetFaceCDof() const { return face_cdof_; }
 
