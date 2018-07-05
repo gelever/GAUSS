@@ -148,7 +148,7 @@ int main(int argc, char* argv[])
     /// [Upscale]
 
     /// [Right Hand Side]
-    BlockVector fine_rhs = upscale.GetFineBlockVector();
+    BlockVector fine_rhs = upscale.GetBlockVector(0);
 
     fine_rhs.GetBlock(0) = 0.0;
     fine_rhs.GetBlock(1) = upscale.ReadVertexVector(fiedler_filename);
@@ -156,8 +156,8 @@ int main(int argc, char* argv[])
 
     /// [Solve]
 
-    BlockVector fine_sol = upscale.GetFineBlockVector();
-    BlockVector upscaled_sol = upscale.GetFineBlockVector();
+    BlockVector fine_sol = upscale.GetBlockVector(0);
+    BlockVector upscaled_sol = upscale.GetBlockVector(0);
 
     for (int i = 1; i <= num_samples; ++i)
     {
@@ -170,11 +170,14 @@ int main(int argc, char* argv[])
         const auto& coarse_coeff = sampler.GetCoefficientCoarse();
         const auto& upscaled_coeff = sampler.GetCoefficientUpscaled();
 
-        upscale.MakeCoarseSolver(coarse_coeff);
-        upscale.MakeFineSolver(fine_coeff);
+        upscale.MakeSolver(1, coarse_coeff);
+        upscale.MakeSolver(0, fine_coeff);
 
-        upscale.Solve(fine_rhs, upscaled_sol);
-        upscale.SolveFine(fine_rhs, fine_sol);
+        fine_sol = 0.0;
+        upscaled_sol = 0.0;
+
+        upscale.Solve(1, fine_rhs, upscaled_sol);
+        upscale.Solve(0, fine_rhs, fine_sol);
 
         if (save_output)
         {

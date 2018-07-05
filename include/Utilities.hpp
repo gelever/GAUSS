@@ -406,8 +406,8 @@ void GetSubMatrix(const SparseMatrix& mat, const std::vector<int>& rows,
 void OffsetMult(const linalgcpp::Operator& A, const DenseMatrix& input, DenseMatrix& output, int offset);
 void OffsetMultAT(const linalgcpp::Operator& A, const DenseMatrix& input, DenseMatrix& output, int offset);
 
-DenseMatrix OuterProduct(VectorView lhs, VectorView rhs);
-void OuterProduct(VectorView lhs, VectorView rhs, DenseMatrix& product);
+DenseMatrix OuterProduct(const VectorView& lhs, const VectorView& rhs);
+void OuterProduct(const VectorView& lhs, const VectorView& rhs, DenseMatrix& product);
 
 } //namespace smoothg
 

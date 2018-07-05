@@ -97,20 +97,11 @@ public:
     template <typename T>
     void WriteEdgeVector(const T& vect, const std::string& filename) const;
 
-    /// Create Fine Level Solver
-    void MakeFineSolver();
+    /// Create Weighted Solver
+    void MakeSolver(int level);
 
-    /// Create Coarse Level Solver
-    void MakeCoarseSolver();
-
-    /// Create Weighted Fine Level Solver
-    void MakeFineSolver(const std::vector<double>& agg_weights);
-
-    /// Create Weighted Coarse Level Solver
-    void MakeCoarseSolver(const std::vector<double>& agg_weights);
-
-    /// Get number of aggregates
-    int NumAggs() const { return coarsener_.front().GetGraphTopology().agg_vertex_local_.Rows(); }
+    /// Create Weighted Solver
+    void MakeSolver(int level, const std::vector<double>& agg_weights);
 
     /// Wrapper for applying the upscaling, in linalgcpp terminology
     void Mult(const VectorView& x, VectorView y) const override;
@@ -129,22 +120,21 @@ public:
     void Solve(const BlockVector& x, BlockVector& y) const;
     BlockVector Solve(const BlockVector& x) const;
 
-    /// Wrapper for only the coarse level, no coarsen, interpolate with fine level
-    void SolveCoarse(const VectorView& x, VectorView y) const;
-    Vector SolveCoarse(const VectorView& x) const;
+    /// Upscaled Solution from Level
+    void Solve(int level, const VectorView& x, VectorView y) const;
+    Vector Solve(int level, const VectorView& x) const;
 
-    /// Wrapper for only the coarse level, no coarsen, interpolate with fine level,
-    //  in mixed form
-    void SolveCoarse(const BlockVector& x, BlockVector& y) const;
-    BlockVector SolveCoarse(const BlockVector& x) const;
+    /// Upscaled Solution from Level, in mixed form
+    void Solve(int level, const BlockVector& x, BlockVector& y) const;
+    BlockVector Solve(int level, const BlockVector& x) const;
 
-    /// Solve Fine Level
-    void SolveFine(const VectorView& x, VectorView y) const;
-    Vector SolveFine(const VectorView& x) const;
+    /// Solve Level only, no restriction/interpolate
+    void SolveLevel(int level, const VectorView& x, VectorView y) const;
+    Vector SolveLevel(int level, const VectorView& x) const;
 
-    /// Solve Fine Level, in mixed form
-    void SolveFine(const BlockVector& x, BlockVector& y) const;
-    BlockVector SolveFine(const BlockVector& x) const;
+    /// Solve Level only, in mixed form
+    void SolveLevel(int level, const BlockVector& x, BlockVector& y) const;
+    BlockVector SolveLevel(int level, const BlockVector& x) const;
 
     /// Interpolate a coarse vector to the fine level
     void Interpolate(const VectorView& x, VectorView y) const;
@@ -167,49 +157,20 @@ public:
     BlockVector Project(const BlockVector& x) const;
 
     /// Get block offsets
-    const std::vector<int>& FineBlockOffsets() const;
-    const std::vector<int>& CoarseBlockOffsets() const;
-
-    /// Get true block offsets
-    const std::vector<int>& FineTrueBlockOffsets() const;
-    const std::vector<int>& CoarseTrueBlockOffsets() const;
+    const std::vector<int>& BlockOffsets(int level) const;
+    const std::vector<int>& TrueBlockOffsets(int level) const;
 
     /// Orthogonalize against the constant vector
-    void Orthogonalize(VectorView vect) const;
-    void Orthogonalize(BlockVector& vect) const;
+    void Orthogonalize(int level, VectorView vect) const;
+    void Orthogonalize(int level, BlockVector& vect) const;
 
-    /// Orthogonalize against the coarse constant vector
-    void OrthogonalizeCoarse(VectorView vect) const;
-    void OrthogonalizeCoarse(BlockVector& vect) const;
+    /// Create vectors by level
+    Vector GetVector(int level) const;
+    BlockVector GetBlockVector(int level) const;
+    BlockVector GetTrueBlockVector(int level) const;
 
-    /// Get Normalized Coarse Constant Representation
-    const Vector& GetCoarseConstant() const;
-
-    /// Create a coarse vertex space vector
-    Vector GetCoarseVector() const;
-
-    /// Create a fine vertex space vector
-    Vector GetFineVector() const;
-
-    /// Create a coarse mixed form vector
-    BlockVector GetCoarseBlockVector() const;
-
-    /// Create a fine mixed form vector
-    BlockVector GetFineBlockVector() const;
-
-    /// Create a coarse mixed form vector on true dofs
-    BlockVector GetCoarseTrueBlockVector() const;
-
-    /// Create a fine mixed form vector on true dofs
-    BlockVector GetFineTrueBlockVector() const;
-
-    /// Get Fine level Mixed Matrix
-    MixedMatrix& GetFineMatrix();
-    const MixedMatrix& GetFineMatrix() const;
-
-    /// Get Coarse level Mixed Matrix
-    MixedMatrix& GetCoarseMatrix();
-    const MixedMatrix& GetCoarseMatrix() const;
+    std::vector<Vector> GetMLVectors() const;
+    std::vector<BlockVector> GetMLBlockVector() const;
 
     /// Get Matrix by level
     MixedMatrix& GetMatrix(int level);
@@ -239,20 +200,29 @@ public:
     /// Show Total setup time on processor 0
     void ShowSetupTime(std::ostream& out = std::cout) const;
 
-    /// Get Total Solve time on the coarse level
-    double GetCoarseSolveTime() const;
+    /// Get Solve time on the level for the last solve
+    double SolveTime(int level) const;
 
-    /// Get Total Solve time on the fine level
-    double GetFineSolveTime() const;
-
-    /// Get Total Solve iterations on the coarse level
-    int GetCoarseSolveIters() const;
-
-    /// Get Total Solve iterations on the fine level
-    int GetFineSolveIters() const;
+    /// Get Solve iterations on the level for the last solve
+    int SolveIters(int level) const;
 
     /// Get Total setup time
     double GetSetupTime() const;
+
+    /// Get Coarsener
+    const GraphCoarsen& Coarsener(int level) const { return coarsener_.at(level); }
+
+    /// Get Solver
+    const MGLSolver& Solver(int level) const { return *solver_.at(level); }
+
+    /// Number of levels
+    int NumLevels() const { return solver_.size(); }
+
+    /// Get Normalized Constant Representation
+    const Vector& ConstantRep(int level) const { return constant_rep_.at(level); }
+
+    /// Get Fine Level Graph
+    const Graph& FineGraph() const { return graph_; }
 
     /// Compare errors between upscaled and fine solution.
     /// Returns {vertex_error, edge_error, div_error} array.
@@ -267,6 +237,8 @@ public:
     ParMatrix ToPrimal() const;
 
 protected:
+    void MakeVectors(int level);
+
     std::vector<MixedMatrix> mgl_;
     std::vector<GraphCoarsen> coarsener_;
     std::vector<std::unique_ptr<MGLSolver>> solver_;

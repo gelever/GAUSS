@@ -152,12 +152,12 @@ int main(int argc, char* argv[])
     /// [Upscale]
 
     /// [Right Hand Side]
-    BlockVector fine_rhs = upscale.GetFineBlockVector();
+    BlockVector fine_rhs = upscale.GetBlockVector(0);
     fine_rhs.GetBlock(0) = 0.0;
 
     if (generate_graph || generate_fiedler)
     {
-        fine_rhs.GetBlock(1) = ComputeFiedlerVector(upscale.GetFineMatrix());
+        fine_rhs.GetBlock(1) = ComputeFiedlerVector(upscale.GetMatrix(0));
     }
     else
     {
@@ -166,31 +166,27 @@ int main(int argc, char* argv[])
 
     /// [Right Hand Side]
 
-    /// [Solve]
+    /// [Solve and Check Error]
     auto sols = upscale.MultMultiLevel(fine_rhs);
 
     upscale.ShowFineSolveInfo();
     upscale.ShowCoarseSolveInfo();
-    /// [Solve]
 
-    /// [Check Error]
-    upscale.Orthogonalize(sols[0]);
-
-    for (int i = 1; i < num_levels; ++i)
+    // Compare Coarse Levels
+    for (int level = 1; level < num_levels; ++level)
     {
-        ParPrint(myid, std::cout << "Level " << i << " errors: \n");
-        upscale.Orthogonalize(sols[i]);
-        upscale.ShowErrors(sols[i], sols[0]);
+        ParPrint(myid, std::cout << "Level " << level << " errors: \n");
+        upscale.ShowErrors(sols[level], sols[0]);
     }
 
-    /// [Check Error]
+    /// [Solve and Check Error]
 
     if (save_fiedler)
     {
         upscale.WriteVertexVector(fine_rhs.GetBlock(1), fiedler_filename);
     }
 
-    return 0;
+    return EXIT_SUCCESS;
 }
 
 std::vector<int> MetisPart(const SparseMatrix& vertex_edge, int num_parts)

@@ -65,7 +65,7 @@ int main(int argc, char* argv[])
     GraphUpscale upscale(graph, spect_tol, max_evects, hybridization);
 
     // Wrapper for solving on the fine level, no upscaling
-    UpscaleFineSolve fine_solver(upscale);
+    UpscaleSolveLevel fine_solver(upscale, 0);
 
     upscale.PrintInfo();
 
@@ -93,7 +93,7 @@ int main(int argc, char* argv[])
 
         // Normalize
         result /= ParL2Norm(comm, result);
-        upscale.Orthogonalize(result);
+        upscale.Orthogonalize(0, result);
 
         // Match Signs
         double true_sign = true_sol[0] / std::fabs(true_sol[0]);

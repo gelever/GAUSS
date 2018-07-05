@@ -134,7 +134,7 @@ int main(int argc, char* argv[])
     /// [Upscale]
 
     /// [Right Hand Side]
-    BlockVector fine_rhs = upscale.GetFineBlockVector();
+    BlockVector fine_rhs = upscale.GetBlockVector(0);
     fine_rhs.GetBlock(0) = 0.0;
 
     if (!rhs_filename.empty())
@@ -148,9 +148,9 @@ int main(int argc, char* argv[])
     /// [Right Hand Side]
 
     /// [Time Step]
-    std::vector<std::vector<int>> offsets{upscale.FineBlockOffsets(), upscale.CoarseBlockOffsets()};
+    std::vector<std::vector<int>> offsets{upscale.BlockOffsets(0), upscale.BlockOffsets(1)};
 
-    BlockVector fine_u = upscale.GetFineBlockVector();
+    BlockVector fine_u = upscale.GetBlockVector(0);
     fine_u.GetBlock(0) = 0.0;
 
     // Set initial condition
@@ -205,14 +205,7 @@ int main(int argc, char* argv[])
         tmp += work_rhs;
         tmp *= -1.0;
 
-        if (k == 0)
-        {
-            upscale.SolveFine(tmp, work_u);
-        }
-        else
-        {
-            upscale.SolveCoarse(tmp, work_u);
-        }
+        upscale.SolveLevel(k, tmp, work_u);
 
         if (myid == 0)
         {

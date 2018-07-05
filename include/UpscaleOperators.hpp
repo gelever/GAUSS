@@ -49,21 +49,14 @@ Solves for \f$ u \f$ and \f$ \sigma \f$ by restricting both to
 the coarse level, solving, and interpolating both back to the fine level.
 The user provides both \f$ g \f$ and \f$ f \f$ and is returned both \f$ \sigma \f$ and \f$ u \f$.
 
-### UpscaleFineSolve
-Solves for \f$ u \f$ on the fine level by the provided fine solver.
+### UpscaleSolveLevel
+Solves for \f$ u \f$ on the level by the provided solver.
 The user provides \f$ f \f$  and is returned \f$ u \f$.
 
-### UpscaleFineBlockSolve
-Solves for \f$ u \f$ and \f$ \sigma \f$ on the fine level by the provided fine solver.
+### UpscaleBlockSolveLevel
+Solves for \f$ u \f$ and \f$ \sigma \f$ on the level by the provided solver.
 The user provides both \f$ f \f$ and \f$ g \f$ and is returned \f$ u \f$ and \f$ \sigma \f$.
 
-### UpscaleCoarseSolve
-Solves for \f$ u_c \f$ on the coarse level by the provided coarse solver.
-The user provides \f$ f_c \f$ and is returned \f$ u_c \f$;
-
-### UpscaleCoarseBlockSolve
-Solves for \f$ u_c \f$ and \f$ sigma_c \f$ on the coarse level by the provided coarse solver.
-The user provides both \f$ f_c \f$ and \f$ g_c \f$ and is returned \f$ u_c \f$ and \f$ sigma_c \f$;
 */
 
 #ifndef __UPSCALE_OPERATORS_HPP__
@@ -80,8 +73,8 @@ namespace smoothg
 class UpscaleBlockSolve : public linalgcpp::Operator
 {
 public:
-    UpscaleBlockSolve(const GraphUpscale& A) : linalgcpp::Operator(A.GetFineMatrix().Rows()), A_(A),
-        x_(A_.FineBlockOffsets()), y_(A_.FineBlockOffsets()) { }
+    UpscaleBlockSolve(const GraphUpscale& A) : linalgcpp::Operator(A.GetMatrix(0).Rows()), A_(A),
+        x_(A_.BlockOffsets(0)), y_(A_.BlockOffsets(0)) { }
 
     void Mult(const VectorView& x, VectorView y) const
     {
@@ -100,25 +93,14 @@ private:
     mutable BlockVector y_;
 };
 
-/// UpscaleFineSolve Solves the fine problem in primal form as its operation
-class UpscaleFineSolve : public linalgcpp::Operator
-{
-public:
-    UpscaleFineSolve(const GraphUpscale& A) : linalgcpp::Operator(A.GetFineMatrix().LocalD().Rows()),
-        A_(A)  { }
-    void Mult(const VectorView& x, VectorView y) const { A_.SolveFine(x, y); }
-
-private:
-    const GraphUpscale& A_;
-};
-
-/// UpscaleFineSolve Solves the fine problem in the mixed form as its operation
+/// UpscaleBlockSolveLevel Solves the problem on a particular level in the mixed form as its operation
 /** @note All vectors assumed to be block vectors with the same offsets as the Upscaler */
-class UpscaleFineBlockSolve : public linalgcpp::Operator
+class UpscaleBlockSolveLevel : public linalgcpp::Operator
 {
 public:
-    UpscaleFineBlockSolve(const GraphUpscale& A) : linalgcpp::Operator(A.GetFineMatrix().Rows()),
-        A_(A)
+    UpscaleBlockSolveLevel(const GraphUpscale& A, int level)
+        : linalgcpp::Operator(A.GetMatrix(level).Rows()),
+          A_(A), level_(level)
     {
     }
 
@@ -127,7 +109,7 @@ public:
         x_ = x;
         y_ = y;
 
-        A_.SolveFine(x_, y_);
+        A_.SolveLevel(level_, x_, y_);
 
         y = y_;
     }
@@ -137,44 +119,22 @@ private:
 
     mutable BlockVector x_;
     mutable BlockVector y_;
+
+    int level_;
 };
 
-/// UpscaleCoarseSolve Solves the coarse problem in the primal form as its operation
-class UpscaleCoarseSolve : public linalgcpp::Operator
+/// UpscaleSolveLevel Solves the problem on a particular level in the primal form as its operation
+class UpscaleSolveLevel : public linalgcpp::Operator
 {
 public:
-    UpscaleCoarseSolve(const GraphUpscale& A)
-        : linalgcpp::Operator(A.GetCoarseMatrix().LocalD().Rows()),
-          A_(A)  {}
-    void Mult(const VectorView& x, VectorView y) const { A_.SolveCoarse(x, y); }
+    UpscaleSolveLevel(const GraphUpscale& A, int level)
+        : linalgcpp::Operator(A.GetMatrix(level).LocalD().Rows()),
+          A_(A), level_(level) {}
+    void Mult(const VectorView& x, VectorView y) const { A_.SolveLevel(level_, x, y); }
 
 private:
     const GraphUpscale& A_;
-};
-
-/// UpscaleCoarseBlockSolve Solves the coarse problem in the mixed form as its operation
-/** @note All vectors assumed to be block vectors with the same offsets as the Upscaler */
-class UpscaleCoarseBlockSolve : public linalgcpp::Operator
-{
-public:
-    UpscaleCoarseBlockSolve(const GraphUpscale& A) : linalgcpp::Operator(A.GetCoarseMatrix().Rows()),
-        A_(A), x_(A_.CoarseBlockOffsets()), y_(A_.CoarseBlockOffsets()) { }
-
-    void Mult(const VectorView& x, VectorView y) const
-    {
-        x_ = x;
-        y_ = y;
-
-        A_.SolveCoarse(x_, y_);
-
-        y = y_;
-    }
-
-private:
-    const GraphUpscale& A_;
-
-    mutable BlockVector x_;
-    mutable BlockVector y_;
+    int level_;
 };
 
 } // namespace smoothg

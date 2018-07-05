@@ -82,6 +82,11 @@ public:
     /** @brief Swap two topologies */
     friend void swap(GraphTopology& lhs, GraphTopology& rhs) noexcept;
 
+    int NumAggs() const { return agg_vertex_local_.Rows(); }
+    int NumVertices() const { return agg_vertex_local_.Cols(); }
+    int NumEdges() const { return agg_edge_local_.Cols(); }
+    int NumFaces() const { return agg_face_local_.Cols(); }
+
     // Local topology
     SparseMatrix agg_vertex_local_; // Aggregate to vertex, not exteneded
     SparseMatrix agg_edge_local_;   // Aggregate to edge, not extended

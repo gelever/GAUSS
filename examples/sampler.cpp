@@ -157,8 +157,8 @@ int main(int argc, char* argv[])
 
     /// [Sample]
 
-    Vector fine_sol = upscale.GetFineVector();
-    Vector upscaled_sol = upscale.GetFineVector();
+    Vector fine_sol = upscale.GetVector(0);
+    Vector upscaled_sol = upscale.GetVector(0);
 
     int fine_size = fine_sol.size();
 

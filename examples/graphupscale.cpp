@@ -106,17 +106,17 @@ int main(int argc, char* argv[])
 
         // Do work at Coarse Level
         Vector rhs_u_coarse = upscale.Restrict(rhs_u_fine);
-        Vector sol_u_coarse = upscale.SolveCoarse(rhs_u_coarse);
+        Vector sol_u_coarse = upscale.SolveLevel(1, rhs_u_coarse);
 
         // If multiple iterations, reuse vector
         for (int i = 0; i < 5; ++i)
         {
-            upscale.SolveCoarse(rhs_u_coarse, sol_u_coarse);
+            upscale.SolveLevel(1, rhs_u_coarse, sol_u_coarse);
         }
 
         // Interpolate back to Fine Level
         Vector sol_u_fine = upscale.Interpolate(sol_u_coarse);
-        upscale.Orthogonalize(sol_u_fine);
+        upscale.Orthogonalize(0, sol_u_fine);
 
         upscale.WriteVertexVector(sol_u_fine, "sol3.out");
     }
@@ -130,8 +130,8 @@ int main(int argc, char* argv[])
 
         BlockVector fine_rhs = upscale.ReadVertexBlockVector(rhs_filename);
 
-        BlockVector fine_sol = upscale.SolveFine(fine_rhs);
-        BlockVector upscaled_sol = upscale.Solve(fine_rhs);
+        BlockVector fine_sol = upscale.Solve(0, fine_rhs);
+        BlockVector upscaled_sol = upscale.Solve(1, fine_rhs);
 
         upscale.PrintInfo();
 

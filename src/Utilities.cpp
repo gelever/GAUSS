@@ -993,7 +993,7 @@ void OffsetMultAT(const linalgcpp::Operator& A, const DenseMatrix& input, DenseM
     }
 }
 
-DenseMatrix OuterProduct(VectorView lhs, VectorView rhs)
+DenseMatrix OuterProduct(const VectorView& lhs, const VectorView& rhs)
 {
     DenseMatrix out;
 
@@ -1002,7 +1002,7 @@ DenseMatrix OuterProduct(VectorView lhs, VectorView rhs)
     return out;
 }
 
-void OuterProduct(VectorView lhs, VectorView rhs, DenseMatrix& product)
+void OuterProduct(const VectorView& lhs, const VectorView& rhs, DenseMatrix& product)
 {
     int rows = lhs.size();
     int cols = rhs.size();

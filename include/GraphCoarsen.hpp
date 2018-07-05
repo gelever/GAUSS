@@ -156,6 +156,11 @@ public:
     /** @brief Get Graph Topology */
     const GraphTopology& GetGraphTopology() const { return gt_; }
 
+    const SparseMatrix& Qedge() const { return Q_edge_; }
+    const SparseMatrix& Pedge() const { return P_edge_; }
+    const SparseMatrix& Pvertex() const { return P_vertex_; }
+    const GraphTopology& Topology() const { return gt_; }
+
 private:
     template <class T>
     using Vect2D = std::vector<std::vector<T>>;

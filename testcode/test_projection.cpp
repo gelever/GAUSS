@@ -68,11 +68,11 @@ int main(int argc, char* argv[])
     /// [Upscale]
 
     /// [Test Projection]
-    BlockVector test_vect = upscale.GetFineBlockVector();
+    BlockVector test_vect = upscale.GetBlockVector(0);
     test_vect.GetBlock(0).Randomize(-1.0, 1.0);
     test_vect.GetBlock(0).Normalize();
 
-    const auto& D = upscale.GetFineMatrix().LocalD();
+    const auto& D = upscale.GetMatrix(0).LocalD();
 
     D.Mult(test_vect.GetBlock(0), test_vect.GetBlock(1));
 
@@ -85,7 +85,7 @@ int main(int argc, char* argv[])
 
         ParPrint(myid, std::cout << "D Projection Error:  " << D_error << "\n");
 
-        failed = (failed || std::fabs(D_error) > test_tol);
+        failed |= std::fabs(D_error) > test_tol;
     }
 
     {
@@ -96,7 +96,7 @@ int main(int argc, char* argv[])
 
         ParPrint(myid, std::cout << "Re Projection Error: " << reproject_error << "\n");
 
-        failed = (failed || std::fabs(reproject_error) > test_tol);
+        failed |= std::fabs(reproject_error) > test_tol;
     }
 
     /// [Test Projection]

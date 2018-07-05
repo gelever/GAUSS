@@ -26,6 +26,13 @@ namespace smoothg
 GraphUpscale::GraphUpscale(Graph graph, double spect_tol, int max_evects, bool hybridization,
                            int num_levels, const std::vector<int>& edge_elim_dofs)
     : Operator(graph.vertex_edge_local_.Rows()),
+      mgl_(num_levels),
+      coarsener_(num_levels - 1),
+      solver_(num_levels),
+      rhs_(num_levels),
+      sol_(num_levels),
+      constant_rep_(num_levels),
+      elim_dofs_(num_levels),
       comm_(graph.edge_true_edge_.GetComm()),
       myid_(graph.edge_true_edge_.GetMyId()),
       global_vertices_(graph.global_vertices_),
@@ -37,66 +44,47 @@ GraphUpscale::GraphUpscale(Graph graph, double spect_tol, int max_evects, bool h
 {
     Timer timer(Timer::Start::True);
 
+    // Compute Topology
     double coarsen_factor = 4.0;
 
-    std::vector<GraphTopology> gts;
+    std::vector<GraphTopology> gts(1, {graph_});
 
-    BlockVector elim_vect;
-
-    elim_dofs_.push_back(edge_elim_dofs);
+    for (int level = 1; level < num_levels - 1; ++level)
+    {
+        gts.emplace_back(gts.back(), coarsen_factor);
+    }
 
     // Fine Level
+    int level = 0;
     {
-        gts.emplace_back(graph_);
+        mgl_[level] = MixedMatrix(graph_);
 
-        mgl_.emplace_back(graph_);
-        mgl_.back().AssembleM();
-        constant_rep_.emplace_back(Rows(), 1.0 / std::sqrt(GlobalRows()));
-
-        rhs_.emplace_back(mgl_.back().Offsets());
-        sol_.emplace_back(mgl_.back().Offsets());
-
-        solver_.push_back(make_unique<SPDSolver>(mgl_.back(), edge_elim_dofs));
+        elim_dofs_[level] = edge_elim_dofs;
+        MakeSolver(level);
+        MakeVectors(level);
     }
 
     // Coarse Levels
-    for (int i = 1; i < num_levels; ++i)
+    for (level = 1; level < num_levels; ++level)
     {
         int num_evects = max_evects;
         //int num_evects = max_evects + i - 1;
 
         ParPrint(myid_, printf("Coarsening: %d / %d = %.2f, evects: %d\n",
-                    gts.back().agg_vertex_local_.Cols(),
-                    gts.back().agg_vertex_local_.Rows(),
-                    gts.back().agg_vertex_local_.Cols() / (double) gts.back().agg_vertex_local_.Rows(),
+                    gts[level - 1].NumVertices(),
+                    gts[level - 1].NumAggs(),
+                    gts[level - 1].NumVertices() / (double) gts[level - 1].NumAggs(),
                     num_evects));
 
-        coarsener_.emplace_back(gts.back(), mgl_.back(), num_evects, spect_tol_);
-        mgl_.push_back(coarsener_.back().Coarsen(mgl_.back()));
-        mgl_.back().AssembleM(); // Coarsening requires assembled M for now
+        coarsener_[level - 1] = GraphCoarsen(gts[level - 1], mgl_[level - 1],
+                                             num_evects, spect_tol_);
+        mgl_[level] = MixedMatrix(coarsener_[level - 1].Coarsen(mgl_[level - 1]));
 
-        rhs_.emplace_back(mgl_.back().Offsets());
-        sol_.emplace_back(mgl_.back().Offsets());
-
-        constant_rep_.emplace_back(coarsener_.back().Restrict(constant_rep_.back()));
-
-        if (i != num_levels - 1)
-        {
-            gts.emplace_back(gts.back(), coarsen_factor);
-        }
-
-        if (hybridization)
-        {
-            solver_.push_back(make_unique<HybridSolver>(mgl_.back()));
-        }
-        else
-        {
-            solver_.push_back(make_unique<MinresBlockSolver>(mgl_.back()));
-        }
-
+        MakeSolver(level);
+        MakeVectors(level);
     }
 
-    do_ortho_ = !GetFineMatrix().CheckW();
+    do_ortho_ = !GetMatrix(0).CheckW();
 
     //do_ortho_ = false;
     //printf("\n\n\n!!!!!!!!!! ORTHO TURNED OFF !!!!!!!!!!!!!!\n\n\n");
@@ -105,56 +93,48 @@ GraphUpscale::GraphUpscale(Graph graph, double spect_tol, int max_evects, bool h
     setup_time_ += timer.TotalTime();
 }
 
-void GraphUpscale::MakeCoarseSolver()
+void GraphUpscale::MakeSolver(int level)
 {
-    auto& mm = GetCoarseMatrix();
+    auto& mm = GetMatrix(level);
+    mm.AssembleM();
 
-    if (hybridization_)
+    if (level == 0)
     {
-        solver_[1] = make_unique<HybridSolver>(mm);
+        solver_[level] = make_unique<SPDSolver>(mm, elim_dofs_[level]);
+    }
+    else if (hybridization_)
+    {
+        solver_[level] = make_unique<HybridSolver>(mm);
     }
     else
     {
-        mm.AssembleM();
-        solver_[1] = make_unique<MinresBlockSolver>(mm);
+        solver_[level] = make_unique<MinresBlockSolver>(mm);
     }
 }
 
-void GraphUpscale::MakeFineSolver()
+void GraphUpscale::MakeSolver(int level, const std::vector<double>& agg_weights)
 {
-    auto& mm = GetFineMatrix();
+    auto& mm = GetMatrix(level);
+    mm.AssembleM(agg_weights);
 
-    mm.AssembleM();
-    solver_[0] = make_unique<SPDSolver>(mm, elim_dofs_[0]);
-}
-
-void GraphUpscale::MakeCoarseSolver(const std::vector<double>& agg_weights)
-{
-    auto& mm = GetCoarseMatrix();
-
-    if (hybridization_)
+    if (level == 0)
     {
-        if (!solver_[1])
+        solver_[level] = make_unique<SPDSolver>(mm, elim_dofs_[level]);
+    }
+    else if (hybridization_)
+    {
+        if (!solver_[level])
         {
-            MakeCoarseSolver();
+            solver_[level] = make_unique<HybridSolver>(mm);
         }
 
-        auto& hb = dynamic_cast<HybridSolver&>(*solver_[1]);
+        auto& hb = dynamic_cast<HybridSolver&>(*solver_[level]);
         hb.UpdateAggScaling(agg_weights);
     }
     else
     {
-        mm.AssembleM(agg_weights);
-        solver_[1] = make_unique<MinresBlockSolver>(mm);
+        solver_[level] = make_unique<MinresBlockSolver>(mm);
     }
-}
-
-void GraphUpscale::MakeFineSolver(const std::vector<double>& agg_weights)
-{
-    auto& mm = GetFineMatrix();
-
-    mm.AssembleM(agg_weights);
-    solver_[0] = make_unique<SPDSolver>(mm, elim_dofs_[0]);
 }
 
 Vector GraphUpscale::ReadVertexVector(const std::string& filename) const
@@ -169,7 +149,7 @@ Vector GraphUpscale::ReadEdgeVector(const std::string& filename) const
 
 BlockVector GraphUpscale::ReadVertexBlockVector(const std::string& filename) const
 {
-    BlockVector vect = GetFineBlockVector();
+    BlockVector vect = GetBlockVector(0);
 
     vect.GetBlock(0) = 0.0;
     vect.GetBlock(1) = ReadVertexVector(filename);
@@ -179,7 +159,7 @@ BlockVector GraphUpscale::ReadVertexBlockVector(const std::string& filename) con
 
 BlockVector GraphUpscale::ReadEdgeBlockVector(const std::string& filename) const
 {
-    BlockVector vect = GetFineBlockVector();
+    BlockVector vect = GetBlockVector(0);
 
     vect.GetBlock(0) = ReadEdgeVector(filename);
     vect.GetBlock(1) = 0.0;
@@ -189,9 +169,7 @@ BlockVector GraphUpscale::ReadEdgeBlockVector(const std::string& filename) const
 
 std::vector<BlockVector> GraphUpscale::MultMultiLevel(const BlockVector& x) const
 {
-    int num_levels = solver_.size();
-
-    std::vector<BlockVector> sols(num_levels);
+    std::vector<BlockVector> sols;
 
     MultMultiLevel(x, sols);
 
@@ -200,44 +178,19 @@ std::vector<BlockVector> GraphUpscale::MultMultiLevel(const BlockVector& x) cons
 
 void GraphUpscale::MultMultiLevel(const BlockVector& x, std::vector<BlockVector>& sols) const
 {
-    rhs_[0] = x;
+    int num_levels = NumLevels();
 
-    int num_coarse = coarsener_.size();
-
-    for (int i = 0; i < num_coarse; ++i)
-    {
-        coarsener_[i].Restrict(rhs_[i], rhs_[i + 1]);
-    }
-
-    int num_levels = solver_.size();
+    sols.resize(num_levels, GetBlockVector(0));
 
     for (int i = 0; i < num_levels; ++i)
     {
-        rhs_[i].GetBlock(1) *= -1.0;
-        solver_[i]->Solve(rhs_[i], sol_[i]);
-
-        if (do_ortho_)
-        {
-            OrthoConstant(comm_, sol_[i].GetBlock(1), constant_rep_[i]);
-        }
-    }
-
-    sols.resize(num_levels);
-
-    for (int i = 0; i < num_levels; ++i)
-    {
-        for (int j = i; j > 0; --j)
-        {
-            coarsener_[j - 1].Interpolate(sol_[j], sol_[j - 1]);
-        }
-
-        sols[i] = sol_[0];
+        Solve(i, x, sols[i]);
     }
 }
 
 BlockVector GraphUpscale::MultMultiGrid(const BlockVector& x) const
 {
-    BlockVector sol = GetFineBlockVector();
+    BlockVector sol = GetBlockVector(0);
     sol = 0.0;
 
     MultMultiGrid(x, sol);
@@ -294,165 +247,136 @@ void GraphUpscale::MultMultiGrid(const BlockVector& x, BlockVector& sol) const
 
 void GraphUpscale::Mult(const VectorView& x, VectorView y) const
 {
-    coarsener_[0].Restrict(x, rhs_[1].GetBlock(1));
-
-    rhs_[1].GetBlock(0) = 0.0;
-    rhs_[1].GetBlock(1) *= -1.0;
-    sol_[1] = 0.0;
-
-    solver_[1]->Solve(rhs_[1], sol_[1]);
-
-    if (do_ortho_)
-    {
-        OrthoConstant(comm_, sol_[1].GetBlock(1), constant_rep_[1]);
-    }
-
-    coarsener_[0].Interpolate(sol_[1].GetBlock(1), y);
+    Solve(1, x, y);
 }
 
 void GraphUpscale::Solve(const VectorView& x, VectorView y) const
 {
-    Mult(x, y);
+    Solve(1, x, y);
 }
 
 Vector GraphUpscale::Solve(const VectorView& x) const
 {
-    Vector y(x.size());
-
-    Solve(x, y);
-
-    return y;
+    return Solve(1, x);
 }
 
 void GraphUpscale::Solve(const BlockVector& x, BlockVector& y) const
 {
-    coarsener_[0].Restrict(x, rhs_[1]);
-    rhs_[1].GetBlock(1) *= -1.0;
-
-    coarsener_[0].Restrict(y, sol_[1]);
-    sol_[1] = 0.0;
-
-    solver_[1]->Solve(rhs_[1], sol_[1]);
-
-    sol_[1].GetBlock(1) *= -1.0;
-
-    if (do_ortho_)
-    {
-        OrthoConstant(comm_, sol_[1].GetBlock(1), constant_rep_[1]);
-    }
-
-    coarsener_[0].Interpolate(sol_[1], y);
+    Solve(1, x, y);
 }
 
 BlockVector GraphUpscale::Solve(const BlockVector& x) const
 {
-    BlockVector y = GetFineBlockVector();
+    return Solve(1, x);
+}
 
-    Solve(x, y);
+void GraphUpscale::Solve(int level, const VectorView& x, VectorView y) const
+{
+    rhs_[0].GetBlock(0) = 0.0;
+    rhs_[0].GetBlock(1) = x;
+
+    for (int i = 0; i < level; ++i)
+    {
+        coarsener_[i].Restrict(rhs_[i], rhs_[i + 1]);
+    }
+
+    rhs_[level].GetBlock(1) *= -1.0;
+    sol_[level] = 0.0;
+
+    solver_[level]->Solve(rhs_[level], sol_[level]);
+
+    if (do_ortho_)
+    {
+        Orthogonalize(level, sol_[level].GetBlock(1));
+    }
+
+    for (int i = level - 1; i >= 0; --i)
+    {
+        coarsener_[i].Interpolate(sol_[i + 1], sol_[i]);
+    }
+
+    y = sol_[0].GetBlock(1);
+}
+
+Vector GraphUpscale::Solve(int level, const VectorView& x) const
+{
+    Vector y = GetVector(0);
+
+    Solve(level, x, y);
 
     return y;
 }
 
-void GraphUpscale::SolveCoarse(const VectorView& x, VectorView y) const
+void GraphUpscale::Solve(int level, const BlockVector& x, BlockVector& y) const
 {
-    // TODO(gelever1): unset this and let user use initial guess
-    y = 0.0;
-    //y *= -1.0;
+    rhs_[0] = x;
 
-    solver_[1]->Solve(x, y);
-    y *= -1.0;
+    for (int i = 0; i < level; ++i)
+    {
+        coarsener_[i].Restrict(rhs_[i], rhs_[i + 1]);
+    }
+
+    rhs_[level].GetBlock(1) *= -1.0;
+    sol_[level] = 0.0;
+
+    solver_[level]->Solve(rhs_[level], sol_[level]);
 
     if (do_ortho_)
     {
-        OrthoConstant(comm_, y, constant_rep_[1]);
+        Orthogonalize(level, sol_[level]);
     }
-}
 
-Vector GraphUpscale::SolveCoarse(const VectorView& x) const
-{
-    Vector coarse_vect = GetCoarseVector();
-    SolveCoarse(x, coarse_vect);
-
-    return coarse_vect;
-}
-
-void GraphUpscale::SolveCoarse(const BlockVector& x, BlockVector& y) const
-{
-    // TODO(gelever1): unset this and let user use initial guess
-    //y = 0.0;
-
-    y.GetBlock(1) *= -1.0;
-    solver_[1]->Solve(x, y);
-    y.GetBlock(1) *= -1.0;
-
-    if (do_ortho_)
+    for (int i = level - 1; i >= 0; --i)
     {
-        OrthoConstant(comm_, y.GetBlock(1), constant_rep_[1]);
+        coarsener_[i].Interpolate(sol_[i + 1], sol_[i]);
     }
+
+    y = sol_[0];
 }
 
-BlockVector GraphUpscale::SolveCoarse(const BlockVector& x) const
+BlockVector GraphUpscale::Solve(int level, const BlockVector& x) const
 {
-    BlockVector coarse_vect = GetCoarseBlockVector();
-    SolveCoarse(x, coarse_vect);
+    BlockVector y = GetBlockVector(0);
 
-    return coarse_vect;
-}
-
-void GraphUpscale::SolveFine(const VectorView& x, VectorView y) const
-{
-    assert(solver_[0]);
-    // TODO(gelever1): unset this and let user use initial guess
-    y = 0.0;
-    //y *= -1.0;
-
-    solver_[0]->Solve(x, y);
-    y *= -1.0;
-
-    if (do_ortho_)
-    {
-        OrthoConstant(comm_, y, constant_rep_[0]);
-    }
-}
-
-Vector GraphUpscale::SolveFine(const VectorView& x) const
-{
-    Vector y(x.size());
-
-    SolveFine(x, y);
+    Solve(level, x, y);
 
     return y;
 }
 
-void GraphUpscale::SolveFine(const BlockVector& x, BlockVector& y) const
+void GraphUpscale::SolveLevel(int level, const VectorView& x, VectorView y) const
 {
-    assert(solver_[0]);
-
-    // TODO(gelever1): unset this and let user use initial guess
-    //y = 0.0;
-    //y.GetBlock(1) *= -1.0;
-    //y *= -1.0;
-    //y *= -1.0;
-
-    solver_[0]->Solve(x, y);
-    //y.GetBlock(1) *= -1.0;
-
+    solver_.at(level)->Solve(x, y);
     y *= -1.0;
-
-
-    //y.GetBlock(1) *= -1.0;
 
     if (do_ortho_)
     {
-        OrthoConstant(comm_, y.GetBlock(1), constant_rep_[0]);
+        Orthogonalize(level, y);
     }
 }
 
-BlockVector GraphUpscale::SolveFine(const BlockVector& x) const
+Vector GraphUpscale::SolveLevel(int level, const VectorView& x) const
 {
-    BlockVector y = GetFineBlockVector();
+    Vector y = GetVector(level);
+    SolveLevel(level, x, y);
 
-    SolveFine(x, y);
+    return y;
+}
+
+void GraphUpscale::SolveLevel(int level, const BlockVector& x, BlockVector& y) const
+{
+    solver_.at(level)->Solve(x, y);
+    y.GetBlock(1) *= -1.0;
+
+    if (do_ortho_)
+    {
+        Orthogonalize(level, y);
+    }
+}
+
+BlockVector GraphUpscale::SolveLevel(int level, const BlockVector& x) const
+{
+    BlockVector y = GetBlockVector(level);
+    SolveLevel(level, x, y);
 
     return y;
 }
@@ -507,103 +431,67 @@ BlockVector GraphUpscale::Project(const BlockVector& x) const
     return coarsener_[0].Project(x);
 }
 
-const std::vector<int>& GraphUpscale::FineBlockOffsets() const
+const std::vector<int>& GraphUpscale::BlockOffsets(int level) const
 {
-    return GetFineMatrix().Offsets();
+    return GetMatrix(level).Offsets();
 }
 
-const std::vector<int>& GraphUpscale::CoarseBlockOffsets() const
+const std::vector<int>& GraphUpscale::TrueBlockOffsets(int level) const
 {
-    return GetCoarseMatrix().Offsets();
+    return GetMatrix(level).TrueOffsets();
 }
 
-const std::vector<int>& GraphUpscale::FineTrueBlockOffsets() const
+void GraphUpscale::Orthogonalize(int level, VectorView vect) const
 {
-    return GetFineMatrix().TrueOffsets();
+    OrthoConstant(comm_, vect, constant_rep_.at(level));
 }
 
-const std::vector<int>& GraphUpscale::CoarseTrueBlockOffsets() const
+void GraphUpscale::Orthogonalize(int level, BlockVector& vect) const
 {
-    return GetCoarseMatrix().TrueOffsets();
+    Orthogonalize(level, vect.GetBlock(1));
 }
 
-void GraphUpscale::Orthogonalize(VectorView vect) const
+Vector GraphUpscale::GetVector(int level) const
 {
-    OrthoConstant(comm_, vect, constant_rep_[0]);
+    return Vector(GetMatrix(level).LocalD().Rows());
 }
 
-void GraphUpscale::Orthogonalize(BlockVector& vect) const
+BlockVector GraphUpscale::GetBlockVector(int level) const
 {
-    Orthogonalize(vect.GetBlock(1));
+    return BlockVector(GetMatrix(level).Offsets());
 }
 
-void GraphUpscale::OrthogonalizeCoarse(VectorView vect) const
+BlockVector GraphUpscale::GetTrueBlockVector(int level) const
 {
-    OrthoConstant(comm_, vect, GetCoarseConstant());
+    return BlockVector(GetMatrix(level).TrueOffsets());
 }
 
-void GraphUpscale::OrthogonalizeCoarse(BlockVector& vect) const
+std::vector<Vector> GraphUpscale::GetMLVectors() const
 {
-    OrthogonalizeCoarse(vect.GetBlock(1));
+    int num_levels = NumLevels();
+
+    std::vector<Vector> vects(num_levels);
+
+    for (int i = 0; i < num_levels; ++i)
+    {
+        vects[i] = GetVector(i);
+    }
+
+    return vects;
 }
 
-const Vector& GraphUpscale::GetCoarseConstant() const
+std::vector<BlockVector> GraphUpscale::GetMLBlockVector() const
 {
-    return constant_rep_[1];
-}
+    int num_levels = NumLevels();
 
-Vector GraphUpscale::GetCoarseVector() const
-{
-    int coarse_size = GetCoarseMatrix().LocalD().Rows();
+    std::vector<BlockVector> vects(num_levels);
 
-    return Vector(coarse_size);
-}
+    for (int i = 0; i < num_levels; ++i)
+    {
+        vects[i] = GetBlockVector(i);
+    }
 
-Vector GraphUpscale::GetFineVector() const
-{
-    int fine_size = GetFineMatrix().LocalD().Rows();
-
-    return Vector(fine_size);
-}
-
-BlockVector GraphUpscale::GetCoarseBlockVector() const
-{
-    return BlockVector(GetCoarseMatrix().Offsets());
-}
-
-BlockVector GraphUpscale::GetFineBlockVector() const
-{
-    return BlockVector(GetFineMatrix().Offsets());
-}
-
-BlockVector GraphUpscale::GetCoarseTrueBlockVector() const
-{
-    return BlockVector(GetCoarseMatrix().TrueOffsets());
-}
-
-BlockVector GraphUpscale::GetFineTrueBlockVector() const
-{
-    return BlockVector(GetFineMatrix().TrueOffsets());
-}
-
-MixedMatrix& GraphUpscale::GetFineMatrix()
-{
-    return GetMatrix(0);
-}
-
-const MixedMatrix& GraphUpscale::GetFineMatrix() const
-{
-    return GetMatrix(0);
-}
-
-MixedMatrix& GraphUpscale::GetCoarseMatrix()
-{
-    return GetMatrix(1);
-}
-
-const MixedMatrix& GraphUpscale::GetCoarseMatrix() const
-{
-    return GetMatrix(1);
+    return vects;
 }
 
 MixedMatrix& GraphUpscale::GetMatrix(int level)
@@ -622,12 +510,12 @@ const MixedMatrix& GraphUpscale::GetMatrix(int level) const
 
 int GraphUpscale::GlobalRows() const
 {
-    return GetFineMatrix().GlobalD().GlobalRows();
+    return GetMatrix(0).GlobalD().GlobalRows();
 }
 
 int GraphUpscale::GlobalCols() const
 {
-    return GetFineMatrix().GlobalD().GlobalRows();
+    return GetMatrix(0).GlobalD().GlobalRows();
 }
 
 void GraphUpscale::PrintInfo(std::ostream& out) const
@@ -656,7 +544,7 @@ void GraphUpscale::PrintInfo(std::ostream& out) const
             out << "---------------------\n";
             out << "M Size\t\t" << mgl_[i].GlobalM().GlobalRows() << "\n";
             out << "D Size\t\t" << mgl_[i].GlobalD().GlobalRows() << "\n";
-            out << "  Size\t\t" << mgl_[i].GlobalRows() << "\n";
+            out << "+ Size\t\t" << mgl_[i].GlobalRows() << "\n";
             out << "NonZeros:\t" << mgl_[i].GlobalNNZ() << "\n";
             out << "\n";
 
@@ -692,7 +580,7 @@ double GraphUpscale::OperatorComplexity() const
     }
     else
     {
-        nnz_fine = GetFineMatrix().GlobalNNZ();
+        nnz_fine = GetMatrix(0).GlobalNNZ();
     }
 
     double op_comp = nnz_coarse / nnz_fine;
@@ -783,32 +671,14 @@ void GraphUpscale::ShowSetupTime(std::ostream& out) const
     }
 }
 
-double GraphUpscale::GetCoarseSolveTime() const
+double GraphUpscale::SolveTime(int level) const
 {
-    assert(solver_[1]);
-
-    return solver_[1]->GetTiming();
+    return solver_.at(level)->GetTiming();
 }
 
-double GraphUpscale::GetFineSolveTime() const
+int GraphUpscale::SolveIters(int level) const
 {
-    assert(solver_[0]);
-
-    return solver_[0]->GetTiming();
-}
-
-int GraphUpscale::GetCoarseSolveIters() const
-{
-    assert(solver_[1]);
-
-    return solver_[1]->GetNumIterations();
-}
-
-int GraphUpscale::GetFineSolveIters() const
-{
-    assert(solver_[0]);
-
-    return solver_[0]->GetNumIterations();
+    return solver_.at(level)->GetNumIterations();
 }
 
 double GraphUpscale::GetSetupTime() const
@@ -819,8 +689,8 @@ double GraphUpscale::GetSetupTime() const
 std::vector<double> GraphUpscale::ComputeErrors(const BlockVector& upscaled_sol,
                                                 const BlockVector& fine_sol) const
 {
-    const SparseMatrix& M = GetFineMatrix().LocalM();
-    const SparseMatrix& D = GetFineMatrix().LocalD();
+    const SparseMatrix& M = GetMatrix(0).LocalM();
+    const SparseMatrix& D = GetMatrix(0).LocalD();
 
     auto info = smoothg::ComputeErrors(comm_, M, D, upscaled_sol, fine_sol);
     info.push_back(OperatorComplexity());
@@ -841,7 +711,7 @@ void GraphUpscale::ShowErrors(const BlockVector& upscaled_sol,
 
 ParMatrix GraphUpscale::ToPrimal() const
 {
-    const auto& mgl = GetFineMatrix();
+    const auto& mgl = GetMatrix(0);
 
     std::vector<double> M_diag(mgl.GlobalM().GetDiag().GetDiag());
 
@@ -880,6 +750,21 @@ ParMatrix GraphUpscale::ToPrimal() const
     }
 
     return A;
+}
+
+void GraphUpscale::MakeVectors(int level)
+{
+    if (level == 0)
+    {
+        constant_rep_[level] = Vector(Rows(), 1.0 / std::sqrt(GlobalRows()));
+    }
+    else
+    {
+        constant_rep_[level] = Vector(coarsener_[level - 1].Restrict(constant_rep_[level - 1]));
+    }
+
+    rhs_[level] = BlockVector(mgl_[level].Offsets());
+    sol_[level] = BlockVector(mgl_[level].Offsets());
 }
 
 } // namespace smoothg
