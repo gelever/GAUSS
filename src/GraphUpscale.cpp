@@ -383,42 +383,130 @@ BlockVector GraphUpscale::SolveLevel(int level, const BlockVector& x) const
 
 void GraphUpscale::Interpolate(const VectorView& x, VectorView y) const
 {
-    coarsener_[0].Interpolate(x, y);
+    int x_level = size_to_level_.at(x.size());
+    int y_level = size_to_level_.at(y.size());
+
+    // Don't need temp space and copy if only between consecutive levels
+    if (x_level - y_level == 1)
+    {
+        coarsener_[y_level].Interpolate(x, y);
+
+        return;
+    }
+
+    sol_[x_level].GetBlock(1) = x;
+
+    for (int i = x_level - 1; i >= y_level; --i)
+    {
+        coarsener_[i].Interpolate(sol_[i + 1].GetBlock(1), sol_[i].GetBlock(1));
+    }
+
+    y = sol_[y_level].GetBlock(1);
 }
 
-Vector GraphUpscale::Interpolate(const VectorView& x) const
+Vector GraphUpscale::Interpolate(const VectorView& x, int level) const
 {
-    return coarsener_[0].Interpolate(x);
+    Vector y = GetVector(level);
+
+    Interpolate(x, y);
+
+    return y;
 }
 
 void GraphUpscale::Interpolate(const BlockVector& x, BlockVector& y) const
 {
-    coarsener_[0].Interpolate(x, y);
+    int x_level = size_to_level_.at(x.GetBlock(1).size());
+    int y_level = size_to_level_.at(y.GetBlock(1).size());
+
+    // Don't need temp space and copy if only between consecutive levels
+    if (x_level - y_level == 1)
+    {
+        coarsener_[y_level].Interpolate(x, y);
+
+        return;
+    }
+
+    sol_[x_level] = x;
+
+    for (int i = x_level - 1; i >= y_level; --i)
+    {
+        coarsener_[i].Interpolate(sol_[i + 1], sol_[i]);
+    }
+
+    y = sol_[y_level];
 }
 
-BlockVector GraphUpscale::Interpolate(const BlockVector& x) const
+BlockVector GraphUpscale::Interpolate(const BlockVector& x, int level) const
 {
-    return coarsener_[0].Interpolate(x);
+    BlockVector y = GetBlockVector(level);
+
+    Interpolate(x, y);
+
+    return y;
 }
 
 void GraphUpscale::Restrict(const VectorView& x, VectorView y) const
 {
-    coarsener_[0].Restrict(x, y);
+    int x_level = size_to_level_.at(x.size());
+    int y_level = size_to_level_.at(y.size());
+
+    // Don't need temp space and copy if only between consecutive levels
+    if (y_level - x_level == 1)
+    {
+        coarsener_[x_level].Restrict(x, y);
+
+        return;
+    }
+
+    sol_[x_level].GetBlock(1) = x;
+
+    for (int i = x_level; i < y_level; ++i)
+    {
+        coarsener_[i].Restrict(sol_[i].GetBlock(1), sol_[i + 1].GetBlock(1));
+    }
+
+    y = sol_[y_level].GetBlock(1);
 }
 
-Vector GraphUpscale::Restrict(const VectorView& x) const
+Vector GraphUpscale::Restrict(const VectorView& x, int level) const
 {
-    return coarsener_[0].Restrict(x);
+    Vector y = GetVector(level);
+
+    Restrict(x, y);
+
+    return y;
 }
 
 void GraphUpscale::Restrict(const BlockVector& x, BlockVector& y) const
 {
-    coarsener_[0].Restrict(x, y);
+    int x_level = size_to_level_.at(x.GetBlock(1).size());
+    int y_level = size_to_level_.at(y.GetBlock(1).size());
+
+    // Don't need temp space and copy if only between consecutive levels
+    if (y_level - x_level == 1)
+    {
+        coarsener_[x_level].Restrict(x, y);
+
+        return;
+    }
+
+    sol_[x_level] = x;
+
+    for (int i = x_level; i < y_level; ++i)
+    {
+        coarsener_[i].Restrict(sol_[i], sol_[i + 1]);
+    }
+
+    y = sol_[y_level];
 }
 
-BlockVector GraphUpscale::Restrict(const BlockVector& x) const
+BlockVector GraphUpscale::Restrict(const BlockVector& x, int level) const
 {
-    return coarsener_[0].Restrict(x);
+    BlockVector y = GetBlockVector(level);
+
+    Restrict(x, y);
+
+    return y;
 }
 
 void GraphUpscale::Project(const BlockVector& x, BlockVector& y) const
@@ -765,6 +853,8 @@ void GraphUpscale::MakeVectors(int level)
 
     rhs_[level] = BlockVector(mgl_[level].Offsets());
     sol_[level] = BlockVector(mgl_[level].Offsets());
+
+    size_to_level_[rhs_[level].GetBlock(1).size()] = level;
 }
 
 } // namespace smoothg

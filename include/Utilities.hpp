@@ -24,6 +24,7 @@
 #define __UTILITIES_HPP__
 
 #include <map>
+#include <unordered_map>
 
 #include "linalgcpp.hpp"
 #include "parlinalgcpp.hpp"

@@ -138,19 +138,19 @@ public:
 
     /// Interpolate a coarse vector to the fine level
     void Interpolate(const VectorView& x, VectorView y) const;
-    Vector Interpolate(const VectorView& x) const;
+    Vector Interpolate(const VectorView& x, int level = 0) const;
 
     /// Interpolate a coarse vector to the fine level, in mixed form
     void Interpolate(const BlockVector& x, BlockVector& y) const;
-    BlockVector Interpolate(const BlockVector& x) const;
+    BlockVector Interpolate(const BlockVector& x, int level = 0) const;
 
     /// Restrict a fine vector to the coarse level
     void Restrict(const VectorView& x, VectorView y) const;
-    Vector Restrict(const VectorView& x) const;
+    Vector Restrict(const VectorView& x, int level = 1) const;
 
     /// Restrict a fine vector to the coarse level, in mixed form
     void Restrict(const BlockVector& x, BlockVector& y) const;
-    BlockVector Restrict(const BlockVector& x) const;
+    BlockVector Restrict(const BlockVector& x, int level = 1) const;
 
     /// Project a fine vector to the coarse level, in mixed form
     void Project(const BlockVector& x, BlockVector& y) const;
@@ -254,6 +254,8 @@ protected:
     int global_edges_;
 
     double setup_time_;
+
+    std::unordered_map<int, int> size_to_level_;
 
 private:
     double spect_tol_;
