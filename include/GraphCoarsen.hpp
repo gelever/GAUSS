@@ -150,9 +150,6 @@ public:
     */
     void Project(const BlockVector& fine_vect, BlockVector& coarse_vect) const;
 
-    /** @brief Get the face to coarse dof relationship */
-    const SparseMatrix& GetFaceCDof() const { return face_cdof_; }
-
     /** @brief Get Graph Topology */
     const GraphTopology& GetGraphTopology() const { return gt_; }
 
@@ -202,7 +199,7 @@ private:
     // {
     SparseMatrix BuildAggCDofVertex() const;
     SparseMatrix BuildAggCDofEdge() const;
-    ParMatrix BuildEdgeTrueEdge() const;
+    ParMatrix BuildDofTrueDof() const;
     // }
 
     SparseMatrix BuildCoarseD() const;

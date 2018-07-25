@@ -50,7 +50,8 @@ public:
         @brief Generate a random graph based on the Watts-Strogatz model
 
         Generate a ring of nvertices_ vertices, each vertex is connected
-        to the neighboring mean_degree_ vertices (mean_degree/2 on each side)
+        to the neighboring mean_degree_ vertices (mean_degree/2 on each side).
+        Then rewire connections with probability beta.
 
         This implements the algorithm described in
         https://en.wikipedia.org/wiki/Watts%E2%80%93Strogatz_model#Algorithm

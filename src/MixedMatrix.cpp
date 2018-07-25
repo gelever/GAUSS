@@ -39,15 +39,12 @@ MixedMatrix::MixedMatrix(const Graph& graph)
     int num_vertices = D_local_.Rows();
     int num_edges = D_local_.Cols();
 
-    M_elem_.resize(num_vertices);
-
-    SparseMatrix edge_vertex = D_local_.Transpose();
     std::vector<double> weight_inv = graph.weight_local_;
 
     for (auto& i : weight_inv)
     {
         assert(std::fabs(i) > 1e-12);
-        assert(i == i);
+        assert(std::isfinite(i));
         i = 1.0 / i;
     }
 
@@ -58,6 +55,8 @@ MixedMatrix::MixedMatrix(const Graph& graph)
             weight_inv[i] /= 2.0;
         }
     }
+
+    M_elem_.resize(num_vertices);
 
     for (int i = 0; i < num_vertices; ++i)
     {
@@ -245,29 +244,9 @@ ParMatrix MixedMatrix::ToPrimal() const
 
 void MixedMatrix::AssembleM()
 {
-    int M_size = D_local_.Cols();
-    CooMatrix M_coo(M_size, M_size);
+    std::vector<double> agg_weight(M_elem_.size(), 1.0);
 
-    int num_aggs = M_elem_.size();
-    int nnz = 0;
-
-    for (const auto& elem : M_elem_)
-    {
-        nnz += elem.Rows() * elem.Cols();
-    }
-
-    M_coo.Reserve(nnz);
-
-    for (int i = 0; i < num_aggs; ++i)
-    {
-        std::vector<int> dofs = elem_dof_.GetIndices(i);
-        M_coo.Add(dofs, dofs, M_elem_[i]);
-    }
-
-    M_coo.EliminateZeros(1e-15);
-    M_local_ = M_coo.ToSparse();
-    ParMatrix M_d(edge_true_edge_.GetComm(), edge_true_edge_.GetRowStarts(), M_local_);
-    M_global_ = parlinalgcpp::RAP(M_d, edge_true_edge_);
+    AssembleM(agg_weight);
 }
 
 void MixedMatrix::AssembleM(const std::vector<double>& agg_weight)

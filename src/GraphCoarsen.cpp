@@ -55,8 +55,6 @@ GraphCoarsen::GraphCoarsen(GraphTopology gt, const MixedMatrix& mgl,
 
     ParMatrix permute_v = MakeExtPermutation(gt_.agg_ext_vertex_.Mult(v_vdof));
     ParMatrix permute_e = MakeExtPermutation(agg_ext_edof_);
-
-    ParMatrix permute_v_T = permute_v.Transpose();
     ParMatrix permute_e_T = permute_e.Transpose();
 
     ParMatrix M_ext_global = permute_e.Mult(mgl.GlobalM().Mult(permute_e_T));
@@ -220,7 +218,7 @@ void GraphCoarsen::ComputeVertexTargets(const ParMatrix& M_ext_global,
                 vertex_dofs_ext, vertex_dofs_local);
 
         VectorView first_vect = evects_restricted.GetColView(0);
-        vertex_targets_[agg] = smoothg::Orthogonalize(evects_restricted, first_vect, 1, max_evects_);
+        vertex_targets_[agg] = Orthogonalize(evects_restricted, first_vect, 1, max_evects_);
     }
 }
 
@@ -437,10 +435,7 @@ void GraphCoarsen::ScaleEdgeTargets(const MixedMatrix& mgl)
     {
         DenseMatrix& edge_traces(edge_targets_[face]);
 
-        if (edge_traces.Cols() < 1)
-        {
-            continue;
-        }
+        assert(edge_traces.Cols() >= 1);
 
         int agg = gt_.face_agg_local_.GetIndices(face)[0];
 
@@ -1030,23 +1025,10 @@ SparseMatrix GraphCoarsen::BuildAggCDofEdge() const
                         num_aggs, num_cdofs);
 }
 
-ParMatrix GraphCoarsen::BuildEdgeTrueEdge() const
+ParMatrix GraphCoarsen::BuildDofTrueDof() const
 {
     int num_faces = gt_.NumFaces();
-    int num_traces = face_cdof_.Cols();
     int num_coarse_dofs = P_edge_.Cols();
-
-    const auto& ftf_diag = gt_.face_true_face_.GetDiag();
-
-    int num_true_dofs = num_coarse_dofs - num_traces;
-
-    for (int i = 0; i < num_faces; ++i)
-    {
-        if (ftf_diag.RowSize(i) > 0)
-        {
-            num_true_dofs += face_cdof_.RowSize(i);
-        }
-    }
 
     MPI_Comm comm = gt_.face_true_face_.GetComm();
     auto cface_starts = parlinalgcpp::GenerateOffsets(comm, num_coarse_dofs);
@@ -1297,7 +1279,7 @@ MixedMatrix GraphCoarsen::Coarsen(const MixedMatrix& mgl) const
         W_c = P_vertex_T.Mult(mgl.LocalW().Mult(P_vertex_));
     }
 
-    ParMatrix edge_true_edge = BuildEdgeTrueEdge();
+    ParMatrix edge_true_edge = BuildDofTrueDof();
 
     MixedMatrix mm(std::move(M_elem), std::move(agg_cdof_edge),
                    std::move(D_c), std::move(W_c),

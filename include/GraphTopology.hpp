@@ -113,10 +113,10 @@ private:
     SparseMatrix MakeFaceEdge(const ParMatrix& agg_agg,
                               const ParMatrix& edge_edge,
                               const SparseMatrix& agg_edge_ext,
-                              const SparseMatrix& face_edge_ext);
+                              const SparseMatrix& face_int_agg_edge);
 
     SparseMatrix ExtendFaceAgg(const ParMatrix& agg_agg,
-                               const SparseMatrix& face_agg_int);
+                               const SparseMatrix& face_int_agg);
 
 };
 

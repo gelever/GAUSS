@@ -76,13 +76,13 @@ ParMatrix MakeEdgeTrueEdge(MPI_Comm comm, const SparseMatrix& proc_edge,
     @param mat extended aggregate relationship
     @param mat interior aggregate relationship
 */
-SparseMatrix RestrictInterior(const SparseMatrix& mat);
+SparseMatrix RemoveLargeEntries(const SparseMatrix& mat, double tol = 1.0);
 
 /** @brief Restricts aggregate relationship to interior only
     @param mat extended aggregate relationship
     @returns mat interior aggregate relationship
 */
-ParMatrix RestrictInterior(const ParMatrix& mat);
+ParMatrix RemoveLargeEntries(const ParMatrix& mat, double tol = 1.0);
 
 /** @brief Create entity to true entity relationship
     @param entity_entity entity to entity relationship on false dofs

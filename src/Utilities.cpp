@@ -141,7 +141,7 @@ ParMatrix MakeEdgeTrueEdge(MPI_Comm comm, const SparseMatrix& proc_edge,
                      std::move(col_map));
 }
 
-SparseMatrix RestrictInterior(const SparseMatrix& mat)
+SparseMatrix RemoveLargeEntries(const SparseMatrix& mat, double tol)
 {
     int rows = mat.Rows();
     int cols = mat.Cols();
@@ -161,7 +161,7 @@ SparseMatrix RestrictInterior(const SparseMatrix& mat)
 
         for (int j = mat_indptr[i]; j < mat_indptr[i + 1]; ++j)
         {
-            if (mat_data[j] > 1)
+            if (mat_data[j] > tol)
             {
                 indices.push_back(mat_indices[j]);
             }
@@ -175,7 +175,7 @@ SparseMatrix RestrictInterior(const SparseMatrix& mat)
     return SparseMatrix(std::move(indptr), std::move(indices), std::move(data), rows, cols);
 }
 
-ParMatrix RestrictInterior(const ParMatrix& mat)
+ParMatrix RemoveLargeEntries(const ParMatrix& mat, double tol)
 {
     int num_rows = mat.Rows();
 
@@ -199,7 +199,7 @@ ParMatrix RestrictInterior(const ParMatrix& mat)
 
         for (int j = offd_indptr[i]; j < offd_indptr[i + 1]; ++j)
         {
-            if (offd_data[j] > 1)
+            if (offd_data[j] > tol)
             {
                 offd_marker[offd_indices[j]] = 1;
                 offd_nnz++;
@@ -246,7 +246,7 @@ ParMatrix RestrictInterior(const ParMatrix& mat)
 
     assert(count == offd_nnz);
 
-    SparseMatrix diag = RestrictInterior(diag_ext);
+    SparseMatrix diag = RemoveLargeEntries(diag_ext);
     SparseMatrix offd(std::move(indptr), std::move(indices), std::move(data),
                       num_rows, offd_num_cols);
 

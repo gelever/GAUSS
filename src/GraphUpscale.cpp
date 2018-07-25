@@ -58,6 +58,7 @@ GraphUpscale::GraphUpscale(Graph graph, double spect_tol, int max_evects, bool h
     int level = 0;
     {
         mgl_[level] = MixedMatrix(graph_);
+        mgl_[level].AssembleM();
 
         elim_dofs_[level] = edge_elim_dofs;
         MakeSolver(level);
@@ -79,6 +80,7 @@ GraphUpscale::GraphUpscale(Graph graph, double spect_tol, int max_evects, bool h
         coarsener_[level - 1] = GraphCoarsen(gts[level - 1], mgl_[level - 1],
                                              num_evects, spect_tol_);
         mgl_[level] = MixedMatrix(coarsener_[level - 1].Coarsen(mgl_[level - 1]));
+        mgl_[level].AssembleM();
 
         MakeSolver(level);
         MakeVectors(level);
@@ -86,39 +88,22 @@ GraphUpscale::GraphUpscale(Graph graph, double spect_tol, int max_evects, bool h
 
     do_ortho_ = !GetMatrix(0).CheckW();
 
-    //do_ortho_ = false;
-    //printf("\n\n\n!!!!!!!!!! ORTHO TURNED OFF !!!!!!!!!!!!!!\n\n\n");
-
     timer.Click();
     setup_time_ += timer.TotalTime();
 }
 
 void GraphUpscale::MakeSolver(int level)
 {
-    auto& mm = GetMatrix(level);
-    mm.AssembleM();
-
-    if (level == 0)
-    {
-        solver_[level] = make_unique<SPDSolver>(mm, elim_dofs_[level]);
-    }
-    else if (hybridization_)
-    {
-        solver_[level] = make_unique<HybridSolver>(mm);
-    }
-    else
-    {
-        solver_[level] = make_unique<MinresBlockSolver>(mm);
-    }
+    MakeSolver(level, std::vector<double>(GetMatrix(level).GetElemDof().Rows(), 1.0));
 }
 
 void GraphUpscale::MakeSolver(int level, const std::vector<double>& agg_weights)
 {
     auto& mm = GetMatrix(level);
-    mm.AssembleM(agg_weights);
 
     if (level == 0)
     {
+        mm.AssembleM(agg_weights);
         solver_[level] = make_unique<SPDSolver>(mm, elim_dofs_[level]);
     }
     else if (hybridization_)
@@ -133,6 +118,7 @@ void GraphUpscale::MakeSolver(int level, const std::vector<double>& agg_weights)
     }
     else
     {
+        mm.AssembleM(agg_weights);
         solver_[level] = make_unique<MinresBlockSolver>(mm);
     }
 }
