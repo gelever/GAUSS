@@ -245,33 +245,6 @@ double PowerIterate(MPI_Comm comm, const linalgcpp::Operator& A, VectorView resu
 */
 void BroadCast(MPI_Comm comm, SparseMatrix& mat);
 
-/** @brief Extract a dense submatrix from a sparse matrix
-    @param A matrix from which to extract
-    @param row row indices to extract
-    @param col column indices to extract
-    @param colMapper map of global to local indices
-    @param A_sub holds the extracted submatrix
-*/
-void ExtractSubMatrix(const SparseMatrix& A, const std::vector<int>& rows,
-                      const std::vector<int>& cols, const std::vector<int>& colMapper,
-                      DenseMatrix& A_sub);
-
-/** @brief Compute the (scaled) outer product \f$ a v v^T \f$.
-
-    @param a scalar multiple
-    @param v the vector to outer product.
-    @param aVVt the returned dense matrix.
-*/
-void MultScalarVVt(double a, const VectorView& v, DenseMatrix& aVVt);
-
-/** @brief Assemble element matrices
-
-    @param elem_dof element to dof relationship
-    @param elems set of elements to assemble
-    @returns assembled matrix
-*/
-SparseMatrix AssembleElemMat(const SparseMatrix& elem_dof, const std::vector<DenseMatrix>& elems);
-
 /** @brief Adds two sparse matrices C = alpha * A + beta * B
 
     @param alpha scale for A

@@ -161,7 +161,7 @@ SparseMatrix RemoveLargeEntries(const SparseMatrix& mat, double tol)
 
         for (int j = mat_indptr[i]; j < mat_indptr[i + 1]; ++j)
         {
-            if (mat_data[j] > tol)
+            if (std::fabs(mat_data[j]) > tol)
             {
                 indices.push_back(mat_indices[j]);
             }
@@ -199,7 +199,7 @@ ParMatrix RemoveLargeEntries(const ParMatrix& mat, double tol)
 
         for (int j = offd_indptr[i]; j < offd_indptr[i + 1]; ++j)
         {
-            if (offd_data[j] > tol)
+            if (std::fabs(offd_data[j]) > tol)
             {
                 offd_marker[offd_indices[j]] = 1;
                 offd_nnz++;
@@ -690,73 +690,6 @@ void BroadCast(MPI_Comm comm, SparseMatrix& mat)
         mat = SparseMatrix(std::move(indptr), std::move(indices), std::move(data),
                            sizes[0], sizes[1]);
     }
-}
-
-void ExtractSubMatrix(const SparseMatrix& A, const std::vector<int>& rows,
-                      const std::vector<int>& cols, const std::vector<int>& colMapper,
-                      DenseMatrix& A_sub)
-{
-    const int num_row = rows.size();
-    const int num_col = cols.size();
-
-    const auto& A_i = A.GetIndptr();
-    const auto& A_j = A.GetIndices();
-    const auto& A_data = A.GetData();
-
-    A_sub.SetSize(num_row, num_col, 0.0);
-
-    for (int i = 0; i < num_row; ++i)
-    {
-        const int row = rows[i];
-
-        for (int j = A_i[row]; j < A_i[row + 1]; ++j)
-        {
-            const int col = colMapper[A_j[j]];
-
-            if (col >= 0)
-            {
-                A_sub(i, col) = A_data[j];
-            }
-        }
-    }
-}
-
-void MultScalarVVt(double a, const VectorView& v, DenseMatrix& aVVt)
-{
-    int n = v.size();
-    aVVt.SetSize(n, n);
-
-    for (int i = 0; i < n; i++)
-    {
-        double avi = a * v[i];
-
-        for (int j = 0; j < i; j++)
-        {
-            double avivj = avi * v[j];
-
-            aVVt(i, j) = avivj;
-            aVVt(j, i) = avivj;
-        }
-
-        aVVt(i, i) = avi * v[i];
-    }
-}
-
-SparseMatrix AssembleElemMat(const SparseMatrix& elem_dof, const std::vector<DenseMatrix>& elems)
-{
-    int num_elem = elem_dof.Rows();
-    int num_dof = elem_dof.Cols();
-
-    CooMatrix coo(num_dof);
-
-    for (int i = 0; i < num_elem; ++i)
-    {
-        std::vector<int> dofs = elem_dof.GetIndices(i);
-
-        coo.Add(dofs, dofs, elems[i]);
-    }
-
-    return coo.ToSparse();
 }
 
 //TODO(gelever1): Define this inplace in linalgcpp

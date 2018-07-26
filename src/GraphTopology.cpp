@@ -83,7 +83,7 @@ void GraphTopology::Init(const SparseMatrix& vertex_edge,
     ParMatrix agg_agg = agg_edge_d.Mult(edge_agg_ext);
 
     agg_edge_ext = 1.0;
-    SparseMatrix face_int_agg = MakeFaceAggInt(agg_agg);
+    SparseMatrix face_int_agg = MakeFaceIntAgg(agg_agg);
     SparseMatrix face_int_agg_edge = face_int_agg.Mult(agg_edge_ext);
 
     face_edge_local_ = MakeFaceEdge(agg_agg, edge_agg_ext,
@@ -159,7 +159,7 @@ void swap(GraphTopology& lhs, GraphTopology& rhs) noexcept
     swap(lhs.edge_true_edge_, rhs.edge_true_edge_);
 }
 
-SparseMatrix GraphTopology::MakeFaceAggInt(const ParMatrix& agg_agg)
+SparseMatrix GraphTopology::MakeFaceIntAgg(const ParMatrix& agg_agg)
 {
     const auto& agg_agg_diag = agg_agg.GetDiag();
 
@@ -207,10 +207,9 @@ SparseMatrix GraphTopology::MakeFaceEdge(const ParMatrix& agg_agg,
                                          const SparseMatrix& agg_edge_ext,
                                          const SparseMatrix& face_int_agg_edge)
 {
-    const auto& agg_agg_diag = agg_agg.GetDiag();
     const auto& agg_agg_offd = agg_agg.GetOffd();
 
-    int num_aggs = agg_agg_diag.Rows();
+    int num_aggs = agg_agg_offd.Rows();
     int num_edges = face_int_agg_edge.Cols();
     int num_faces_int = face_int_agg_edge.Rows();
     int num_faces = num_faces_int + agg_agg_offd.nnz();

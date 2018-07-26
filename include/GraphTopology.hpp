@@ -108,7 +108,7 @@ private:
               const ParMatrix& edge_edge,
               ParMatrix edge_true_edge);
 
-    SparseMatrix MakeFaceAggInt(const ParMatrix& agg_agg);
+    SparseMatrix MakeFaceIntAgg(const ParMatrix& agg_agg);
 
     SparseMatrix MakeFaceEdge(const ParMatrix& agg_agg,
                               const ParMatrix& edge_edge,
