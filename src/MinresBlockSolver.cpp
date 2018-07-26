@@ -30,7 +30,7 @@ MinresBlockSolver::MinresBlockSolver(const MixedMatrix& mgl)
 }
 
 MinresBlockSolver::MinresBlockSolver(const MixedMatrix& mgl, const std::vector<int>& elim_dofs)
-    : MGLSolver(mgl), M_(mgl.GlobalM()), D_(mgl.GlobalD()), DT_(D_.Transpose()), W_(mgl.GlobalW()),
+    : MGLSolver(mgl), M_(mgl.GlobalM()), /*D_(mgl.GlobalD()), DT_(D_.Transpose()),*/ W_(mgl.GlobalW()),
       edge_true_edge_(mgl.EdgeTrueEdge()),
       op_(mgl.TrueOffsets()), prec_(mgl.TrueOffsets()),
       true_rhs_(mgl.TrueOffsets()), true_sol_(mgl.TrueOffsets())
@@ -53,7 +53,7 @@ MinresBlockSolver::MinresBlockSolver(const MixedMatrix& mgl, const std::vector<i
 
     D_elim.EliminateCol(marker);
 
-    ParMatrix D_elim_g(comm_, D_elim);
+    ParMatrix D_elim_g(comm_, std::move(D_elim));
 
     D_ = D_elim_g.Mult(mgl.EdgeTrueEdge());
     DT_ = D_.Transpose();

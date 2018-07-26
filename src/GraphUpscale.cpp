@@ -47,7 +47,8 @@ GraphUpscale::GraphUpscale(Graph graph, double spect_tol, int max_evects, bool h
     // Compute Topology
     double coarsen_factor = 4.0;
 
-    std::vector<GraphTopology> gts(1, {graph_});
+    std::vector<GraphTopology> gts;
+    gts.emplace_back(graph_);
 
     for (int level = 1; level < num_levels - 1; ++level)
     {
@@ -68,16 +69,15 @@ GraphUpscale::GraphUpscale(Graph graph, double spect_tol, int max_evects, bool h
     // Coarse Levels
     for (level = 1; level < num_levels; ++level)
     {
-        int num_evects = max_evects;
         //int num_evects = max_evects + i - 1;
+        int num_evects = max_evects;
+        int num_vert = gts[level - 1].NumVertices();
+        int num_agg = gts[level - 1].NumAggs();
 
         ParPrint(myid_, printf("Coarsening: %d / %d = %.2f, evects: %d\n",
-                    gts[level - 1].NumVertices(),
-                    gts[level - 1].NumAggs(),
-                    gts[level - 1].NumVertices() / (double) gts[level - 1].NumAggs(),
-                    num_evects));
+                 num_vert, num_agg, num_vert / (double) num_agg, num_evects));
 
-        coarsener_[level - 1] = GraphCoarsen(gts[level - 1], mgl_[level - 1],
+        coarsener_[level - 1] = GraphCoarsen(std::move(gts[level - 1]), mgl_[level - 1],
                                              num_evects, spect_tol_);
         mgl_[level] = MixedMatrix(coarsener_[level - 1].Coarsen(mgl_[level - 1]));
         mgl_[level].AssembleM();
@@ -94,7 +94,20 @@ GraphUpscale::GraphUpscale(Graph graph, double spect_tol, int max_evects, bool h
 
 void GraphUpscale::MakeSolver(int level)
 {
-    MakeSolver(level, std::vector<double>(GetMatrix(level).GetElemDof().Rows(), 1.0));
+    auto& mm = GetMatrix(level);
+
+    if (level == 0)
+    {
+        solver_[level] = make_unique<SPDSolver>(mm, elim_dofs_[level]);
+    }
+    else if (hybridization_)
+    {
+        solver_[level] = make_unique<HybridSolver>(mm);
+    }
+    else
+    {
+        solver_[level] = make_unique<MinresBlockSolver>(mm);
+    }
 }
 
 void GraphUpscale::MakeSolver(int level, const std::vector<double>& agg_weights)
@@ -110,6 +123,7 @@ void GraphUpscale::MakeSolver(int level, const std::vector<double>& agg_weights)
     {
         if (!solver_[level])
         {
+            printf("HERE!!!!!!!!\n");
             solver_[level] = make_unique<HybridSolver>(mm);
         }
 

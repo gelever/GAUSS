@@ -20,12 +20,10 @@
 
 #include "GraphEdgeSolver.hpp"
 
-#include "LocalEigenSolver.hpp"
-
 namespace smoothg
 {
 
-GraphEdgeSolver::GraphEdgeSolver(const SparseMatrix& M, const SparseMatrix& D)
+GraphEdgeSolver::GraphEdgeSolver(SparseMatrix M, SparseMatrix D)
     : is_diag_(IsDiag(M))
 {
     assert(M.Rows() > 0);
@@ -58,14 +56,13 @@ GraphEdgeSolver::GraphEdgeSolver(const SparseMatrix& M, const SparseMatrix& D)
 
         SparseMatrix W = W_coo.ToSparse();
 
-        SparseMatrix D_elim(D);
-        D_elim.EliminateRow(elim_dof);
-        SparseMatrix DT_elim = D_elim.Transpose();
+        D.EliminateRow(elim_dof);
+        SparseMatrix DT = D.Transpose();
 
-        block.SetBlock(0, 0, M);
-        block.SetBlock(0, 1, DT_elim);
-        block.SetBlock(1, 0, D_elim);
-        block.SetBlock(1, 1, W);
+        block.SetBlock(0, 0, std::move(M));
+        block.SetBlock(0, 1, std::move(DT));
+        block.SetBlock(1, 0, std::move(D));
+        block.SetBlock(1, 1, std::move(W));
 
         block_Ainv_ = SparseSolver(block.Combine());
     }

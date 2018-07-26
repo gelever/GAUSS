@@ -385,24 +385,22 @@ void GraphCoarsen::ComputeEdgeTargets(const MixedMatrix& mgl,
             continue;
         }
 
-        const auto& face_M = shared_M[face];
-        const auto& face_D = shared_D[face];
-        const auto& face_sigma = shared_sigma[face];
-        const auto& face_constant = shared_constant[face];
+        auto& face_M = shared_M[face];
+        auto& face_D = shared_D[face];
+        auto& face_sigma = shared_sigma[face];
+        auto& face_constant = shared_constant[face];
 
         linalgcpp::HStack(face_sigma, collected_sigma);
 
         bool shared = face_shared.RowSize(face) > 0;
 
-        // TODO(gelever1): resolve this copy.  (Types must match so face_? gets copied and promoted
-        // to rvalue).
-        const auto& M_local = shared ? CombineM(face_M, num_face_edges) : face_M[0];
-        const auto& D_local = shared ? CombineD(face_D, num_face_edges) : face_D[0];
+        SparseMatrix M_local = shared ? CombineM(face_M, num_face_edges) : std::move(face_M[0]);
+        SparseMatrix D_local = shared ? CombineD(face_D, num_face_edges) : std::move(face_D[0]);
         const auto& constant_local = shared ? CombineConstant(face_constant) : face_constant[0];
         const int split = shared ? face_D[0].Rows() : GetSplit(face);
 
 
-        GraphEdgeSolver solver(M_local, D_local);
+        GraphEdgeSolver solver(std::move(M_local), std::move(D_local));
         Vector one_neg_one = MakeOneNegOne(constant_local, split);
 
         if (std::fabs(constant_local.Mult(one_neg_one)) > 1e-12)
@@ -833,7 +831,7 @@ void GraphCoarsen::BuildPedge(const MixedMatrix& mgl)
         // TODO(gelever1): We may still be able to continue w/ jsut one vertex dof
         assert (edge_dofs.size() > 0);
 
-        GraphEdgeSolver solver(M, D);
+        GraphEdgeSolver solver(std::move(M), std::move(D));
 
         for (auto face : faces)
         {

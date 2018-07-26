@@ -64,7 +64,7 @@ public:
        @param M matrix \f$ M \f$ in the formula in the class description
        @param D matrix \f$ D \f$ in the formula in the class description
     */
-    GraphEdgeSolver(const SparseMatrix& M, const SparseMatrix& D);
+    GraphEdgeSolver(SparseMatrix M, SparseMatrix D);
 
     /**
        @brief Constructor of the local saddle point solver.
