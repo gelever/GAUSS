@@ -814,6 +814,7 @@ void GraphCoarsen::BuildPedge(const MixedMatrix& mgl)
     DenseMatrix bubbles;
     DenseMatrix trace_ext;
     DenseMatrix D_trace;
+    DenseMatrix M_trace;
     Vector one;
 
     for (int agg = 0; agg < num_aggs; ++agg)
@@ -838,15 +839,20 @@ void GraphCoarsen::BuildPedge(const MixedMatrix& mgl)
             std::vector<int> face_coarse_dofs = face_cdof_.GetIndices(face);
             std::vector<int> face_fine_dofs = face_edge.GetIndices(face);
 
+            SparseMatrix M_transfer = mgl.LocalM().GetSubMatrix(edge_dofs, face_fine_dofs, col_marker_);
             SparseMatrix D_transfer = mgl.LocalD().GetSubMatrix(vertex_dofs, face_fine_dofs, col_marker_);
+
+            M_trace.SetSize(M_transfer.Rows(), edge_targets_[face].Cols());
             D_trace.SetSize(D_transfer.Rows(), edge_targets_[face].Cols());
+
+            M_transfer.Mult(edge_targets_[face], M_trace);
             D_transfer.Mult(edge_targets_[face], D_trace);
 
             D_trace_sum_[agg].push_back(D_trace.GetColView(0).Mult(vertex_targets_[agg].GetColView(0)));
 
             OrthoConstant(D_trace, one);
 
-            solver.Mult(D_trace, trace_ext);
+            solver.BlockMult(M_trace, D_trace, trace_ext);
             P_edge.Add(edge_dofs, face_coarse_dofs, trace_ext);
         }
 
@@ -1300,6 +1306,7 @@ MixedMatrix GraphCoarsen::Coarsen(const MixedMatrix& mgl) const
 
 void GraphCoarsen::DebugChecks(const MixedMatrix& mgl) const
 {
+    /*
     double test_tol = 1e-10;
 
     // PTP should be identity
@@ -1369,6 +1376,7 @@ void GraphCoarsen::DebugChecks(const MixedMatrix& mgl) const
             printf("%d Warning: D PQT = PPT D difference %.8e\n", MyId(), norm);
         }
     }
+    */
 }
 
 Vector GraphCoarsen::Interpolate(const VectorView& coarse_vect) const

@@ -149,6 +149,9 @@ public:
     */
     void Mult(const DenseMatrix& rhs, DenseMatrix& sigma_sol, DenseMatrix& u_sol) const;
 
+    void BlockMult(const VectorView& edge_rhs, const VectorView& vertex_rhs, VectorView sigma_sol) const;
+    void BlockMult(const DenseMatrix& edge_rhs, const DenseMatrix& vertex_rhs, DenseMatrix& sigma_sol) const;
+
     /**
        @brief Solves \f$ (D M^{-1} D^T) u = g\f$, \f$ \sigma = M^{-1} D^T u \f$.
               Offsets the right hand side by set amount.

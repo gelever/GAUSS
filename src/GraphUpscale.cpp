@@ -46,6 +46,8 @@ GraphUpscale::GraphUpscale(Graph graph, double spect_tol, int max_evects, bool h
 
     // Compute Topology
     double coarsen_factor = 4.0;
+    //double coarsen_factor = 8.0;
+    //double coarsen_factor = 16.0;
 
     std::vector<GraphTopology> gts;
     gts.emplace_back(graph_);
@@ -69,10 +71,10 @@ GraphUpscale::GraphUpscale(Graph graph, double spect_tol, int max_evects, bool h
     // Coarse Levels
     for (level = 1; level < num_levels; ++level)
     {
-        //int num_evects = max_evects + i - 1;
+        //int num_evects = max_evects + level - 1;
         int num_evects = max_evects;
-        int num_vert = gts[level - 1].NumVertices();
-        int num_agg = gts[level - 1].NumAggs();
+        int num_vert = gts[level - 1].GlobalNumVertices();
+        int num_agg = gts[level - 1].GlobalNumAggs();
 
         ParPrint(myid_, printf("Coarsening: %d / %d = %.2f, evects: %d\n",
                  num_vert, num_agg, num_vert / (double) num_agg, num_evects));
@@ -123,7 +125,6 @@ void GraphUpscale::MakeSolver(int level, const std::vector<double>& agg_weights)
     {
         if (!solver_[level])
         {
-            printf("HERE!!!!!!!!\n");
             solver_[level] = make_unique<HybridSolver>(mm);
         }
 

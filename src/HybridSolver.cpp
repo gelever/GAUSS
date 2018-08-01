@@ -35,7 +35,8 @@ HybridSolver::HybridSolver(const MixedMatrix& mgl)
     MinvDT_(num_aggs_), MinvCT_(num_aggs_),
     AinvDMinvCT_(num_aggs_), Ainv_(num_aggs_),
     hybrid_elem_(num_aggs_), Ainv_f_(num_aggs_),
-    agg_weights_(num_aggs_, 1.0)
+    agg_weights_(num_aggs_, 1.0),
+    rescale_iter_(0)
 {
     SparseMatrix edgedof_multiplier = MakeEdgeDofMultiplier();
     SparseMatrix multiplier_edgedof = edgedof_multiplier.Transpose();
@@ -55,6 +56,27 @@ HybridSolver::HybridSolver(const MixedMatrix& mgl)
     InitSolver(std::move(local_hybrid));
 }
 
+ParMatrix HybridSolver::ComputeScaledSystem(const ParMatrix& hybrid_d)
+{
+    ParMatrix tmpH = parlinalgcpp::RAP(hybrid_d, multiplier_d_td_);
+    parlinalgcpp::ParSmoother prec_scale(tmpH);
+
+    Vector zeros(tmpH.Rows(), 1e-8);
+    diag_scaling_.resize(tmpH.Rows(), 1.0);
+
+    double rtol = 1e-16;
+    double atol = 1e-16;
+    bool verbose = false;
+
+    linalgcpp::PCGSolver cg_scale(tmpH, prec_scale, rescale_iter_, rtol,
+                                  atol, verbose, parlinalgcpp::ParMult);
+    cg_scale.Mult(zeros, VectorView(diag_scaling_));
+
+    SparseMatrix scale_mat(diag_scaling_);
+    ParMatrix scale_mat_d(tmpH.GetComm(), tmpH.GetColStarts(), std::move(scale_mat));
+
+    return parlinalgcpp::RAP(tmpH, scale_mat_d);
+}
 
 void HybridSolver::InitSolver(SparseMatrix local_hybrid)
 {
@@ -65,7 +87,16 @@ void HybridSolver::InitSolver(SparseMatrix local_hybrid)
 
     ParMatrix hybrid_d = ParMatrix(comm_, std::move(local_hybrid));
 
-    pHybridSystem_ = parlinalgcpp::RAP(hybrid_d, multiplier_d_td_);
+    if (rescale_iter_ > 0)
+    {
+        pHybridSystem_ = ComputeScaledSystem(hybrid_d);
+    }
+    else
+    {
+        pHybridSystem_ = parlinalgcpp::RAP(hybrid_d, multiplier_d_td_);
+    }
+
+
     nnz_ = pHybridSystem_.nnz();
 
     cg_ = linalgcpp::PCGSolver(pHybridSystem_, max_num_iter_, rtol_,
@@ -269,6 +300,11 @@ void HybridSolver::Solve(const BlockVector& Rhs, BlockVector& Sol) const
     // assemble true right hand side
     multiplier_d_td_.MultAT(Hrhs_, trueHrhs_);
 
+    if (rescale_iter_ > 0)
+    {
+        trueHrhs_ *= VectorView(diag_scaling_);
+    }
+
     // solve the parallel global hybridized system
     Timer timer(Timer::Start::True);
 
@@ -299,6 +335,11 @@ void HybridSolver::Solve(const BlockVector& Rhs, BlockVector& Sol) const
                       << ". Final residual norm is "
                       << cg_->GetFinalNorm() << "\n";
         */
+    }
+
+    if (rescale_iter_ > 0)
+    {
+        trueMu_ *= VectorView(diag_scaling_);
     }
 
     // distribute true dofs to dofs and recover solution of the original system
