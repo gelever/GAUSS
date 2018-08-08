@@ -143,27 +143,12 @@ Vector GraphUpscale::ReadVertexVector(const std::string& filename) const
     return ReadVector(filename, graph_.vertex_map_);
 }
 
-Vector GraphUpscale::ReadEdgeVector(const std::string& filename) const
-{
-    return ReadVector(filename, graph_.edge_map_);
-}
-
 BlockVector GraphUpscale::ReadVertexBlockVector(const std::string& filename) const
 {
     BlockVector vect = GetBlockVector(0);
 
     vect.GetBlock(0) = 0.0;
     vect.GetBlock(1) = ReadVertexVector(filename);
-
-    return vect;
-}
-
-BlockVector GraphUpscale::ReadEdgeBlockVector(const std::string& filename) const
-{
-    BlockVector vect = GetBlockVector(0);
-
-    vect.GetBlock(0) = ReadEdgeVector(filename);
-    vect.GetBlock(1) = 0.0;
 
     return vect;
 }

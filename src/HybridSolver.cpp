@@ -224,6 +224,8 @@ SparseMatrix HybridSolver::AssembleHybridSystem(
         const int nlocal_vertexdof = local_vertexdof.size();
         const int nlocal_multiplier = local_multiplier.size();
 
+        assert(nlocal_vertexdof > 0);
+
         SparseMatrix Dloc = mgl.LocalD().GetSubMatrix(local_vertexdof, local_edgedof,
                                                       edge_map);
 
@@ -272,7 +274,7 @@ SparseMatrix HybridSolver::AssembleHybridSystem(
 
         Ainv_i.Mult(DMinvCT, AinvDMinvCT_i);
 
-        if (DMinvCT.Rows() > 0 && DMinvCT.Rows() > 0)
+        if (DMinvCT.Cols() > 0)
         {
             CMDADMC.SetSize(nlocal_multiplier, nlocal_multiplier);
             AinvDMinvCT_i.MultAT(DMinvCT, CMDADMC);
