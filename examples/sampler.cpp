@@ -149,7 +149,7 @@ int main(int argc, char* argv[])
     Graph graph(comm, vertex_edge_global, part, weight, W_block);
 
     int sampler_seed = initial_seed + myid;
-    PDESampler sampler(std::move(graph), spect_tol, max_evects, hybridization,
+    PDESampler sampler(std::move(graph), {spect_tol, max_evects, hybridization},
                        dimension, kappa, cell_volume, sampler_seed);
     const auto& upscale = sampler.GetUpscale();
 

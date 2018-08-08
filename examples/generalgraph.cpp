@@ -52,12 +52,14 @@ int main(int argc, char* argv[])
     std::string weight_filename = "";
     std::string w_block_filename = "";
 
+
     int isolate = -1;
+    int num_partitions = 12;
+    bool metis_agglomeration = false;
+
     int max_evects = 4;
     double spect_tol = 1e-3;
-    int num_partitions = 12;
     bool hybridization = false;
-    bool metis_agglomeration = false;
     int num_levels = 2;
 
     bool generate_fiedler = false;
@@ -145,7 +147,7 @@ int main(int argc, char* argv[])
     // Set up GraphUpscale
     /// [Upscale]
     Graph graph(comm, vertex_edge_global, global_partitioning, weight);
-    GraphUpscale upscale(graph, spect_tol, max_evects, hybridization, num_levels);
+    GraphUpscale upscale(graph, {spect_tol, max_evects, hybridization, num_levels});
 
     upscale.PrintInfo();
     upscale.ShowSetupTime();

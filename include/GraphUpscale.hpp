@@ -21,9 +21,12 @@
 #ifndef __GRAPHUPSCALE_HPP__
 #define __GRAPHUPSCALE_HPP__
 
+#include <utility>
+
 #include "linalgcpp.hpp"
 #include "parlinalgcpp.hpp"
 #include "partition.hpp"
+
 
 #include "Utilities.hpp"
 #include "MixedMatrix.hpp"
@@ -39,9 +42,47 @@ namespace smoothg
 {
 
 /**
+   @brief Collection of parameters for GraphUpscale
+*/
+struct UpscaleParams
+{
+    /**
+       @brief Default Constructor
+    */
+    UpscaleParams() : UpscaleParams(0.001, 4) { }
+
+    /**
+       @brief Parameter Constructor
+
+       @param spect_tol_in spectral tolerance determines how many eigenvectors to
+                        keep per aggregate
+       @param max_evects_in maximum number of eigenvectors to keep per aggregate
+       @param hybridization_in use hybridization as solver
+       @param max_levels_in maximum number of levels to coarsen
+       @param coarsen_factor_in metis coarsening factor if using multilevel upscaling
+       @param elim_edge_dofs_in edge dofs to eliminate on the fine level
+    */
+    UpscaleParams(double spect_tol_in, int max_evects_in, bool hybridization_in = false,
+                  int max_levels_in = 2, double coarsen_factor_in = 4.0,
+                  const std::vector<int>& elim_edge_dofs_in = {})
+        : hybridization(hybridization_in),
+          max_levels(max_levels_in), coarsen_factor(coarsen_factor_in),
+          spectral_tol(max_levels_in, {spect_tol_in, max_evects_in}),
+          elim_edge_dofs(elim_edge_dofs_in)
+          { }
+
+    bool hybridization;
+    int max_levels;
+    double coarsen_factor;
+
+    std::vector<std::pair<double, int>> spectral_tol;
+    std::vector<int> elim_edge_dofs;
+};
+
+
+/**
    @brief Use upscaling as operator
 */
-
 class GraphUpscale : public linalgcpp::Operator
 {
 public:
@@ -51,14 +92,10 @@ public:
     /**
        @brief Graph Constructor
 
-       @param graph contains input graph information
-       @param spect_tol spectral tolerance determines how many eigenvectors to
-                        keep per aggregate
-       @param max_evects maximum number of eigenvectors to keep per aggregate
-       @param hybridization use hybridization as solver
+       @param graph input graph information
+       @param params set of upscaling parameters
     */
-    GraphUpscale(Graph graph, double spect_tol = 0.001, int max_evects = 4,
-                 bool hybridization = false, int num_levels = 2, const std::vector<int>& elim_edge_dofs = {});
+    GraphUpscale(Graph graph, const UpscaleParams& params = {});
 
     /// Default Destructor
     ~GraphUpscale() = default;
@@ -244,8 +281,6 @@ protected:
     std::unordered_map<int, int> size_to_level_;
 
 private:
-    double spect_tol_;
-    int max_evects_;
     bool hybridization_;
 
     Graph graph_;

@@ -63,7 +63,7 @@ int main(int argc, char* argv[])
         std::vector<int> part = PartitionAAT(vertex_edge, coarse_factor);
         Graph graph(comm, vertex_edge, part);
 
-        GraphUpscale upscale(graph, spect_tol, max_evects, hybridization);
+        GraphUpscale upscale(graph, {spect_tol, max_evects, hybridization});
 
         Vector rhs_u_fine = upscale.ReadVertexVector(rhs_filename);
         Vector sol = upscale.Solve(rhs_u_fine);
@@ -84,7 +84,7 @@ int main(int argc, char* argv[])
 
         // Use distrubted constructor
         Graph graph_local(vertex_edge_local, edge_true_edge, part_local, weight_local);
-        GraphUpscale upscale(graph_local, spect_tol, max_evects, hybridization);
+        GraphUpscale upscale(graph_local, {spect_tol, max_evects, hybridization});
 
         // This right hand side may not be permuted the same as in the upscaler,
         // since only local vertex information was given and the vertex map was generated
@@ -99,7 +99,7 @@ int main(int argc, char* argv[])
         std::vector<int> part = PartitionAAT(vertex_edge, coarse_factor);
         Graph graph(comm, vertex_edge, part);
 
-        GraphUpscale upscale(graph, spect_tol, max_evects, hybridization);
+        GraphUpscale upscale(graph, {spect_tol, max_evects, hybridization});
 
         // Start at Fine Level
         Vector rhs_u_fine = upscale.ReadVertexVector(rhs_filename);
@@ -126,7 +126,7 @@ int main(int argc, char* argv[])
         std::vector<int> part = PartitionAAT(vertex_edge, coarse_factor);
         Graph graph(comm, vertex_edge, part);
 
-        GraphUpscale upscale(graph, spect_tol, max_evects, hybridization);
+        GraphUpscale upscale(graph, {spect_tol, max_evects, hybridization});
 
         BlockVector fine_rhs = upscale.ReadVertexBlockVector(rhs_filename);
 
@@ -153,8 +153,8 @@ int main(int argc, char* argv[])
 
         bool use_hybridization = true;
 
-        GraphUpscale hb_upscale(graph, spect_tol, max_evects, use_hybridization);
-        GraphUpscale minres_upscale(graph, spect_tol, max_evects, !use_hybridization);
+        GraphUpscale hb_upscale(graph, {spect_tol, max_evects, use_hybridization});
+        GraphUpscale minres_upscale(graph, {spect_tol, max_evects, !use_hybridization});
 
         Vector rhs_u_fine = minres_upscale.ReadVertexVector(rhs_filename);
 

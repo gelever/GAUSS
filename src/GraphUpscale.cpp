@@ -23,38 +23,32 @@
 namespace smoothg
 {
 
-GraphUpscale::GraphUpscale(Graph graph, double spect_tol, int max_evects, bool hybridization,
-                           int num_levels, const std::vector<int>& edge_elim_dofs)
+GraphUpscale::GraphUpscale(Graph graph, const UpscaleParams& params)
     : Operator(graph.vertex_edge_local_.Rows()),
-      mgl_(num_levels),
-      coarsener_(num_levels - 1),
-      solver_(num_levels),
-      rhs_(num_levels),
-      sol_(num_levels),
-      constant_rep_(num_levels),
-      elim_dofs_(num_levels),
+      mgl_(params.max_levels),
+      coarsener_(params.max_levels - 1),
+      solver_(params.max_levels),
+      rhs_(params.max_levels),
+      sol_(params.max_levels),
+      constant_rep_(params.max_levels),
+      elim_dofs_(params.max_levels),
       comm_(graph.edge_true_edge_.GetComm()),
       myid_(graph.edge_true_edge_.GetMyId()),
       global_vertices_(graph.global_vertices_),
       global_edges_(graph.global_edges_),
       setup_time_(0),
-      spect_tol_(spect_tol), max_evects_(max_evects),
-      hybridization_(hybridization),
+      hybridization_(params.hybridization),
       graph_(std::move(graph))
 {
     Timer timer(Timer::Start::True);
 
     // Compute Topology
-    double coarsen_factor = 4.0;
-    //double coarsen_factor = 8.0;
-    //double coarsen_factor = 16.0;
-
     std::vector<GraphTopology> gts;
     gts.emplace_back(graph_);
 
-    for (int level = 1; level < num_levels - 1; ++level)
+    for (int level = 1; level < params.max_levels - 1; ++level)
     {
-        gts.emplace_back(gts.back(), coarsen_factor);
+        gts.emplace_back(gts.back(), params.coarsen_factor);
     }
 
     // Fine Level
@@ -63,24 +57,25 @@ GraphUpscale::GraphUpscale(Graph graph, double spect_tol, int max_evects, bool h
         mgl_[level] = MixedMatrix(graph_);
         mgl_[level].AssembleM();
 
-        elim_dofs_[level] = edge_elim_dofs;
+        elim_dofs_[level] = params.elim_edge_dofs;
         MakeSolver(level);
         MakeVectors(level);
     }
 
     // Coarse Levels
-    for (level = 1; level < num_levels; ++level)
+    for (level = 1; level < params.max_levels; ++level)
     {
-        //int num_evects = max_evects + level - 1;
-        int num_evects = max_evects;
+        double spect_tol_i = params.spectral_tol[level - 1].first;
+        int num_evects_i = params.spectral_tol[level - 1].second;
+
         int num_vert = gts[level - 1].GlobalNumVertices();
         int num_agg = gts[level - 1].GlobalNumAggs();
 
         ParPrint(myid_, printf("Coarsening: %d / %d = %.2f, evects: %d\n",
-                 num_vert, num_agg, num_vert / (double) num_agg, num_evects));
+                 num_vert, num_agg, num_vert / (double) num_agg, num_evects_i));
 
         coarsener_[level - 1] = GraphCoarsen(std::move(gts[level - 1]), mgl_[level - 1],
-                                             num_evects, spect_tol_);
+                                             num_evects_i, spect_tol_i);
         mgl_[level] = MixedMatrix(coarsener_[level - 1].Coarsen(mgl_[level - 1]));
         mgl_[level].AssembleM();
 

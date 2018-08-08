@@ -85,7 +85,7 @@ public:
         @param kappa inverse correlation length for Matern covariance
         @param seed seed for random number generator
      */
-    PDESampler(Graph graph, double spect_tol, int max_evects, bool hybridization,
+    PDESampler(Graph graph, const UpscaleParams& params,
                int dimension, double kappa, double cell_volume, int seed);
 
     /** @brief Default Destructor */
@@ -147,9 +147,9 @@ private:
 };
 
 
-PDESampler::PDESampler(Graph graph, double spect_tol, int max_evects, bool hybridization,
+PDESampler::PDESampler(Graph graph, const UpscaleParams& params,
                        int dimension, double kappa, double cell_volume, int seed)
-    : upscale_(std::move(graph), spect_tol, max_evects, hybridization),
+    : upscale_(std::move(graph), params),
       normal_dist_(0.0, 1.0, seed),
       cell_volume_(cell_volume),
       rhs_fine_(upscale_.GetVector(0)),

@@ -126,7 +126,7 @@ int main(int argc, char* argv[])
 
     /// [Upscale]
     Graph graph(comm, vertex_edge_global, global_partitioning, weight, W_block);
-    GraphUpscale upscale(graph, spect_tol, max_evects, hybridization);
+    GraphUpscale upscale(graph, {spect_tol, max_evects, hybridization});
 
 
     upscale.PrintInfo();
