@@ -41,6 +41,11 @@
 namespace smoothg
 {
 
+/// Paramaters to determine how many eigenvectors to keep
+/// The double is a spectral tolerance threshold
+/// The integer is a maximum number of eigenvectors per aggregate
+using SpectralPair = std::pair<double, int>;
+
 /**
    @brief Collection of parameters for GraphUpscale
 */
@@ -52,7 +57,7 @@ struct UpscaleParams
     UpscaleParams() : UpscaleParams(0.001, 4) { }
 
     /**
-       @brief Parameter Constructor
+       @brief Individual Parameter Constructor
 
        @param spect_tol_in spectral tolerance determines how many eigenvectors to
                         keep per aggregate
@@ -67,7 +72,7 @@ struct UpscaleParams
                   const std::vector<int>& elim_edge_dofs_in = {})
         : hybridization(hybridization_in),
           max_levels(max_levels_in), coarsen_factor(coarsen_factor_in),
-          spectral_tol(max_levels_in, {spect_tol_in, max_evects_in}),
+          spectral_pair(max_levels_in - 1, {spect_tol_in, max_evects_in}),
           elim_edge_dofs(elim_edge_dofs_in)
           { }
 
@@ -75,7 +80,7 @@ struct UpscaleParams
     int max_levels;
     double coarsen_factor;
 
-    std::vector<std::pair<double, int>> spectral_tol;
+    std::vector<SpectralPair> spectral_pair;
     std::vector<int> elim_edge_dofs;
 };
 
@@ -95,7 +100,7 @@ public:
        @param graph input graph information
        @param params set of upscaling parameters
     */
-    GraphUpscale(Graph graph, const UpscaleParams& params = {});
+    GraphUpscale(const Graph& graph, const UpscaleParams& params = {});
 
     /// Default Destructor
     ~GraphUpscale() = default;
@@ -105,20 +110,6 @@ public:
 
     /// Get global number of columns (vertex dofs)
     int GlobalCols() const;
-
-    /// Extract a local fine vertex space vector from global vector
-    template <typename T>
-    T GetVertexVector(const T& global_vect) const;
-
-    /// Read permuted vertex vector
-    Vector ReadVertexVector(const std::string& filename) const;
-
-    /// Read permuted vertex vector, in mixed form
-    BlockVector ReadVertexBlockVector(const std::string& filename) const;
-
-    /// Write permuted vertex vector
-    template <typename T>
-    void WriteVertexVector(const T& vect, const std::string& filename) const;
 
     /// Create Weighted Solver
     void MakeSolver(int level);
@@ -244,9 +235,6 @@ public:
     /// Get Normalized Constant Representation
     const Vector& ConstantRep(int level) const { return constant_rep_.at(level); }
 
-    /// Get Fine Level Graph
-    const Graph& FineGraph() const { return graph_; }
-
     /// Compare errors between upscaled and fine solution.
     /// Returns {vertex_error, edge_error, div_error} array.
     std::vector<double> ComputeErrors(const BlockVector& upscaled_sol,
@@ -259,7 +247,7 @@ public:
 
     ParMatrix ToPrimal() const;
 
-protected:
+private:
     void MakeVectors(int level);
 
     std::vector<MixedMatrix> mgl_;
@@ -273,32 +261,13 @@ protected:
     MPI_Comm comm_;
     int myid_;
 
-    int global_vertices_;
-    int global_edges_;
-
     double setup_time_;
 
     std::unordered_map<int, int> size_to_level_;
 
-private:
     bool hybridization_;
-
-    Graph graph_;
-
     bool do_ortho_;
 };
-
-template <typename T>
-T GraphUpscale::GetVertexVector(const T& global_vect) const
-{
-    return GetSubVector(global_vect, graph_.vertex_map_);
-}
-
-template <typename T>
-void GraphUpscale::WriteVertexVector(const T& vect, const std::string& filename) const
-{
-    WriteVector(comm_, vect, filename, global_vertices_, graph_.vertex_map_);
-}
 
 } // namespace smoothg
 

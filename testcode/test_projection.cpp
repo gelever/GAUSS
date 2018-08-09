@@ -61,7 +61,7 @@ int main(int argc, char* argv[])
     // Set up GraphUpscale
     /// [Upscale]
     Graph graph(comm, vertex_edge_global, global_partitioning);
-    GraphUpscale upscale(std::move(graph), {spect_tol, max_evects});
+    GraphUpscale upscale(graph, {spect_tol, max_evects});
 
     upscale.PrintInfo();
     upscale.ShowSetupTime();

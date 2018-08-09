@@ -65,10 +65,10 @@ int main(int argc, char* argv[])
 
         GraphUpscale upscale(graph, {spect_tol, max_evects, hybridization});
 
-        Vector rhs_u_fine = upscale.ReadVertexVector(rhs_filename);
+        Vector rhs_u_fine = ReadVertexVector(graph, rhs_filename);
         Vector sol = upscale.Solve(rhs_u_fine);
 
-        upscale.WriteVertexVector(sol, "sol1.out");
+        WriteVertexVector(graph, sol, "sol1.out");
     }
 
     // Mimic distributed data
@@ -88,10 +88,10 @@ int main(int argc, char* argv[])
 
         // This right hand side may not be permuted the same as in the upscaler,
         // since only local vertex information was given and the vertex map was generated
-        Vector rhs_u_fine = upscale.ReadVertexVector(rhs_filename);
+        Vector rhs_u_fine = ReadVertexVector(graph_local, rhs_filename);
         Vector sol = upscale.Solve(rhs_u_fine);
 
-        upscale.WriteVertexVector(sol, "sol2.out");
+        WriteVertexVector(graph_local, sol, "sol2.out");
     }
 
     // Using coarse space
@@ -102,7 +102,7 @@ int main(int argc, char* argv[])
         GraphUpscale upscale(graph, {spect_tol, max_evects, hybridization});
 
         // Start at Fine Level
-        Vector rhs_u_fine = upscale.ReadVertexVector(rhs_filename);
+        Vector rhs_u_fine = ReadVertexVector(graph, rhs_filename);
 
         // Do work at Coarse Level
         Vector rhs_u_coarse = upscale.Restrict(rhs_u_fine);
@@ -118,7 +118,7 @@ int main(int argc, char* argv[])
         Vector sol_u_fine = upscale.Interpolate(sol_u_coarse);
         upscale.Orthogonalize(0, sol_u_fine);
 
-        upscale.WriteVertexVector(sol_u_fine, "sol3.out");
+        WriteVertexVector(graph, sol_u_fine, "sol3.out");
     }
 
     // Comparing Error; essentially generalgraph.cpp
@@ -128,7 +128,7 @@ int main(int argc, char* argv[])
 
         GraphUpscale upscale(graph, {spect_tol, max_evects, hybridization});
 
-        BlockVector fine_rhs = upscale.ReadVertexBlockVector(rhs_filename);
+        BlockVector fine_rhs = ReadVertexBlockVector(graph, rhs_filename);
 
         BlockVector fine_sol = upscale.Solve(0, fine_rhs);
         BlockVector upscaled_sol = upscale.Solve(1, fine_rhs);
@@ -156,7 +156,7 @@ int main(int argc, char* argv[])
         GraphUpscale hb_upscale(graph, {spect_tol, max_evects, use_hybridization});
         GraphUpscale minres_upscale(graph, {spect_tol, max_evects, !use_hybridization});
 
-        Vector rhs_u_fine = minres_upscale.ReadVertexVector(rhs_filename);
+        Vector rhs_u_fine = ReadVertexVector(graph, rhs_filename);
 
         Vector minres_sol = minres_upscale.Solve(rhs_u_fine);
         Vector hb_sol = hb_upscale.Solve(rhs_u_fine);

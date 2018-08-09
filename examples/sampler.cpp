@@ -149,7 +149,7 @@ int main(int argc, char* argv[])
     Graph graph(comm, vertex_edge_global, part, weight, W_block);
 
     int sampler_seed = initial_seed + myid;
-    PDESampler sampler(std::move(graph), {spect_tol, max_evects, hybridization},
+    PDESampler sampler(graph, {spect_tol, max_evects, hybridization},
                        dimension, kappa, cell_volume, sampler_seed);
     const auto& upscale = sampler.GetUpscale();
 
@@ -211,8 +211,8 @@ int main(int argc, char* argv[])
 
         if (save_output)
         {
-            SaveOutput(upscale, upscaled_sol, "coarse_sol_", sample);
-            SaveOutput(upscale, fine_sol, "fine_sol_", sample);
+            SaveOutput(graph, upscaled_sol, "coarse_sol_", sample);
+            SaveOutput(graph, fine_sol, "fine_sol_", sample);
         }
     }
 
@@ -249,10 +249,10 @@ int main(int argc, char* argv[])
 
     if (save_output)
     {
-        upscale.WriteVertexVector(mean_upscaled, "mean_upscaled.txt");
-        upscale.WriteVertexVector(mean_fine, "mean_fine.txt");
-        upscale.WriteVertexVector(m2_upscaled, "m2_upscaled.txt");
-        upscale.WriteVertexVector(m2_fine, "m2_fine.txt");
+        WriteVertexVector(graph, mean_upscaled, "mean_upscaled.txt");
+        WriteVertexVector(graph, mean_fine, "mean_fine.txt");
+        WriteVertexVector(graph, m2_upscaled, "m2_upscaled.txt");
+        WriteVertexVector(graph, m2_fine, "m2_fine.txt");
     }
 
     return 0;

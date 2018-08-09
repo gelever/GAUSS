@@ -139,7 +139,7 @@ int main(int argc, char* argv[])
 
     if (!rhs_filename.empty())
     {
-        fine_rhs.GetBlock(1) = upscale.ReadVertexVector(rhs_filename);
+        fine_rhs.GetBlock(1) = ReadVertexVector(graph, rhs_filename);
     }
     else
     {
@@ -161,7 +161,7 @@ int main(int argc, char* argv[])
         std::fill(std::begin(u_half), std::begin(u_half) + half, -1.0);
         std::fill(std::begin(u_half) + half, std::end(u_half), 1.0);
 
-        fine_u.GetBlock(1) = upscale.GetVertexVector(u_half);
+        fine_u.GetBlock(1) = GetVertexVector(graph, u_half);
     }
 
     BlockVector tmp(offsets[k]);
@@ -193,7 +193,7 @@ int main(int argc, char* argv[])
         std::stringstream ss;
         ss << output_dir << std::setw(5) << std::setfill('0') << count << ".txt";
 
-        upscale.WriteVertexVector(fine_u.GetBlock(1), ss.str());
+        WriteVertexVector(graph, fine_u.GetBlock(1), ss.str());
     }
 
     Timer chrono(Timer::Start::True);
@@ -229,7 +229,7 @@ int main(int argc, char* argv[])
             std::stringstream ss;
             ss << output_dir << std::setw(5) << std::setfill('0') << count << ".txt";
 
-            upscale.WriteVertexVector(fine_u.GetBlock(1), ss.str());
+            WriteVertexVector(graph, fine_u.GetBlock(1), ss.str());
         }
 
         chrono.Click();

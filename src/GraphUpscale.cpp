@@ -23,7 +23,7 @@
 namespace smoothg
 {
 
-GraphUpscale::GraphUpscale(Graph graph, const UpscaleParams& params)
+GraphUpscale::GraphUpscale(const Graph& graph, const UpscaleParams& params)
     : Operator(graph.vertex_edge_local_.Rows()),
       mgl_(params.max_levels),
       coarsener_(params.max_levels - 1),
@@ -34,17 +34,14 @@ GraphUpscale::GraphUpscale(Graph graph, const UpscaleParams& params)
       elim_dofs_(params.max_levels),
       comm_(graph.edge_true_edge_.GetComm()),
       myid_(graph.edge_true_edge_.GetMyId()),
-      global_vertices_(graph.global_vertices_),
-      global_edges_(graph.global_edges_),
       setup_time_(0),
-      hybridization_(params.hybridization),
-      graph_(std::move(graph))
+      hybridization_(params.hybridization)
 {
     Timer timer(Timer::Start::True);
 
     // Compute Topology
     std::vector<GraphTopology> gts;
-    gts.emplace_back(graph_);
+    gts.emplace_back(graph);
 
     for (int level = 1; level < params.max_levels - 1; ++level)
     {
@@ -54,7 +51,7 @@ GraphUpscale::GraphUpscale(Graph graph, const UpscaleParams& params)
     // Fine Level
     int level = 0;
     {
-        mgl_[level] = MixedMatrix(graph_);
+        mgl_[level] = MixedMatrix(graph);
         mgl_[level].AssembleM();
 
         elim_dofs_[level] = params.elim_edge_dofs;
@@ -65,16 +62,19 @@ GraphUpscale::GraphUpscale(Graph graph, const UpscaleParams& params)
     // Coarse Levels
     for (level = 1; level < params.max_levels; ++level)
     {
-        double spect_tol_i = params.spectral_tol[level - 1].first;
-        int num_evects_i = params.spectral_tol[level - 1].second;
+        auto& gt_i = gts[level - 1];
+        auto& spect_pair_i = params.spectral_pair[level - 1];
 
-        int num_vert = gts[level - 1].GlobalNumVertices();
-        int num_agg = gts[level - 1].GlobalNumAggs();
+        double spect_tol_i = spect_pair_i.first;
+        int num_evects_i = spect_pair_i.second;
+
+        int num_vert = gt_i.GlobalNumVertices();
+        int num_agg = gt_i.GlobalNumAggs();
 
         ParPrint(myid_, printf("Coarsening: %d / %d = %.2f, evects: %d\n",
                  num_vert, num_agg, num_vert / (double) num_agg, num_evects_i));
 
-        coarsener_[level - 1] = GraphCoarsen(std::move(gts[level - 1]), mgl_[level - 1],
+        coarsener_[level - 1] = GraphCoarsen(std::move(gt_i), mgl_[level - 1],
                                              num_evects_i, spect_tol_i);
         mgl_[level] = MixedMatrix(coarsener_[level - 1].Coarsen(mgl_[level - 1]));
         mgl_[level].AssembleM();
@@ -133,21 +133,6 @@ void GraphUpscale::MakeSolver(int level, const std::vector<double>& agg_weights)
     }
 }
 
-Vector GraphUpscale::ReadVertexVector(const std::string& filename) const
-{
-    return ReadVector(filename, graph_.vertex_map_);
-}
-
-BlockVector GraphUpscale::ReadVertexBlockVector(const std::string& filename) const
-{
-    BlockVector vect = GetBlockVector(0);
-
-    vect.GetBlock(0) = 0.0;
-    vect.GetBlock(1) = ReadVertexVector(filename);
-
-    return vect;
-}
-
 std::vector<BlockVector> GraphUpscale::MultMultiLevel(const BlockVector& x) const
 {
     std::vector<BlockVector> sols;
@@ -199,13 +184,7 @@ void GraphUpscale::MultMultiGrid(const BlockVector& x, BlockVector& sol) const
         rhs_[i].GetBlock(1) *= -1.0;
         sol_[i].GetBlock(1) *= -1.0;
 
-        //int max_iter = (i == 0) ? 5000 : std::pow(2.0, i + 3);
-        //solver_[i]->SetMaxIter(max_iter);
-        //ParPrint(MyId(), printf("Level %d Max Iter: %d\n", i, max_iter));
-
         solver_[i]->Solve(rhs_[i], sol_[i]);
-
-        //solver_[i]->SetMaxIter(5000);
 
         if (do_ortho_)
         {
@@ -634,11 +613,11 @@ double GraphUpscale::OperatorComplexity() const
 {
     assert(solver_[1]);
 
-    double nnz_coarse = 0.0;
+    double nnz_levels = 0.0;
 
     for (auto&& solver : solver_)
     {
-        nnz_coarse += solver->GetNNZ();
+        nnz_levels += solver->GetNNZ();
     }
 
     double nnz_fine;
@@ -652,9 +631,7 @@ double GraphUpscale::OperatorComplexity() const
         nnz_fine = GetMatrix(0).GlobalNNZ();
     }
 
-    double op_comp = nnz_coarse / nnz_fine;
-
-    return op_comp;
+    return nnz_levels / nnz_fine;
 }
 
 void GraphUpscale::SetPrintLevel(int print_level)

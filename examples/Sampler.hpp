@@ -33,12 +33,12 @@ namespace smoothg
     @param index filename suffix
 */
 template <typename T>
-void SaveOutput(const GraphUpscale& upscale, const T& vect, const std::string& prefix, int index)
+void SaveOutput(const Graph& graph, const T& vect, const std::string& prefix, int index)
 {
     std::stringstream ss;
     ss << prefix << std::setw(5) << std::setfill('0') << index << ".txt";
 
-    upscale.WriteVertexVector(vect, ss.str());
+    WriteVertexVector(graph, vect, ss.str());
 }
 
 /** @brief Scalar normal distribution */
@@ -85,7 +85,7 @@ public:
         @param kappa inverse correlation length for Matern covariance
         @param seed seed for random number generator
      */
-    PDESampler(Graph graph, const UpscaleParams& params,
+    PDESampler(const Graph& graph, const UpscaleParams& params,
                int dimension, double kappa, double cell_volume, int seed);
 
     /** @brief Default Destructor */
@@ -147,9 +147,9 @@ private:
 };
 
 
-PDESampler::PDESampler(Graph graph, const UpscaleParams& params,
+PDESampler::PDESampler(const Graph& graph, const UpscaleParams& params,
                        int dimension, double kappa, double cell_volume, int seed)
-    : upscale_(std::move(graph), params),
+    : upscale_(graph, params),
       normal_dist_(0.0, 1.0, seed),
       cell_volume_(cell_volume),
       rhs_fine_(upscale_.GetVector(0)),

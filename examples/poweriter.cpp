@@ -70,7 +70,7 @@ int main(int argc, char* argv[])
     upscale.PrintInfo();
 
     // Read and normalize true Fiedler vector
-    Vector true_sol = upscale.ReadVertexVector(rhs_filename);
+    Vector true_sol = ReadVertexVector(graph, rhs_filename);
     true_sol /= ParL2Norm(comm, true_sol);
 
     // Power Iteration for each Operator
