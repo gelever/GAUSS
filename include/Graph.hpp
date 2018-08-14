@@ -108,6 +108,40 @@ private:
     void MakeLocalW(const SparseMatrix& W_global);
 };
 
+template <typename T>
+T GetVertexVector(const Graph& graph, const T& global_vect)
+{
+    return GetSubVector(global_vect, graph.vertex_map_);
+}
+
+template <typename T>
+void WriteVertexVector(const Graph& graph, const T& vect, const std::string& filename)
+{
+    WriteVector(graph.edge_true_edge_.GetComm(), vect, filename,
+                graph.global_vertices_, graph.vertex_map_);
+}
+
+inline
+Vector ReadVertexVector(const Graph& graph, const std::string& filename)
+{
+    return ReadVector(filename, graph.vertex_map_);
+}
+
+inline
+BlockVector ReadVertexBlockVector(const Graph& graph, const std::string& filename)
+{
+    int num_vertices = graph.vertex_edge_local_.Rows();
+    int num_edges = graph.vertex_edge_local_.Cols();
+
+    BlockVector vect({0, num_edges, num_edges + num_vertices});
+
+    vect.GetBlock(0) = 0.0;
+    vect.GetBlock(1) = ReadVertexVector(graph, filename);
+
+    return vect;
+}
+
+
 } // namespace smoothg
 
 #endif /* __GRAPH_HPP__ */

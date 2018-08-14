@@ -162,12 +162,10 @@ void GraphCoarsen::ComputeVertexTargets(const ParMatrix& M_ext_global,
 
     int num_aggs = gt_.NumAggs();
 
-    DenseMatrix evects;
     LocalEigenSolver eigs(max_evects_, spect_tol_);
 
+    DenseMatrix evects;
     DenseMatrix DT_evect;
-
-    bool is_diag = IsDiag(M_ext);
 
     for (int agg = 0; agg < num_aggs; ++agg)
     {
@@ -189,29 +187,10 @@ void GraphCoarsen::ComputeVertexTargets(const ParMatrix& M_ext_global,
 
         if (evects.Cols() > 1)
         {
-               DenseMatrix evects_ortho = evects.GetCol(1, evects.Cols());
+            SparseSolver M_inv(std::move(M_sub));
 
-               DT_evect.SetSize(D_sub.Cols(), evects_ortho.Cols());
-               D_sub.MultAT(evects_ortho, DT_evect);
-
-               DenseMatrix MinvDT_evect(DT_evect.Rows(), DT_evect.Cols());
-
-               if (is_diag)
-               {
-                   MinvDT_evect = DT_evect;
-                   MinvDT_evect.InverseScaleRows(M_sub.GetData());
-               }
-               else
-               {
-                   SparseSolver Minv(M_sub);
-                   OffsetMult(Minv, DT_evect, MinvDT_evect, 0);
-               }
-
-               agg_ext_sigma_[agg] = std::move(MinvDT_evect);
-        }
-        else
-        {
-            agg_ext_sigma_[agg].SetSize(M_sub.Rows(), 0);
+            OffsetMultAT(D_sub, evects, DT_evect, 1);
+            OffsetMult(M_inv, DT_evect, agg_ext_sigma_[agg], 0);
         }
 
         DenseMatrix evects_restricted = RestrictLocal(evects, col_marker_,
@@ -375,7 +354,6 @@ void GraphCoarsen::ComputeEdgeTargets(const MixedMatrix& mgl,
 
         if (!sec_face.IsOwnedByMe(face))
         {
-            edge_targets_[face].SetSize(num_face_edges, 0);
             continue;
         }
 
@@ -394,10 +372,10 @@ void GraphCoarsen::ComputeEdgeTargets(const MixedMatrix& mgl,
 
         bool shared = face_shared.RowSize(face) > 0;
 
+        int split = shared ? face_D[0].Rows() : GetSplit(face);
         SparseMatrix M_local = shared ? CombineM(face_M, num_face_edges) : std::move(face_M[0]);
         SparseMatrix D_local = shared ? CombineD(face_D, num_face_edges) : std::move(face_D[0]);
-        const auto& constant_local = shared ? CombineConstant(face_constant) : face_constant[0];
-        const int split = shared ? face_D[0].Rows() : GetSplit(face);
+        Vector constant_local = shared ? CombineConstant(face_constant) : std::move(face_constant[0]);
 
 
         GraphEdgeSolver solver(std::move(M_local), std::move(D_local));
@@ -622,12 +600,11 @@ Vector GraphCoarsen::MakeOneNegOne(const Vector& constant, int split) const
         v2_sum += constant[i] * constant[i];
     }
 
-    double c1 = 1.0 / split;
-    double c2 = -c1 * (v1_sum / v2_sum);
+    double c2 = -1.0 * (v1_sum / v2_sum);
 
     for (int i = 0; i < split; ++i)
     {
-        vect[i] = c1 * constant[i];
+        vect[i] = constant[i];
     }
 
     for (int i = split; i < size; ++i)
@@ -755,30 +732,26 @@ void GraphCoarsen::BuildPvertex()
                              num_vertexdofs , coarse_dof_counter);
 }
 
-int ComputeNNZ(const GraphTopology& gt, const SparseMatrix& agg_bubble_dof,
-               const SparseMatrix& face_cdof)
+int GraphCoarsen::ComputeEdgeNNZ() const
 {
-    const SparseMatrix& agg_face = gt.agg_face_local_;
-    //const SparseMatrix& agg_edge = agg_edgedof_;
-    //const SparseMatrix& face_edge = face_edgedof_;
-    // TODO(gelever1): This is wrong cus dofs not considered
-    const SparseMatrix& agg_edge = gt.agg_edge_local_;
-    const SparseMatrix& face_edge = gt.face_edge_local_;
+    const SparseMatrix& agg_face = gt_.agg_face_local_;
+    const SparseMatrix& agg_edge = agg_edgedof_;
+    const SparseMatrix& face_edge = face_edgedof_;
 
-    int num_aggs = gt.NumAggs();
-    int num_faces = gt.NumFaces();
+    int num_aggs = gt_.NumAggs();
+    int num_faces = gt_.NumFaces();
 
     int nnz = 0;
     for (int agg = 0; agg < num_aggs; ++agg)
     {
         int edge_dofs = agg_edge.RowSize(agg);
-        int bubble_dofs = agg_bubble_dof.RowSize(agg);
+        int bubble_dofs = agg_bubble_dof_.RowSize(agg);
 
         std::vector<int> faces = agg_face.GetIndices(agg);
 
         for (auto face : faces)
         {
-            int face_coarse_dofs = face_cdof.RowSize(face);
+            int face_coarse_dofs = face_cdof_.RowSize(face);
             nnz += edge_dofs * face_coarse_dofs;
         }
 
@@ -788,7 +761,7 @@ int ComputeNNZ(const GraphTopology& gt, const SparseMatrix& agg_bubble_dof,
     for (int face = 0; face < num_faces; ++face)
     {
         int face_fine_dofs = face_edge.RowSize(face);
-        int face_coarse_dofs = face_cdof.RowSize(face);
+        int face_coarse_dofs = face_cdof_.RowSize(face);
 
         nnz += face_fine_dofs * face_coarse_dofs;
     }
@@ -809,7 +782,7 @@ void GraphCoarsen::BuildPedge(const MixedMatrix& mgl)
     int num_coarse_dofs = agg_bubble_dof_.Cols();
 
     CooMatrix P_edge(num_edgedofs, num_coarse_dofs);
-    P_edge.Reserve(ComputeNNZ(gt_, agg_bubble_dof_, face_cdof_));
+    P_edge.Reserve(ComputeEdgeNNZ());
 
     DenseMatrix bubbles;
     DenseMatrix trace_ext;
@@ -886,7 +859,7 @@ void GraphCoarsen::BuildQedge(const MixedMatrix& mgl)
     int num_coarse_dofs = agg_bubble_dof_.Cols();
 
     CooMatrix Q_edge(num_edgedofs, num_coarse_dofs);
-    Q_edge.Reserve(ComputeNNZ(gt_, agg_bubble_dof_, face_cdof_));
+    Q_edge.Reserve(ComputeEdgeNNZ());
 
     DenseMatrix Q_i;
 

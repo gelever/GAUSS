@@ -52,12 +52,14 @@ int main(int argc, char* argv[])
     std::string weight_filename = "";
     std::string w_block_filename = "";
 
+
     int isolate = -1;
+    int num_partitions = 12;
+    bool metis_agglomeration = false;
+
     int max_evects = 4;
     double spect_tol = 1e-3;
-    int num_partitions = 12;
     bool hybridization = false;
-    bool metis_agglomeration = false;
     int num_levels = 2;
 
     bool generate_fiedler = false;
@@ -145,7 +147,7 @@ int main(int argc, char* argv[])
     // Set up GraphUpscale
     /// [Upscale]
     Graph graph(comm, vertex_edge_global, global_partitioning, weight);
-    GraphUpscale upscale(graph, spect_tol, max_evects, hybridization, num_levels);
+    GraphUpscale upscale(graph, {spect_tol, max_evects, hybridization, num_levels});
 
     upscale.PrintInfo();
     upscale.ShowSetupTime();
@@ -161,7 +163,7 @@ int main(int argc, char* argv[])
     }
     else
     {
-        fine_rhs.GetBlock(1) = upscale.ReadVertexVector(fiedler_filename);
+        fine_rhs.GetBlock(1) = ReadVertexVector(graph, fiedler_filename);
     }
 
     /// [Right Hand Side]
@@ -183,7 +185,7 @@ int main(int argc, char* argv[])
 
     if (save_fiedler)
     {
-        upscale.WriteVertexVector(fine_rhs.GetBlock(1), fiedler_filename);
+        WriteVertexVector(graph, fine_rhs.GetBlock(1), fiedler_filename);
     }
 
     return EXIT_SUCCESS;
@@ -210,8 +212,6 @@ Vector ComputeFiedlerVector(const MixedMatrix& mgl)
         A.AddDiag(1.0);
     }
 
-    BoomerAMG boomer(A);
-
     int num_evects = 2;
     std::vector<Vector> evects(num_evects, Vector(A.Rows()));
     for (Vector& evect : evects)
@@ -219,6 +219,7 @@ Vector ComputeFiedlerVector(const MixedMatrix& mgl)
         evect.Randomize();
     }
 
+    BoomerAMG boomer(A);
     std::vector<double> evals = LOBPCG(A, evects, &boomer);
 
     assert(static_cast<int>(evals.size()) == num_evects);

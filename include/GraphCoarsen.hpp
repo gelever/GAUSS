@@ -214,6 +214,7 @@ private:
     std::vector<int> GetExtDofs(const ParMatrix& mat_ext, int row) const;
 
     ParMatrix MakeExtPermutation(const ParMatrix& parmat) const;
+    int ComputeEdgeNNZ() const;
 
     void DebugChecks(const MixedMatrix& mgl) const;
 
