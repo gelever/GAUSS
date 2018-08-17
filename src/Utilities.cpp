@@ -731,7 +731,82 @@ std::vector<int> PartitionAAT(const SparseMatrix& A, double coarsening_factor, d
 
     int num_parts = std::max(1.0, (A.Rows() / coarsening_factor) + 0.5);
 
-    return Partition(AA_T, num_parts, ubal, contig);
+    return linalgcpp::Partition(AA_T, num_parts, ubal, contig);
+}
+
+std::vector<int> PartitionPostIsolate(const SparseMatrix& A, std::vector<int> partition,
+                          const std::vector<int>& isolated_vertices)
+{
+    if (isolated_vertices.empty())
+    {
+        return std::move(partition);
+    }
+
+    int num_vertices = A.Rows();
+    int num_parts = *std::max_element(std::begin(partition), std::end(partition)) + 1;
+
+    for (auto&& vertex : isolated_vertices)
+    {
+        partition.at(vertex) = num_parts++;
+    }
+
+    std::vector<int> component(num_vertices, -1);
+    std::vector<int> offset_comp(num_parts + 1, 0);
+    linalgcpp::VectorView<int> num_comp(offset_comp.data() + 1, num_parts);
+
+    const auto& indptr = A.GetIndptr();
+    const auto& indices = A.GetIndices();
+
+    std::vector<int> vertex_stack(num_vertices);
+    int stack_p = 0;
+    int stack_top_p = 0;
+
+    for (int node = 0; node < num_vertices; ++node)
+    {
+        if (partition[node] < 0 || component[node] >= 0)
+        {
+            continue;
+        }
+
+        component[node] = num_comp[partition[node]]++;
+        vertex_stack[stack_top_p++] = node;
+
+        for ( ; stack_p < stack_top_p; ++stack_p)
+        {
+            int i = vertex_stack[stack_p];
+
+            if (partition[i] < 0)
+            {
+                continue;
+            }
+
+            for (int j = indptr[i]; j < indptr[i + 1]; ++j)
+            {
+                int k = indices[j];
+
+                if (partition[k] == partition[i])
+                {
+                    if (component[k] < 0)
+                    {
+                        component[k] = component[i];
+                        vertex_stack[stack_top_p++] = k;
+                    }
+
+                    assert(component[k] == component[i]);
+                }
+            }
+
+        }
+    }
+
+    std::partial_sum(std::begin(offset_comp), std::end(offset_comp), std::begin(offset_comp));
+
+    for (int i = 0; i < num_vertices; ++i)
+    {
+        partition[i] = offset_comp[partition[i]] + component[i];
+    }
+
+    return std::move(partition);
 }
 
 Vector ReadVector(const std::string& filename,
