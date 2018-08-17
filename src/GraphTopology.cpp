@@ -95,9 +95,8 @@ void GraphTopology::Init(const SparseMatrix& vertex_edge,
     auto face_starts = parlinalgcpp::GenerateOffsets(comm, face_agg_local_.Rows());
 
     face_edge_ = ParMatrix(comm, face_starts, edge_starts, face_edge_local_);
-    ParMatrix edge_face = face_edge_.Transpose();
 
-    face_face_ = parlinalgcpp::RAP(edge_edge, edge_face);
+    face_face_ = smoothg::Mult(face_edge_, edge_edge, face_edge_.Transpose());
     face_face_ = 1;
 
     face_true_face_ = MakeEntityTrueEntity(face_face_);

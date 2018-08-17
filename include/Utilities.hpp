@@ -289,6 +289,16 @@ struct MpiSession
 std::vector<int> PartitionAAT(const SparseMatrix& A, double coarsening_factor,
                               double ubal = 2.0, bool contig = true);
 
+/** @brief Isolate critical vertices from partition and fix the now possibly disconnected components
+
+    @param A matrix from which the partition came from
+    @param partition partition vector to modify
+    @param isolated_vertices vertices which to each place into their own their own partition
+    @retval partition vector with now isolated vertices
+*/
+std::vector<int> PartitionPostIsolate(const SparseMatrix& A, std::vector<int> partition,
+                          const std::vector<int>& isolated_vertices);
+
 
 /** @brief Read serial vector from file and extract local portion
 
@@ -382,6 +392,20 @@ void OffsetMultAT(const linalgcpp::Operator& A, const DenseMatrix& input, DenseM
 
 DenseMatrix OuterProduct(const VectorView& lhs, const VectorView& rhs);
 void OuterProduct(const VectorView& lhs, const VectorView& rhs, DenseMatrix& product);
+
+/// SparseMatrix triple product
+inline
+SparseMatrix Mult(const SparseMatrix& R, const SparseMatrix& A, const SparseMatrix& P)
+{
+    return R.Mult(A).Mult(P);
+}
+
+/// ParMatrix triple product
+inline
+ParMatrix Mult(const ParMatrix& R, const ParMatrix& A, const ParMatrix& P)
+{
+    return R.Mult(A).Mult(P);
+}
 
 } //namespace smoothg
 
