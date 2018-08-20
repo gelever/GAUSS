@@ -407,6 +407,9 @@ ParMatrix Mult(const ParMatrix& R, const ParMatrix& A, const ParMatrix& P)
     return R.Mult(A).Mult(P);
 }
 
+/// Rescale edge weights such that e_ij = floor(log_2(e_ij / e_ij_min)) + 1
+SparseMatrix RescaleLog(SparseMatrix A);
+
 } //namespace smoothg
 
 #endif // __UTILITIES_HPP__

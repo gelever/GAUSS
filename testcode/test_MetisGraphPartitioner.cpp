@@ -93,7 +93,33 @@ int main(int argc, char* argv[])
         }
 
     }
+    if (failed)
+    {
+        std::cout << "Metis Graph Partitioning Failed!\n";
+    }
 
+    // Test Weighted partition
+    // Metis should avoid the natural option of cutting the middle connecting edge
+    // since it is now heavily weighted
+    {
+        std::vector<double> weights(vertex_edge.Cols(), 1.0);
+        weights[weights.size() / 2.0] = 10000;
+
+        SparseMatrix M(std::move(weights));
+        SparseMatrix A = RescaleLog(Mult(vertex_edge, M, edge_vertex));
+
+        A.PrintDense("Weighted Vertex Vertex");
+
+        bool contig = true;
+        bool use_weight = true;
+
+        std::vector<int> weighted_partition = Partition(A, 3, 2.0, contig, use_weight);
+        std::cout << "\nWeighted Partition: " << weighted_partition;
+
+        // Make sure vertices connected by mid edge are in same part
+        int mid = size / 2;
+        failed |= (weighted_partition[mid - 1] != weighted_partition[mid]);
+    }
 
     return failed;
 }

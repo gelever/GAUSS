@@ -734,6 +734,31 @@ std::vector<int> PartitionAAT(const SparseMatrix& A, double coarsening_factor, d
     return linalgcpp::Partition(AA_T, num_parts, ubal, contig);
 }
 
+SparseMatrix RescaleLog(SparseMatrix A)
+{
+    std::vector<int>& indptr = A.GetIndptr();
+    std::vector<int>& indices = A.GetIndices();
+    std::vector<double>& data = A.GetData();
+
+    int num_rows = A.Rows();
+
+    double weight_min = *std::min_element(std::begin(data), std::end(data));
+    assert(weight_min != 0);
+
+    for (int i = 0; i < num_rows; ++i)
+    {
+        for (int j = indptr[i]; j < indptr[i + 1]; ++j)
+        {
+            if (i != indices[j])
+            {
+                data[j] = std::floor(std::log2(data[j] / weight_min)) + 1;
+            }
+        }
+    }
+
+    return std::move(A);
+}
+
 std::vector<int> PartitionPostIsolate(const SparseMatrix& A, std::vector<int> partition,
                           const std::vector<int>& isolated_vertices)
 {
