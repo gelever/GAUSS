@@ -57,6 +57,11 @@ using BlockMatrix = linalgcpp::BlockMatrix<double>;
 using ParMatrix = parlinalgcpp::ParMatrix;
 using Timer = linalgcpp::Timer;
 
+/// Paramaters to determine how many eigenvectors to keep
+/// The double is a spectral tolerance threshold
+/// The integer is a maximum number of eigenvectors per aggregate
+using SpectralPair = std::pair<double, int>;
+
 /** @brief Find processor id on given communicator
     @param comm MPI Communicator
     @returns processor id

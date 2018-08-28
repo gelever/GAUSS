@@ -23,28 +23,37 @@
 
 namespace smoothg
 {
+
 GraphCoarsen::GraphCoarsen(const Graph& graph, const MixedMatrix& mgl,
-                           int max_evects, double spect_tol)
-    : GraphCoarsen(GraphTopology(graph), mgl, max_evects, spect_tol)
+                           SpectralPair spect_pair)
+    : GraphCoarsen(GraphTopology(graph), FineGraphSpace(graph), mgl,
+                   Vector(graph.vertex_edge_local_.Rows(), 1.0 / std::sqrt(graph.global_vertices_)),
+                   spect_pair)
 {
 
 }
 
-GraphCoarsen::GraphCoarsen(GraphTopology gt, const MixedMatrix& mgl,
-                           int max_evects, double spect_tol)
+GraphCoarsen::GraphCoarsen(GraphTopology gt, const Level& level,
+                           SpectralPair spect_pair)
+    : GraphCoarsen(std::move(gt), level.graph_space, level.mixed_matrix, level.constant_rep,
+                   spect_pair)
+{
+
+}
+
+GraphCoarsen::GraphCoarsen(GraphTopology gt, const GraphSpace& graph_space,
+                           const MixedMatrix& mgl, const VectorView& constant_rep,
+                           SpectralPair spect_pair)
     : gt_(std::move(gt)),
-      max_evects_(max_evects), spect_tol_(spect_tol),
+      max_evects_(spect_pair.second), spect_tol_(spect_pair.first),
       vertex_targets_(gt_.NumAggs()),
       edge_targets_(gt_.NumFaces()),
       agg_ext_sigma_(gt_.NumAggs()),
       D_trace_sum_(gt_.NumAggs())
 {
-    MPI_Comm comm = mgl.GlobalD().GetComm();
-
-    ParMatrix v_vdof(comm, mgl.vertex_vdof);
-    ParMatrix v_edof(comm, mgl.vertex_edof);
-    ParMatrix v_bdof(comm, mgl.vertex_bdof);
-    ParMatrix e_edof(comm, mgl.edge_edof);
+    const ParMatrix& v_vdof = graph_space.vertex_vdof;
+    const ParMatrix& v_bdof = graph_space.vertex_bdof;
+    const ParMatrix& e_edof = graph_space.edge_edof;
 
     ParMatrix true_edge_edge = gt_.edge_true_edge_.Transpose();
     ParMatrix no_bub = gt_.agg_ext_edge_.Mult(true_edge_edge).Mult(e_edof).Mult(mgl.EdgeTrueEdge());
@@ -65,23 +74,23 @@ GraphCoarsen::GraphCoarsen(GraphTopology gt, const MixedMatrix& mgl,
     int marker_size = std::max(permute_v.Rows(), permute_e.Rows());
     col_marker_.resize(marker_size, -1);
 
-    SparseMatrix agg_edgedof = gt_.agg_edge_local_.Mult(mgl.edge_edof);
-    SparseMatrix agg_bubbledof = gt_.agg_vertex_local_.Mult(mgl.vertex_bdof);
+    SparseMatrix agg_edgedof = gt_.agg_edge_local_.Mult(e_edof.GetDiag());
+    SparseMatrix agg_bubbledof = gt_.agg_vertex_local_.Mult(v_bdof.GetDiag());
 
     agg_edgedof_ = Add(1.0, agg_edgedof, 1.0, agg_bubbledof);
-    agg_vertexdof_ = gt_.agg_vertex_local_.Mult(mgl.vertex_vdof);
-    face_edgedof_ = gt_.face_edge_local_.Mult(mgl.edge_edof);
+    agg_vertexdof_ = gt_.agg_vertex_local_.Mult(v_vdof.GetDiag());
+    face_edgedof_ = gt_.face_edge_local_.Mult(e_edof.GetDiag());
 
     ComputeVertexTargets(M_ext_global, D_ext_global);
-    ComputeEdgeTargets(mgl, face_perm_edge);
+    ComputeEdgeTargets(mgl, constant_rep, face_perm_edge);
 
     BuildFaceCoarseDof();
     BuildAggBubbleDof();
 
     BuildPvertex();
 
-    BuildQedge(mgl);
-    BuildPedge(mgl);
+    BuildQedge(mgl, constant_rep);
+    BuildPedge(mgl, constant_rep);
 
     DebugChecks(mgl);
 }
@@ -244,10 +253,8 @@ std::vector<std::vector<DenseMatrix>> GraphCoarsen::CollectSigma(const SparseMat
     return sec_sigma.Collect();
 }
 
-std::vector<std::vector<Vector>> GraphCoarsen::CollectConstant(const MixedMatrix& mgl)
+std::vector<std::vector<Vector>> GraphCoarsen::CollectConstant(const VectorView& constant_vect)
 {
-    const auto& fine_constant = mgl.constant_vect_;
-
     SharedEntityComm<Vector> sec_constant(gt_.face_true_face_);
 
     int num_faces = gt_.NumFaces();
@@ -260,7 +267,7 @@ std::vector<std::vector<Vector>> GraphCoarsen::CollectConstant(const MixedMatrix
         for (auto agg : neighbors)
         {
             std::vector<int> agg_vertices = agg_vertexdof_.GetIndices(agg);
-            auto sub_vect = fine_constant.GetSubVector(agg_vertices);
+            auto sub_vect = constant_vect.GetSubVector(agg_vertices);
 
             constant_data.insert(std::end(constant_data), std::begin(sub_vect),
                                    std::end(sub_vect));
@@ -331,13 +338,13 @@ std::vector<std::vector<SparseMatrix>> GraphCoarsen::CollectM(const SparseMatrix
     return sec_M.Collect();
 }
 
-void GraphCoarsen::ComputeEdgeTargets(const MixedMatrix& mgl,
+void GraphCoarsen::ComputeEdgeTargets(const MixedMatrix& mgl, const VectorView& constant_vect,
                                       const ParMatrix& face_perm_edge)
 {
     const SparseMatrix& face_edge = face_perm_edge.GetDiag();
 
     auto shared_sigma = CollectSigma(face_edge);
-    auto shared_constant = CollectConstant(mgl);
+    auto shared_constant = CollectConstant(constant_vect);
     auto shared_M = CollectM(mgl.LocalM());
     auto shared_D = CollectD(mgl);
 
@@ -394,10 +401,10 @@ void GraphCoarsen::ComputeEdgeTargets(const MixedMatrix& mgl,
 
     sec_face.Broadcast(edge_targets_);
 
-    ScaleEdgeTargets(mgl);
+    ScaleEdgeTargets(mgl, constant_vect);
 }
 
-void GraphCoarsen::ScaleEdgeTargets(const MixedMatrix& mgl)
+void GraphCoarsen::ScaleEdgeTargets(const MixedMatrix& mgl, const VectorView& constant_vect)
 {
     const auto& D_local = mgl.LocalD();
     int num_faces = gt_.NumFaces();
@@ -420,7 +427,7 @@ void GraphCoarsen::ScaleEdgeTargets(const MixedMatrix& mgl)
 
         SparseMatrix D_transfer = D_local.GetSubMatrix(vertices, face_dofs, col_marker_);
 
-        mgl.constant_vect_.GetSubVector(vertices, one);
+        constant_vect.GetSubVector(vertices, one);
 
         oneD.SetSize(D_transfer.Cols());
         D_transfer.MultAT(one, oneD);
@@ -769,7 +776,7 @@ int GraphCoarsen::ComputeEdgeNNZ() const
     return nnz;
 }
 
-void GraphCoarsen::BuildPedge(const MixedMatrix& mgl)
+void GraphCoarsen::BuildPedge(const MixedMatrix& mgl, const VectorView& constant_vect)
 {
     const SparseMatrix& agg_face = gt_.agg_face_local_;
     const SparseMatrix& agg_edge = agg_edgedof_;
@@ -800,7 +807,7 @@ void GraphCoarsen::BuildPedge(const MixedMatrix& mgl)
         SparseMatrix M = mgl.LocalM().GetSubMatrix(edge_dofs, edge_dofs, col_marker_);
         SparseMatrix D = mgl.LocalD().GetSubMatrix(vertex_dofs, edge_dofs, col_marker_);
 
-        mgl.constant_vect_.GetSubVector(vertex_dofs, one);
+        constant_vect.GetSubVector(vertex_dofs, one);
 
         // TODO(gelever1): We may still be able to continue w/ jsut one vertex dof
         assert (edge_dofs.size() > 0);
@@ -845,7 +852,7 @@ void GraphCoarsen::BuildPedge(const MixedMatrix& mgl)
     P_edge_ = P_edge.ToSparse();
 }
 
-void GraphCoarsen::BuildQedge(const MixedMatrix& mgl)
+void GraphCoarsen::BuildQedge(const MixedMatrix& mgl, const VectorView& constant_vect)
 {
     const SparseMatrix& agg_vertex = agg_vertexdof_;
     const SparseMatrix& agg_edge = agg_edgedof_;
@@ -905,7 +912,7 @@ void GraphCoarsen::BuildQedge(const MixedMatrix& mgl)
         const auto& trace = edge_targets_[face];
         Vector PV_trace = trace.GetCol(0);
 
-        mgl.constant_vect_.GetSubVector(vertex_dofs, one_rep);
+        constant_vect.GetSubVector(vertex_dofs, one_rep);
 
         SparseMatrix D_transfer = mgl.LocalD().GetSubMatrix(vertex_dofs, face_fine_dofs, col_marker_);
 
@@ -1242,6 +1249,46 @@ ParMatrix GraphCoarsen::MakeExtPermutation(const ParMatrix& parmat) const
     return ParMatrix(comm, ext_starts, mat_starts, std::move(perm_diag), std::move(perm_offd), colmap);
 }
 
+GraphSpace GraphCoarsen::BuildGraphSpace() const
+{
+    using parlinalgcpp::GenerateOffsets;
+
+    auto comm = gt_.edge_true_edge_.GetComm();
+
+    SparseMatrix vertex_vdof = agg_vertexdof_.Mult(P_vertex_);
+    SparseMatrix vertex_edof = agg_edgedof_.Mult(P_edge_);
+    SparseMatrix vertex_bdof = agg_bubble_dof_;
+    SparseMatrix edge_edof = face_edgedof_.Mult(P_edge_);
+    SparseMatrix agg_vertexdof = BuildAggCDofVertex();
+    SparseMatrix face_facedof = face_cdof_;
+
+    vertex_vdof = 1.0;
+    vertex_edof = 1.0;
+    edge_edof = 1.0;
+
+    int num_vertices = vertex_vdof.Rows();
+    int num_vertex_dof = vertex_vdof.Cols();
+
+    int num_edges = edge_edof.Rows();
+    int num_edge_dof = edge_edof.Cols();
+
+    int num_aggs = agg_vertexdof.Rows();
+    int num_face_dofs = face_cdof_.Cols();
+
+    auto starts = GenerateOffsets(comm, {num_vertices, num_vertex_dof,
+                                         num_edges, num_edge_dof,
+                                         num_aggs, num_face_dofs});
+    return
+    {
+        {comm, starts[0], starts[1], std::move(vertex_vdof)},
+        {comm, starts[0], starts[3], std::move(vertex_edof)},
+        {comm, starts[0], starts[3], std::move(vertex_bdof)},
+        {comm, starts[2], starts[3], std::move(edge_edof)},
+        {comm, starts[4], starts[1], std::move(agg_vertexdof)},
+        {comm, starts[2], starts[5], std::move(face_facedof)},
+    };
+}
+
 MixedMatrix GraphCoarsen::Coarsen(const MixedMatrix& mgl) const
 {
     SparseMatrix agg_cdof_edge = BuildAggCDofEdge();
@@ -1258,23 +1305,16 @@ MixedMatrix GraphCoarsen::Coarsen(const MixedMatrix& mgl) const
 
     ParMatrix edge_true_edge = BuildDofTrueDof();
 
-    MixedMatrix mm(std::move(M_elem), std::move(agg_cdof_edge),
-                   std::move(D_c), std::move(W_c),
-                   std::move(edge_true_edge),
-                   BuildAggCDofVertex(),
-                   face_cdof_);
+    return MixedMatrix(std::move(M_elem),
+                       std::move(agg_cdof_edge),
+                       std::move(D_c),
+                       std::move(W_c),
+                       std::move(edge_true_edge));
+}
 
-    mm.vertex_vdof = agg_vertexdof_.Mult(P_vertex_);
-    mm.vertex_edof = agg_edgedof_.Mult(P_edge_);
-    mm.vertex_bdof = agg_bubble_dof_;
-    mm.edge_edof = face_edgedof_.Mult(P_edge_);
-
-    mm.vertex_vdof = 1.0;
-    mm.vertex_edof = 1.0;
-    mm.edge_edof = 1.0;
-    mm.constant_vect_ = P_vertex_.MultAT(mgl.constant_vect_);
-
-    return mm;
+Level GraphCoarsen::Coarsen(const Level& level) const
+{
+    return { Coarsen(level.mixed_matrix), BuildGraphSpace(), Restrict(level.constant_rep)};
 }
 
 void GraphCoarsen::DebugChecks(const MixedMatrix& mgl) const

@@ -82,7 +82,7 @@ public:
 
        @param mgL Mixed matrices for the graph Laplacian
     */
-    HybridSolver(const MixedMatrix& mgL);
+    HybridSolver(const MixedMatrix& mgL, const GraphSpace& graph_space);
 
     virtual ~HybridSolver() = default;
 

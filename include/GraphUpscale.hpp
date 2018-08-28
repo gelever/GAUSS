@@ -33,6 +33,7 @@
 #include "GraphCoarsen.hpp"
 #include "MGLSolver.hpp"
 #include "Graph.hpp"
+#include "Level.hpp"
 
 #include "MinresBlockSolver.hpp"
 #include "HybridSolver.hpp"
@@ -40,11 +41,6 @@
 
 namespace smoothg
 {
-
-/// Paramaters to determine how many eigenvectors to keep
-/// The double is a spectral tolerance threshold
-/// The integer is a maximum number of eigenvectors per aggregate
-using SpectralPair = std::pair<double, int>;
 
 /**
    @brief Collection of parameters for GraphUpscale
@@ -190,6 +186,10 @@ public:
     MixedMatrix& GetMatrix(int level);
     const MixedMatrix& GetMatrix(int level) const;
 
+    /// Get GraphSpace by level
+    GraphSpace& GetGraphSpace(int level) { return GetLevel(level).graph_space; }
+    const GraphSpace& GetGraphSpace(int level) const { return GetLevel(level).graph_space; }
+
     /// Show Solver Information
     void PrintInfo(std::ostream& out = std::cout) const;
 
@@ -227,13 +227,17 @@ public:
     const GraphCoarsen& Coarsener(int level) const { return coarsener_.at(level); }
 
     /// Get Solver
-    const MGLSolver& Solver(int level) const { return *solver_.at(level); }
+    const MGLSolver& Solver(int level) const { return *GetLevel(level).solver; }
+
+    /// Get Level
+    Level& GetLevel(int level) { return levels_.at(level); }
+    const Level& GetLevel(int level) const { return levels_.at(level); }
 
     /// Number of levels
-    int NumLevels() const { return solver_.size(); }
+    int NumLevels() const { return levels_.size(); }
 
     /// Get Normalized Constant Representation
-    const Vector& ConstantRep(int level) const { return constant_rep_.at(level); }
+    const Vector& ConstantRep(int level) const { return GetLevel(level).constant_rep; }
 
     /// Compare errors between upscaled and fine solution.
     /// Returns {vertex_error, edge_error, div_error} array.
@@ -248,15 +252,8 @@ public:
     ParMatrix ToPrimal() const;
 
 private:
-    void MakeVectors(int level);
-
-    std::vector<MixedMatrix> mgl_;
+    std::vector<Level> levels_;
     std::vector<GraphCoarsen> coarsener_;
-    std::vector<std::unique_ptr<MGLSolver>> solver_;
-    mutable std::vector<BlockVector> rhs_;
-    mutable std::vector<BlockVector> sol_;
-    std::vector<Vector> constant_rep_;
-    std::vector<std::vector<int>> elim_dofs_;
 
     MPI_Comm comm_;
     int myid_;

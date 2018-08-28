@@ -24,14 +24,14 @@
 namespace smoothg
 {
 
-HybridSolver::HybridSolver(const MixedMatrix& mgl)
+HybridSolver::HybridSolver(const MixedMatrix& mgl, const GraphSpace& graph_space)
     :
     MGLSolver(mgl),
-    agg_vertexdof_(mgl.GetAggVertexDof()),
+    agg_vertexdof_(graph_space.agg_vertexdof.GetDiag()),
     agg_edgedof_(mgl.GetElemDof()),
     num_aggs_(agg_edgedof_.Rows()),
     num_edge_dofs_(agg_edgedof_.Cols()),
-    num_multiplier_dofs_(mgl.GetFaceFaceDof().Cols()),
+    num_multiplier_dofs_(graph_space.face_facedof.Cols()),
     MinvDT_(num_aggs_), MinvCT_(num_aggs_),
     AinvDMinvCT_(num_aggs_), Ainv_(num_aggs_),
     hybrid_elem_(num_aggs_), Ainv_f_(num_aggs_),

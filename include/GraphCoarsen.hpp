@@ -23,10 +23,12 @@
 
 #include "Utilities.hpp"
 #include "LocalEigenSolver.hpp"
+#include "Level.hpp"
 #include "MixedMatrix.hpp"
 #include "SharedEntityComm.hpp"
 #include "GraphTopology.hpp"
 #include "GraphEdgeSolver.hpp"
+#include "GraphSpace.hpp"
 #include "MinresBlockSolver.hpp"
 
 namespace smoothg
@@ -56,7 +58,7 @@ public:
                          to keep per aggregate
     */
     GraphCoarsen(const Graph& graph, const MixedMatrix& mgl,
-                 int max_evects, double spect_tol);
+                 SpectralPair spect_pair);
 
     /** @brief Construtor from graph topology
 
@@ -66,8 +68,20 @@ public:
         @param spect_tol spectral tolerance used to determine how many eigenvectors
                          to keep per aggregate
     */
-    GraphCoarsen(GraphTopology gt, const MixedMatrix& mgl,
-                 int max_evects, double spect_tol);
+    GraphCoarsen(GraphTopology gt, const GraphSpace& graph_space,
+                 const MixedMatrix& mgl, const VectorView& constant_rep,
+                 SpectralPair spect_pair);
+
+    /** @brief Construtor from Level structure
+
+        @param gt precomputed graph topology
+        @param mgl Fine level mixed matrix
+        @param max_evects maximum number of eigenvectors per aggregate
+        @param spect_tol spectral tolerance used to determine how many eigenvectors
+                         to keep per aggregate
+    */
+    GraphCoarsen(GraphTopology gt, const Level& prev_level,
+                 SpectralPair spect_pair);
 
 
     /** @brief Default Destructor */
@@ -89,6 +103,11 @@ public:
         @param mgl Fine level mixed matrix
     */
     MixedMatrix Coarsen(const MixedMatrix& mgl) const;
+
+    /** @brief Create coarse level
+        @param mgl Fine level
+    */
+    Level Coarsen(const Level& level) const;
 
     /** @brief Interpolate a coarse vertex vector to the fine level
         @param coarse_vect vertex vector to interpolate
@@ -158,18 +177,20 @@ public:
     const SparseMatrix& Pvertex() const { return P_vertex_; }
     const GraphTopology& Topology() const { return gt_; }
 
+    GraphSpace BuildGraphSpace() const;
+
 private:
     template <class T>
     using Vect2D = std::vector<std::vector<T>>;
 
     void ComputeVertexTargets(const ParMatrix& M_ext, const ParMatrix& D_ext);
-    void ComputeEdgeTargets(const MixedMatrix& mgl,
+    void ComputeEdgeTargets(const MixedMatrix& mgl, const VectorView& constant_vect,
                             const ParMatrix& face_edge_perm);
-    void ScaleEdgeTargets(const MixedMatrix& mgl);
+    void ScaleEdgeTargets(const MixedMatrix& mgl, const VectorView& constant_vect);
 
 
     Vect2D<DenseMatrix> CollectSigma(const SparseMatrix& face_edge);
-    Vect2D<Vector> CollectConstant(const MixedMatrix& mgl);
+    Vect2D<Vector> CollectConstant(const VectorView& constant_vect);
     Vect2D<SparseMatrix> CollectD(const MixedMatrix& mgl);
     Vect2D<SparseMatrix> CollectM(const SparseMatrix& M_local);
 
@@ -191,8 +212,8 @@ private:
     void BuildAggBubbleDof();
     void BuildFaceCoarseDof();
     void BuildPvertex();
-    void BuildPedge(const MixedMatrix& mgl);
-    void BuildQedge(const MixedMatrix& mgl);
+    void BuildPedge(const MixedMatrix& mgl, const VectorView& constant_vect);
+    void BuildQedge(const MixedMatrix& mgl, const VectorView& constant_vect);
 
     // These only depend on GraphTopology and are sent directly to
     // the coarse mixed matrix
