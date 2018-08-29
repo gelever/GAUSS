@@ -1,3 +1,4 @@
+
 /*BHEADER**********************************************************************
  *
  * Copyright (c) 2018, Lawrence Livermore National Security, LLC.
@@ -24,32 +25,13 @@
 namespace smoothg
 {
 
-GraphGenerator::GraphGenerator(int nvertices, int mean_degree, double beta)
+GraphGenerator::GraphGenerator(int nvertices, int mean_degree, double beta, int seed)
     :
     nvertices_(nvertices),
     mean_degree_(mean_degree),
     beta_(beta),
     nedges_(nvertices_ * mean_degree_ / 2),
-    gen_(rd_()),
-    rand_double_0_1_(0, 1)
-{
-    // beta is probability
-    assert((beta_ >= 0.0) && (beta_ <= 1.0));
-
-    // The Watts-Strogatz model assumes mean_degree to be an even number
-    assert((mean_degree_ % 2) == 0);
-
-    // vertex degree cannot be greater than number of vertices -1
-    assert(mean_degree_ < nvertices_);
-}
-
-GraphGenerator::GraphGenerator(int nvertices, int mean_degree, double beta, unsigned int seed)
-    :
-    nvertices_(nvertices),
-    mean_degree_(mean_degree),
-    beta_(beta),
-    nedges_(nvertices_ * mean_degree_ / 2),
-    gen_(seed),
+    gen_(seed < 0 ? rd_() : seed),
     rand_double_0_1_(0, 1)
 {
     // beta is probability
@@ -123,78 +105,80 @@ void GraphGenerator::Rewiring(std::vector<std::vector<int> >& friend_lists)
     }
 }
 
-mfem::SparseMatrix GraphGenerator::FriendLists_to_v_e(
+SparseMatrix GraphGenerator::FriendLists_to_v_e(
     const std::vector<std::vector<int> >& friend_lists)
 {
-    int* e_v_i = new int[nedges_ + 1];
-    int* e_v_j = new int[nedges_ * 2];
-    double* e_v_data = new double[nedges_ * 2];
+    std::vector<int> indptr(nedges_ + 1);
+    std::vector<int> indices(nedges_ * 2);
+    std::vector<double> data(nedges_ * 2, 1.0);
 
-    std::fill_n(e_v_data, nedges_ * 2, 1.0);
-    for (int i = 0; i < nedges_ + 1; i++)
-        e_v_i[i] = i * 2;
+    for (int i = 0; i < nedges_ + 1; ++i)
+    {
+        indptr[i] = i * 2;
+    }
 
     int edge_count = 0;
-    for (int i = 0; i < nvertices_; i++)
+
+    for (int i = 0; i < nvertices_; ++i)
     {
-        const std::vector<int>& my_friend_list = friend_lists[i];
-        for (auto my_friend : my_friend_list)
+        for (auto my_friend : friend_lists[i])
         {
             if (my_friend > i)
             {
-                e_v_j[2 * edge_count] = i;
-                e_v_j[2 * edge_count + 1] = my_friend;
+                indices[2 * edge_count] = i;
+                indices[2 * edge_count + 1] = my_friend;
+
                 edge_count++;
             }
         }
     }
+
     assert(edge_count == nedges_);
 
-    mfem::SparseMatrix e_v(e_v_i, e_v_j, e_v_data, nedges_, nvertices_);
+    SparseMatrix edge_vertex(std::move(indptr), std::move(indices), std::move(data),
+                             nedges_, nvertices_);
 
-    return smoothg::Transpose(e_v);
+    return edge_vertex.Transpose();
 }
 
-mfem::SparseMatrix GraphGenerator::Generate()
+SparseMatrix GraphGenerator::Generate()
 {
-    // Generate a ring of nvertices_ vertices, each vertex is connected
-    // to the neighboring mean_degree_ vertices (mean_degree/2 on each side)
-    std::vector<std::vector<int> > friend_lists(nvertices_);
+    std::vector<std::vector<int> > friend_lists(nvertices_, std::vector<int>(mean_degree_));
+
     int current_vertex = 0;
+
     for (auto& my_fl : friend_lists)
     {
-        my_fl.resize(mean_degree_);
-        for (int i = 0; i < mean_degree_ / 2; i++)
+        for (int i = 0; i < mean_degree_ / 2; ++i)
         {
             my_fl[i] = (current_vertex + i + 1) % nvertices_;
             my_fl[mean_degree_ - i - 1] =
                 (nvertices_ + ((current_vertex - i - 1) % nvertices_)) % nvertices_;
         }
+
         current_vertex++;
     }
+
     assert(current_vertex == nvertices_);
 
-    // rewire with probability beta_
     Rewiring(friend_lists);
 
-    // Generate graph as a vertex to edge table
     return FriendLists_to_v_e(friend_lists);
 }
 
-mfem::SparseMatrix GenerateGraph(MPI_Comm comm, int nvertices, int mean_degree, double beta,
-                                 double seed)
+SparseMatrix GenerateGraph(MPI_Comm comm, int nvertices, int mean_degree, double beta,
+                           int seed)
 {
     int myid;
     MPI_Comm_rank(comm, &myid);
 
     GraphGenerator graph_gen(nvertices, mean_degree, beta, seed);
 
-    mfem::SparseMatrix vertex_edge;
+    SparseMatrix vertex_edge;
 
     if (myid == 0)
     {
-        auto tmp = graph_gen.Generate();
-        vertex_edge.Swap(tmp);
+        vertex_edge = graph_gen.Generate();
     }
 
     BroadCast(comm, vertex_edge);

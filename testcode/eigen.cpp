@@ -13,101 +13,154 @@
  *
  ***********************************************************************EHEADER*/
 
-#include "mfem.hpp"
-
+#include "smoothG.hpp"
 #include "smoothG_config.h"
-#include "../src/arpackeig.hpp"
-#include "../src/utilities.hpp"
 
 using namespace smoothg;
 
-mfem::SparseMatrix* build_sparse_fd_matrix(int num_dof)
+// build tridiagonal matrix with constant diagonal, sub- and super-diagonal
+SparseMatrix sparse_tridiag_matrix(int num_dof, double diag, double subd)
 {
-    mfem::SparseMatrix* out = new mfem::SparseMatrix(num_dof, num_dof);
+    CooMatrix out(num_dof, num_dof);
 
-    out->Add(0, 0, 2.0);
-    out->Add(0, 1, -1.0);
+    out.Add(0, 0, diag);
+    out.Add(0, 1, subd);
+
     for (int i = 1; i < num_dof - 1; ++i)
     {
-        out->Add(i, i - 1, -1.0);
-        out->Add(i, i, 2.0);
-        out->Add(i, i + 1, -1.0);
+        out.Add(i, i - 1, subd);
+        out.Add(i, i, diag);
+        out.Add(i, i + 1, subd);
     }
-    out->Add(num_dof - 1, num_dof - 2, -1.0);
-    out->Add(num_dof - 1, num_dof - 1, 2.0);
 
-    out->Finalize();
-    return out;
+    out.Add(num_dof - 1, num_dof - 2, subd);
+    out.Add(num_dof - 1, num_dof - 1, diag);
+
+    return out.ToSparse();
 }
 
 /**
    Test eigenvalues of very simple 1D finite difference stencil.
 */
 #if SMOOTHG_USE_ARPACK
+SparseMatrix build_sparse_fd_matrix(int num_dof)
+{
+    return sparse_tridiag_matrix(num_dof, 2.0, -1.0);
+}
+
+SparseMatrix build_sparse_fe_stiffness_matrix(int num_dof)
+{
+    double h = 1.0 / (num_dof + 1);
+    return sparse_tridiag_matrix(num_dof, 2.0 / h, -1.0 / h);
+}
+
+SparseMatrix build_sparse_fe_mass_matrix(int num_dof)
+{
+    double h = 1.0 / (num_dof + 1);
+    return sparse_tridiag_matrix(num_dof, h * 2.0 / 3.0, h / 6.0);
+}
+
 int test_fd_sparse()
 {
     const int num_dof = 10;
     const int num_ev = 5;
 
-    std::cout << "Building test matrix..." << std::endl;
-    mfem::SparseMatrix* Amatrix = build_sparse_fd_matrix(num_dof);
+    std::cout << "Building sparse FD test matrix..." << std::endl;
+    SparseMatrix Amatrix = build_sparse_fd_matrix(num_dof);
 
-    mfem::Vector eigenvalues;
-    mfem::DenseMatrix eigenvectors;
-    SparseEigensolver eigensolver;
+    std::vector<double> eigenvalues;
+    DenseMatrix eigenvectors;
+    LocalEigenSolver eigensolver(num_ev, 1.0);
 
-    eigensolver.Compute(*Amatrix, eigenvalues, eigenvectors, num_ev);
+    eigensolver.Compute(Amatrix, eigenvalues, eigenvectors);
 
     std::cout << "Eigenvalues:" << std::endl;
-    for (int i = num_ev - 1; i >= 0; --i)
-        std::cout << i << ": " << 1. / eigenvalues[i] << std::endl;
+
+    for (int i = 0; i < num_ev; ++i)
+    {
+        std::cout << i << ": " << eigenvalues[i] << std::endl;
+    }
+
     std::cout << "Eigenvector corresponding to smallest eigenvalue:" << std::endl;
+
     for (int i = 0; i < num_dof; ++i)
-        std::cout << i << ": " << eigenvectors(i, num_ev - 1) << std::endl;
+    {
+        std::cout << i << ": " << eigenvectors(i, 0) << std::endl;
+    }
 
     const double expected_smallest_ev = 0.08101405; // from python...
-    double error = std::fabs(1. / eigenvalues[num_ev - 1] - expected_smallest_ev);
+    double error = std::fabs(eigenvalues[0] - expected_smallest_ev);
     std::cout << "Eigenvalue error: " << error << std::endl;
-    bool success;
-    if (error < 1.e-6) // tolerance in SparseEigensolver
+
+    bool failed = (error > 1e-6);
+
+    std::cout << "Basic FD test of ARPACK " << (failed ? "FAILS!" : "passes.") << "\n";
+
+    return failed;
+}
+
+int test_fe_sparse()
+{
+    const int num_dof = 10;
+    const int num_ev = 5;
+
+    std::cout << "Building sparse FE test matrices...\n";
+
+    SparseMatrix Amatrix = build_sparse_fe_stiffness_matrix(num_dof);
+    SparseMatrix Mmatrix = build_sparse_fe_mass_matrix(num_dof);
+
+    std::vector<double> eigenvalues;
+    DenseMatrix eigenvectors;
+    LocalEigenSolver eigensolver(num_ev, 1.0);
+
+    eigensolver.Compute(Amatrix, Mmatrix, eigenvalues, eigenvectors);
+
+    std::cout << "Eigenvalues:\n";
+
+    for (int i = 0; i < num_ev; ++i)
     {
-        success = true;
-        std::cout << "Basic FD test of ARPACK passes." << std::endl;
-    }
-    else
-    {
-        success = false;
-        std::cout << "Basic FD test of ARPACK FAILS!" << std::endl;
+        std::cout << i << ": " << eigenvalues[i] << "\n";
     }
 
-    std::cout << "Destroying MFEM test matrix..."
-              << std::endl;
-    delete Amatrix;
+    std::cout << "Eigenvector corresponding to smallest eigenvalue:" << "\n";
 
-    if (success)
-        return 0;
-    else
-        return 1;
+    for (int i = 0; i < num_dof; ++i)
+    {
+        std::cout << i << ": " << eigenvectors(i, 0) << "\n";
+    }
+
+    const double expected_smallest_ev = 9.93687142; // from python...
+    double error = std::fabs(eigenvalues[0] - expected_smallest_ev);
+    std::cout << "Eigenvalue error: " << error << "\n";
+
+    bool failed = (error > 1e-6);
+
+    std::cout << "Basic FE test of ARPACK " << (failed ? "FAILS!" : "passes.") << "\n";
+
+    return failed;
 }
 #endif
 
-mfem::DenseMatrix* build_dense_fd_matrix(int num_dof)
+DenseMatrix dense_tridiag_matrix(int num_dof, double diag, double subd)
 {
-    mfem::DenseMatrix* out_p = new mfem::DenseMatrix(num_dof, num_dof);
-    mfem::DenseMatrix& out = *out_p;
+    return sparse_tridiag_matrix(num_dof, diag, subd).ToDense();
+}
 
-    out(0, 0) = 2.0;
-    out(0, 1) = -1.0;
-    for (int i = 1; i < num_dof - 1; ++i)
-    {
-        out(i, i - 1) = -1.0;
-        out(i, i) = 2.0;
-        out(i, i + 1) = -1.0;
-    }
-    out(num_dof - 1, num_dof - 2) = -1.0;
-    out(num_dof - 1, num_dof - 1) = 2.0;
+DenseMatrix build_dense_fd_matrix(int num_dof)
+{
+    return dense_tridiag_matrix(num_dof, 2.0, -1.0);
+}
 
-    return out_p;
+DenseMatrix build_dense_fe_stiffness_matrix(int num_dof)
+{
+    double h = 1.0 / (num_dof + 1);
+    return dense_tridiag_matrix(num_dof, 2.0 / h, -1.0 / h);
+}
+
+DenseMatrix build_dense_fe_mass_matrix(int num_dof)
+{
+    double h = 1.0 / (num_dof + 1);
+    return dense_tridiag_matrix(num_dof, h * 2.0 / 3.0, h / 6.0);
 }
 
 int test_fd_dense()
@@ -115,45 +168,78 @@ int test_fd_dense()
     const int num_dof = 10;
     const int num_ev = 5;
 
-    std::cout << "Building test matrix..." << std::endl;
-    mfem::DenseMatrix* Amatrix = build_dense_fd_matrix(num_dof);
+    std::cout << "Building dense FD test matrix...\n";
+    DenseMatrix Amatrix = build_dense_fd_matrix(num_dof);
 
-    mfem::Vector eigenvalues;
-    mfem::DenseMatrix eigenvectors;
-    Eigensolver eigensolver;
+    std::vector<double> eigenvalues;
+    DenseMatrix eigenvectors;
+    LocalEigenSolver eigensolver(num_ev, 1.0);
 
-    eigensolver.Compute(*Amatrix, eigenvalues, eigenvectors, 1.0, num_ev);
+    eigensolver.Compute(Amatrix, eigenvalues, eigenvectors);
 
-    std::cout << "Eigenvalues:" << std::endl;
+    std::cout << "Eigenvalues:\n";
+
     for (int i = 0; i < num_ev; ++i)
-        std::cout << i << ": " << eigenvalues[i] << std::endl;
-    std::cout << "Eigenvector corresponding to smallest eigenvalue:" << std::endl;
+    {
+        std::cout << i << ": " << eigenvalues[i] << "\n";
+    }
+
+    std::cout << "Eigenvector corresponding to smallest eigenvalue:\n";
+
     for (int i = 0; i < num_dof; ++i)
-        std::cout << i << ": " << eigenvectors(i, 0) << std::endl;
+    {
+        std::cout << i << ": " << eigenvectors(i, 0) << "\n";
+    }
 
     const double expected_smallest_ev = 0.08101405; // from python...
     double error = std::fabs(eigenvalues[0] - expected_smallest_ev);
-    std::cout << "Eigenvalue error: " << error << std::endl;
-    bool success;
-    if (error < 1.e-6) // tolerance in SparseEigensolver
+    std::cout << "Eigenvalue error: " << error << "\n";
+
+    bool failed = (error > 1e-6);
+
+    std::cout << "Basic FD test of dense Eigensolver " << (failed ? "FAILS!" : "passes.") << "\n";
+
+    return failed;
+}
+
+int test_fe_dense()
+{
+    const int num_dof = 10;
+    const int num_ev = 5;
+
+    std::cout << "Building dense FE test matrices..." << std::endl;
+    DenseMatrix Amatrix = build_dense_fe_stiffness_matrix(num_dof);
+    DenseMatrix Mmatrix = build_dense_fe_mass_matrix(num_dof);
+
+    std::vector<double> eigenvalues;
+    DenseMatrix eigenvectors;
+    LocalEigenSolver eigensolver(num_ev, 1.0);
+
+    eigensolver.Compute(Amatrix, Mmatrix, eigenvalues, eigenvectors);
+
+    std::cout << "Eigenvalues:\n";
+
+    for (int i = 0; i < num_ev; ++i)
     {
-        success = true;
-        std::cout << "Basic FD test of dense Eigensolver passes." << std::endl;
-    }
-    else
-    {
-        success = false;
-        std::cout << "Basic FD test of dense Eigensolver FAILS!" << std::endl;
+        std::cout << i << ": " << eigenvalues[i] << "\n";
     }
 
-    std::cout << "Destroying MFEM test matrix..."
-              << std::endl;
-    delete Amatrix;
+    std::cout << "Eigenvector corresponding to smallest eigenvalue:\n";
 
-    if (success)
-        return 0;
-    else
-        return 1;
+    for (int i = 0; i < num_dof; ++i)
+    {
+        std::cout << i << ": " << eigenvectors(i, 0) << "\n";
+    }
+
+    const double expected_smallest_ev = 9.93687142; // from python...
+    double error = std::fabs(eigenvalues[0] - expected_smallest_ev);
+    std::cout << "Eigenvalue error: " << error << "\n";
+
+    bool failed = (error > 1e-6);
+
+    std::cout << "Basic FD test of dense Eigensolver " << (failed ? "FAILS!" : "passes.") << "\n";
+    
+    return failed;
 }
 
 int main(int argc, char* argv[])
@@ -161,7 +247,9 @@ int main(int argc, char* argv[])
     int out = 0;
 #if SMOOTHG_USE_ARPACK
     out += test_fd_sparse();
+    out += test_fe_sparse();
 #endif
     out += test_fd_dense();
+    out += test_fe_dense();
     return out;
 }

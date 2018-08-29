@@ -18,58 +18,57 @@
 */
 
 #include <fstream>
+#include <sstream>
+#include <mpi.h>
 
-#include "mfem.hpp"
-#include "../src/MetisGraphPartitioner.hpp"
-#include "../src/utilities.hpp"
+#include "smoothG.hpp"
+
+using namespace smoothg;
+using linalgcpp::ReadCSR;
 
 int main(int argc, char* argv[])
 {
-    // initialize MPI
-    smoothg::mpi_session session(argc, argv);
-
-    int result = 0;
-
-    // parse command line options
-    mfem::OptionsParser args(argc, argv);
-    const char* graphFileName = "../../graphdata/vertex_edge_tiny.txt";
-    args.AddOption(&graphFileName, "-g", "--graph",
-                   "Graph connection data.");
-
     // load the graph
-    mfem::SparseMatrix vertex_edge_global;
-    {
-        std::ifstream graphFile(graphFileName);
-        smoothg::ReadVertexEdge(graphFile, vertex_edge_global);
-    }
+    std::string graph_filename = "../../graphdata/vertex_edge_tiny.txt";
+    SparseMatrix vertex_edge = ReadCSR(graph_filename);
 
     // partition
-    int num_partitions = 2;
-    mfem::Array<int> global_partitioning;
+    int num_parts = 2;
+    double ubal_tol = 2.0;
+
+    SparseMatrix edge_vertex = vertex_edge.Transpose();
+    SparseMatrix vertex_vertex = vertex_edge.Mult(edge_vertex);
+
+    std::vector<int> partition = Partition(vertex_vertex, num_parts, ubal_tol);
+
+    // check partition
+    int size = partition.size();
+    int result = 0;
+
+    for (int i = 0; i < size / 2; ++i)
     {
-        smoothg::MetisGraphPartitioner partitioner;
-        partitioner.setUnbalanceTol(2);
-        mfem::SparseMatrix* edge_vertex = Transpose(vertex_edge_global);
-        mfem::SparseMatrix* vertex_vertex = Mult(vertex_edge_global,
-                                                 *edge_vertex);
-        delete edge_vertex;
-        partitioner.doPartition(*vertex_vertex, num_partitions,
-                                global_partitioning);
-        delete vertex_vertex;
+        std::cout << "partition[" << i << "] = " << partition[i] << "\n";
+
+        if (partition[i] != 1)
+        {
+            result++;
+        }
     }
 
-    for (int i = 0; i < global_partitioning.Size() / 2; ++i)
+    for (int i = size / 2; i < size; ++i)
     {
-        std::cout << "partition[" << i << "] = " << global_partitioning[i] << std::endl;
-        if (global_partitioning[i] != 1) result++;
-    }
-    for (int i = global_partitioning.Size() / 2; i < global_partitioning.Size(); ++i)
-    {
-        std::cout << "partition[" << i << "] = " << global_partitioning[i] << std::endl;
-        if (global_partitioning[i] != 0) result++;
+        std::cout << "partition[" << i << "] = " << partition[i] << "\n";
+
+        if (partition[i] != 0)
+        {
+            result++;
+        }
     }
 
     if (result > 0)
+    {
         std::cerr << "Unexpected partitioning from metis!" << std::endl;
+    }
+
     return result;
 }

@@ -23,282 +23,205 @@
 #include <sstream>
 #include <mpi.h>
 
-#include "mfem.hpp"
-
-#include "../src/picojson.h"
-#include "../src/smoothG.hpp"
-
-using std::unique_ptr;
-using std::shared_ptr;
-using std::make_shared;
+#include "smoothG.hpp"
 
 using namespace smoothg;
 
-void MetisPart(const mfem::SparseMatrix& vertex_edge, mfem::Array<int>& part, int num_parts,
-               int isolate);
-mfem::Vector ComputeFiedlerVector(const MixedMatrix& mixed_laplacian);
+using linalgcpp::ReadText;
+using linalgcpp::WriteText;
+using linalgcpp::ReadCSR;
+
+using parlinalgcpp::LOBPCG;
+using parlinalgcpp::BoomerAMG;
+
+std::vector<int> MetisPart(const SparseMatrix& vertex_edge, int num_parts);
+Vector ComputeFiedlerVector(const MixedMatrix& mgl);
 
 int main(int argc, char* argv[])
 {
-    // 1. Initialize MPI
-    int num_procs, myid;
-    MPI_Init(&argc, &argv);
-    MPI_Comm comm = MPI_COMM_WORLD;
-    MPI_Comm_size(comm, &num_procs);
-    MPI_Comm_rank(comm, &myid);
+    // Initialize MPI
+    MpiSession mpi_info(argc, argv);
+    MPI_Comm comm = mpi_info.comm_;
+    int myid = mpi_info.myid_;
+    int num_procs = mpi_info.num_procs_;
 
     // program options from command line
-    mfem::OptionsParser args(argc, argv);
-    int num_partitions = 12;
-    args.AddOption(&num_partitions, "-np", "--num-part",
-                   "Number of partitions to generate with Metis.");
-    const char* graphFileName = "../../graphdata/vertex_edge_sample.txt";
-    args.AddOption(&graphFileName, "-g", "--graph",
-                   "File to load for graph connection data.");
-    const char* FiedlerFileName = "../../graphdata/fiedler_sample.txt";
-    args.AddOption(&FiedlerFileName, "-f", "--fiedler",
-                   "File to load for the Fiedler vector.");
-    const char* partition_filename = "../../graphdata/partition_sample.txt";
-    args.AddOption(&partition_filename, "-p", "--partition",
-                   "Partition file to load (instead of using metis).");
-    const char* weight_filename = "";
-    args.AddOption(&weight_filename, "-w", "--weight",
-                   "File to load for graph edge weights.");
-    const char* w_block_filename = "";
-    args.AddOption(&w_block_filename, "-wb", "--w_block",
-                   "File to load for w block.");
-    bool metis_agglomeration = false;
-    args.AddOption(&metis_agglomeration, "-ma", "--metis-agglomeration",
-                   "-nm", "--no-metis-agglomeration",
-                   "Use Metis as the partitioner (instead of loading partition).");
-    int max_evects = 4;
-    args.AddOption(&max_evects, "-m", "--max-evects",
-                   "Maximum eigenvectors per aggregate.");
-    double spect_tol = 1.e-3;
-    args.AddOption(&spect_tol, "-t", "--spect-tol",
-                   "Spectral tolerance for eigenvalue problems.");
-    bool hybridization = false;
-    args.AddOption(&hybridization, "-hb", "--hybridization", "-no-hb",
-                   "--no-hybridization", "Enable hybridization.");
-    bool generate_graph = false;
-    args.AddOption(&generate_graph, "-gg", "--generate-graph", "-no-gg",
-                   "--no-generate-graph", "Generate a graph at runtime.");
-    bool generate_fiedler = false;
-    args.AddOption(&generate_fiedler, "-gf", "--generate-fiedler", "-no-gf",
-                   "--no-generate-fiedler", "Generate a fiedler vector at runtime.");
-    bool save_fiedler = false;
-    args.AddOption(&save_fiedler, "-sf", "--save-fiedler", "-no-sf",
-                   "--no-save-fiedler", "Save a generate a fiedler vector at runtime.");
-    int gen_vertices = 1000;
-    args.AddOption(&gen_vertices, "-nv", "--num-vert",
-                   "Number of vertices of the graph to be generated.");
-    int mean_degree = 40;
-    args.AddOption(&mean_degree, "-md", "--mean-degree",
-                   "Average vertex degree of the graph to be generated.");
-    double beta = 0.15;
-    args.AddOption(&beta, "-b", "--beta",
-                   "Probability of rewiring in the Watts-Strogatz model.");
-    int seed = 0;
-    args.AddOption(&seed, "-s", "--seed",
-                   "Seed (unsigned integer) for the random number generator.");
+    std::string graph_filename = "../../graphdata/vertex_edge_sample.txt";
+    std::string fiedler_filename = "../../graphdata/fiedler_sample.txt";
+    std::string partition_filename = "../../graphdata/partition_sample.txt";
+    std::string weight_filename = "";
+    std::string w_block_filename = "";
+
     int isolate = -1;
-    args.AddOption(&isolate, "--isolate", "--isolate",
-                   "Isolate a single vertex (for debugging so far).");
-    args.Parse();
-    if (!args.Good())
+    int max_evects = 4;
+    double spect_tol = 1e-3;
+    int num_partitions = 12;
+    bool hybridization = false;
+    bool metis_agglomeration = false;
+
+    bool generate_fiedler = false;
+    bool save_fiedler = false;
+
+    bool generate_graph = false;
+    int gen_vertices = 1000;
+    int mean_degree = 40;
+    double beta = 0.15;
+    int seed = 0;
+
+    linalgcpp::ArgParser arg_parser(argc, argv);
+
+    arg_parser.Parse(graph_filename, "--g", "Graph connection data.");
+    arg_parser.Parse(fiedler_filename, "--f", "Fiedler vector data.");
+    arg_parser.Parse(partition_filename, "--p", "Partition data.");
+    arg_parser.Parse(weight_filename, "--w", "Edge weight data.");
+    arg_parser.Parse(w_block_filename, "--wb", "W block data.");
+    arg_parser.Parse(isolate, "--isolate", "Isolate a single vertex.");
+    arg_parser.Parse(max_evects, "--m", "Maximum eigenvectors per aggregate.");
+    arg_parser.Parse(spect_tol, "--t", "Spectral tolerance for eigenvalue problem.");
+    arg_parser.Parse(num_partitions, "--np", "Number of partitions to generate.");
+    arg_parser.Parse(hybridization, "--hb", "Enable hybridization.");
+    arg_parser.Parse(metis_agglomeration, "--ma", "Enable Metis partitioning.");
+    arg_parser.Parse(generate_fiedler, "--gf", "Generate Fiedler vector.");
+    arg_parser.Parse(save_fiedler, "--sf", "Save a generated Fiedler vector.");
+    arg_parser.Parse(generate_graph, "--gg", "Generate a graph.");
+    arg_parser.Parse(gen_vertices, "--nv", "Number of vertices of generated graph.");
+    arg_parser.Parse(mean_degree, "--md", "Average vertex degree of generated graph.");
+    arg_parser.Parse(beta, "--b", "Probability of rewiring in the Watts-Strogatz model.");
+    arg_parser.Parse(seed, "--s", "Seed for random number generator.");
+
+    if (!arg_parser.IsGood())
     {
-        if (myid == 0)
-        {
-            args.PrintUsage(std::cout);
-        }
-        MPI_Finalize();
-        return 1;
-    }
-    if (myid == 0)
-    {
-        args.PrintOptions(std::cout);
+        ParPrint(myid, arg_parser.ShowHelp());
+        ParPrint(myid, arg_parser.ShowErrors());
+
+        return EXIT_FAILURE;
     }
 
-    assert(num_partitions >= num_procs);
+    ParPrint(myid, arg_parser.ShowOptions());
 
     /// [Load graph from file or generate one]
-    mfem::SparseMatrix vertex_edge_global;
+    SparseMatrix vertex_edge_global;
+
     if (generate_graph)
     {
-        mfem::SparseMatrix tmp = GenerateGraph(comm, gen_vertices, mean_degree, beta, seed);
-        vertex_edge_global.Swap(tmp);
+        vertex_edge_global = GenerateGraph(comm, gen_vertices, mean_degree, beta, seed);
     }
     else
     {
-        mfem::SparseMatrix tmp = ReadVertexEdge(graphFileName);
-        vertex_edge_global.Swap(tmp);
+        vertex_edge_global = ReadCSR(graph_filename);
     }
 
-    const int nedges_global = vertex_edge_global.Width();
-    const int nvertices_global = vertex_edge_global.Height();
-
+    const int nvertices_global = vertex_edge_global.Rows();
+    const int nedges_global = vertex_edge_global.Cols();
     /// [Load graph from file or generate one]
 
     /// [Partitioning]
-    mfem::Array<int> global_partitioning;
+    std::vector<int> global_partitioning;
     if (metis_agglomeration || generate_graph)
     {
-        MetisPart(vertex_edge_global, global_partitioning, num_partitions, isolate);
+        assert(num_partitions >= num_procs);
+        global_partitioning = MetisPart(vertex_edge_global, num_partitions);
     }
     else
     {
-        std::ifstream partFile(partition_filename);
-        global_partitioning.SetSize(nvertices_global);
-        global_partitioning.Load(partFile, nvertices_global);
+        global_partitioning = ReadText<int>(partition_filename);
     }
     /// [Partitioning]
 
     /// [Load the edge weights]
-    mfem::Vector weight(nedges_global);
-    if (std::strlen(weight_filename))
+    std::vector<double> weight;
+    if (!weight_filename.empty())
     {
-        std::ifstream weight_file(weight_filename);
-        weight.Load(weight_file, nedges_global);
+        weight = linalgcpp::ReadText(weight_filename);
     }
     else
     {
-        weight = 1.0;
+        weight = std::vector<double>(nedges_global, 1.0);
     }
     /// [Load the edge weights]
 
     // Set up GraphUpscale
+    /// [Upscale]
+    Graph graph(comm, vertex_edge_global, global_partitioning, weight);
+    GraphUpscale upscale(graph, spect_tol, max_evects, hybridization);
+
+    upscale.PrintInfo();
+    upscale.ShowSetupTime();
+    /// [Upscale]
+
+    /// [Right Hand Side]
+    BlockVector fine_rhs = upscale.GetFineBlockVector();
+    fine_rhs.GetBlock(0) = 0.0;
+
+    if (generate_graph || generate_fiedler)
     {
-        /// [Upscale]
-        GraphUpscale upscale(comm, vertex_edge_global, global_partitioning,
-                             spect_tol, max_evects, hybridization, weight);
-
-        upscale.PrintInfo();
-        upscale.ShowSetupTime();
-        /// [Upscale]
-
-        mfem::Vector rhs_u_fine;
-
-        /// [Right Hand Side]
-        if (generate_graph || generate_fiedler)
-        {
-            rhs_u_fine = ComputeFiedlerVector(upscale.GetFineMatrix());
-        }
-        else
-        {
-            rhs_u_fine = upscale.ReadVertexVector(FiedlerFileName);
-        }
-
-        mfem::BlockVector fine_rhs(upscale.GetFineBlockVector());
-        fine_rhs.GetBlock(0) = 0.0;
-        fine_rhs.GetBlock(1) = rhs_u_fine;
-        /// [Right Hand Side]
-
-        /// [Solve]
-        mfem::BlockVector upscaled_sol = upscale.Solve(fine_rhs);
-        upscale.ShowCoarseSolveInfo();
-
-        mfem::BlockVector fine_sol = upscale.SolveFine(fine_rhs);
-        upscale.ShowFineSolveInfo();
-        /// [Solve]
-
-        /// [Check Error]
-        upscale.ShowErrors(upscaled_sol, fine_sol);
-        /// [Check Error]
-
-        if (save_fiedler)
-        {
-            upscale.WriteVertexVector(rhs_u_fine, FiedlerFileName);
-        }
-    }
-
-    MPI_Finalize();
-    return 0;
-}
-
-void MetisPart(const mfem::SparseMatrix& vertex_edge, mfem::Array<int>& part, int num_parts,
-               int isolate)
-{
-    smoothg::MetisGraphPartitioner partitioner;
-    partitioner.setUnbalanceTol(2);
-    mfem::SparseMatrix edge_vertex = smoothg::Transpose(vertex_edge);
-    mfem::SparseMatrix vertex_vertex = smoothg::Mult(vertex_edge, edge_vertex);
-
-    mfem::Array<int> post_isolate_vertices;
-    if (isolate >= 0)
-        post_isolate_vertices.Append(isolate);
-
-    partitioner.SetPostIsolateVertices(post_isolate_vertices);
-
-    partitioner.doPartition(vertex_vertex, num_parts, part);
-}
-
-mfem::Vector ComputeFiedlerVector(const MixedMatrix& mixed_laplacian)
-{
-    auto& pM = mixed_laplacian.get_pM();
-    auto& pD = mixed_laplacian.get_pD();
-    auto* pW = mixed_laplacian.get_pW();
-
-    unique_ptr<mfem::HypreParMatrix> MinvDT(pD.Transpose());
-
-    mfem::HypreParVector M_inv(pM.GetComm(), pM.GetGlobalNumRows(), pM.GetRowStarts());
-    pM.GetDiag(M_inv);
-    MinvDT->InvScaleRows(M_inv);
-
-    unique_ptr<mfem::HypreParMatrix> A(mfem::ParMult(&pD, MinvDT.get()));
-
-    const bool use_w = mixed_laplacian.CheckW();
-
-    if (use_w)
-    {
-        (*pW) *= -1.0;
-        // TODO(gelever1): define ParSub lol
-        A.reset(ParAdd(*A, *pW));
-        (*pW) *= -1.0;
+        fine_rhs.GetBlock(1) = ComputeFiedlerVector(upscale.GetFineMatrix());
     }
     else
     {
-        // Adding identity to A so that it is non-singular
-        mfem::SparseMatrix diag;
-        A->GetDiag(diag);
-        for (int i = 0; i < diag.Width(); i++)
-            diag(i, i) += 1.0;
+        fine_rhs.GetBlock(1) = upscale.ReadVertexVector(fiedler_filename);
     }
 
-    mfem::HypreBoomerAMG prec(*A);
-    prec.SetPrintLevel(0);
+    /// [Right Hand Side]
 
-    mfem::HypreLOBPCG lobpcg(A->GetComm());
-    lobpcg.SetMaxIter(5000);
-    lobpcg.SetTol(1e-8);
-    lobpcg.SetPrintLevel(0);
-    lobpcg.SetNumModes(2);
-    lobpcg.SetOperator(*A);
-    lobpcg.SetPreconditioner(prec);
-    lobpcg.Solve();
+    /// [Solve]
+    BlockVector upscaled_sol = upscale.Solve(fine_rhs);
+    upscale.ShowCoarseSolveInfo();
 
-    mfem::Array<double> evals;
-    lobpcg.GetEigenvalues(evals);
+    BlockVector fine_sol = upscale.SolveFine(fine_rhs);
+    upscale.ShowFineSolveInfo();
+    /// [Solve]
 
-    bool converged = true;
+    /// [Check Error]
+    upscale.ShowErrors(upscaled_sol, fine_sol);
+    /// [Check Error]
 
-    // First eigenvalue of A+I should be 1 (graph Laplacian has a 1D null space)
+    if (save_fiedler)
+    {
+        upscale.WriteVertexVector(fine_rhs.GetBlock(1), fiedler_filename);
+    }
+
+    return 0;
+}
+
+std::vector<int> MetisPart(const SparseMatrix& vertex_edge, int num_parts)
+{
+    SparseMatrix edge_vertex = vertex_edge.Transpose();
+    SparseMatrix vertex_vertex = vertex_edge.Mult(edge_vertex);
+
+    double ubal_tol = 2.0;
+
+    return Partition(vertex_vertex, num_parts, ubal_tol);
+}
+
+Vector ComputeFiedlerVector(const MixedMatrix& mgl)
+{
+    ParMatrix A = mgl.ToPrimal();
+
+    bool use_w = mgl.CheckW();
+
     if (!use_w)
     {
-        converged &= std::abs(evals[0] - 1.0) < 1e-8;
+        A.AddDiag(1.0);
     }
 
-    // Second eigenvalue of A+I should be greater than 1 for connected graphs
-    converged &= std::abs(evals[1] - 1.0) > 1e-8;
+    BoomerAMG boomer(A);
 
-    int myid;
-    MPI_Comm_rank(MPI_COMM_WORLD, &myid);
-
-    if (!converged && myid == 0)
+    int num_evects = 2;
+    std::vector<Vector> evects(num_evects, Vector(A.Rows()));
+    for (Vector& evect : evects)
     {
-        std::cout << "LOBPCG Failed to converge: \n";
-        std::cout << evals[0] << "\n";
-        std::cout << evals[1] << "\n";
+        evect.Randomize();
     }
 
-    return lobpcg.GetEigenvector(1);
+    std::vector<double> evals = LOBPCG(A, evects, &boomer);
+
+    assert(static_cast<int>(evals.size()) == num_evects);
+    if (!use_w)
+    {
+        assert(std::fabs(evals[0] - 1.0) < 1e-8);
+        assert(std::fabs(evals[1] - 1.0) > 1e-8);
+    }
+
+    return std::move(evects[1]);
 }

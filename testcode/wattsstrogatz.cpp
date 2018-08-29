@@ -21,56 +21,49 @@
 #include <sstream>
 #include <mpi.h>
 
-#include "mfem.hpp"
-#include "../src/smoothG.hpp"
+#include "smoothG.hpp"
 
 using namespace smoothg;
 
 int main(int argc, char* argv[])
 {
     // initialize MPI
-    mpi_session session(argc, argv);
-
-    int myid;
-    MPI_Comm comm = MPI_COMM_WORLD;
-    MPI_Comm_rank(comm, &myid);
+    MpiSession mpi_info(argc, argv);
+    MPI_Comm comm = mpi_info.comm_;
+    int myid = mpi_info.myid_;
+    int num_procs = mpi_info.num_procs_;
 
     // program options from command line
-    mfem::OptionsParser args(argc, argv);
+    linalgcpp::ArgParser arg_parser(argc, argv);
 
     int nvertices = 100;
-    args.AddOption(&nvertices, "-nv", "--num-vert",
-                   "Number of vertices of the graph to be generated.");
     int mean_degree = 20;
-    args.AddOption(&mean_degree, "-md", "--mean-degree",
-                   "Average vertex degree of the graph to be generated.");
     double beta = 0.15;
-    args.AddOption(&beta, "-b", "--beta",
-                   "Probability of rewiring in the Watts-Strogatz model.");
-    args.Parse();
-    if (!args.Good())
+    unsigned int seed = 5;
+
+    arg_parser.Parse(nvertices, "--nv", "Number of vertices of the graph to be generated.");
+    arg_parser.Parse(mean_degree, "--md", "Average vertex degree of the graph to be generated.");
+    arg_parser.Parse(beta, "--b", "Probability of rewiring in the Watts-Strogatz model.");
+
+    if (!arg_parser.IsGood())
     {
-        if (myid == 0)
-        {
-            args.PrintUsage(std::cout);
-        }
-        MPI_Finalize();
-        return 1;
-    }
-    if (myid == 0)
-    {
-        args.PrintOptions(std::cout);
+        ParPrint(myid, arg_parser.ShowHelp());
+        ParPrint(myid, arg_parser.ShowErrors());
+
+        return EXIT_FAILURE;
     }
 
-    mfem::StopWatch chrono;
-    chrono.Clear();
-    chrono.Start();
+    ParPrint(myid, arg_parser.ShowOptions());
 
-    GraphGenerator graph_gen(nvertices, mean_degree, beta);
-    mfem::SparseMatrix vertex_edge = graph_gen.Generate();
+    Timer chrono(Timer::Start::True);
+
+    SparseMatrix vertex_edge = GenerateGraph(comm, nvertices, mean_degree, beta, seed);
+
+    chrono.Click();
 
     std::map<int, double> graph_stats;
-    for (int i = 0; i < vertex_edge.Height(); i++)
+
+    for (int i = 0; i < vertex_edge.Rows(); i++)
     {
         int tmp = vertex_edge.RowSize(i);
         if (graph_stats[tmp])
@@ -87,39 +80,44 @@ int main(int argc, char* argv[])
     {
         std::cout << "Vertex degree statistics:\n";
         std::cout << "  Degree   Percentage\n";
-        for (auto it = graph_stats.begin(); it != graph_stats.end(); it++)
-            std::cout << "    " << it->first
+
+        for (auto&& stat : graph_stats)
+        {
+            std::cout << "    " << stat.first
                       << "       " << std::setprecision(4)
-                      << it->second / nvertices * 100 << "% \n";
+                      << stat.second / nvertices * 100 << "% \n";
+        }
     }
 
-    chrono.Stop();
     if (myid == 0)
-        std::cout << "A random graph is generated in "
-                  << chrono.RealTime() << " seconds \n";
-
-    bool success = true;
-    if (vertex_edge.Height() != nvertices)
     {
-        success &= false;
+        std::cout << "A random graph is generated in "
+                  << chrono.TotalTime() << " seconds \n";
+    }
+
+    int failures = 0;
+
+    if (vertex_edge.Rows() != nvertices)
+    {
+        failures += 1;
+
         std::cout << "The generated graph does not have "
                   << "the expected number of vertices\n";
         std::cout << "Expect: " << nvertices << "\n";
-        std::cout << "Actual: " << vertex_edge.Height() << "\n";
-    }
-    if (vertex_edge.Width() != nvertices * mean_degree / 2)
-    {
-        success &= false;
-        std::cout << "The generated graph does not have "
-                  << "the expected number of edges\n";
-        std::cout << "Expect: " << nvertices* mean_degree / 2 << "\n";
-        std::cout << "Actual: " << vertex_edge.Width() << "\n";
+        std::cout << "Actual: " << vertex_edge.Rows() << "\n";
     }
 
-    if (success)
-        return 0;
-    else
-        return 1;
+    if (vertex_edge.Cols() != nvertices * mean_degree / 2)
+    {
+        failures += 1;
+
+        std::cout << "The generated graph does not have "
+                  << "the expected number of edges\n";
+        std::cout << "Expect: " << nvertices * mean_degree / 2 << "\n";
+        std::cout << "Actual: " << vertex_edge.Cols() << "\n";
+    }
+
+    return failures;
 }
 
 

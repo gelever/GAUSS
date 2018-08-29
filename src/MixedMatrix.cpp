@@ -15,221 +15,313 @@
 
 /** @file
 
-    @brief Implements MixedMatrix object.
+    @brief MixedMatrix class
 */
 
-#ifndef __MIXEDMATRIX_IMPL_HPP__
-#define __MIXEDMATRIX_IMPL_HPP__
-
 #include "MixedMatrix.hpp"
-#include "mfem.hpp"
-#include "utilities.hpp"
-#include <memory>
-
-using std::unique_ptr;
 
 namespace smoothg
 {
 
-MixedMatrix::MixedMatrix(const mfem::SparseMatrix& vertex_edge,
-                         const mfem::Vector& weight,
-                         const mfem::SparseMatrix& w_block,
-                         const mfem::HypreParMatrix& edge_d_td,
-                         DistributeWeight dist_weight)
-    : edge_d_td_(&edge_d_td),
-      edge_td_d_(edge_d_td_->Transpose())
+MixedMatrix::MixedMatrix(const Graph& graph)
+    : edge_true_edge_(graph.edge_true_edge_),
+      D_local_(MakeLocalD(graph.edge_true_edge_, graph.vertex_edge_local_)),
+      W_local_(graph.W_local_),
+      elem_dof_(graph.vertex_edge_local_),
+      agg_vertexdof_(SparseIdentity(D_local_.Rows())),
+      face_facedof_(SparseIdentity(elem_dof_.Cols()))
 {
-    assert(edge_d_td);
-    assert(weight.Size() == vertex_edge.Width());
-    assert(edge_d_td_->Height() == vertex_edge.Width());
+    int num_vertices = D_local_.Rows();
+    int num_edges = D_local_.Cols();
 
-    mfem::Vector weight_cut;
+    M_elem_.resize(num_vertices);
 
-    if (static_cast<bool>(dist_weight))
+    SparseMatrix edge_vertex = D_local_.Transpose();
+    std::vector<double> weight_inv = graph.weight_local_;
+
+    for (auto& i : weight_inv)
     {
-        weight_cut = weight;
+        assert(std::fabs(i) > 1e-12);
+        assert(i == i);
+        i = 1.0 / i;
+    }
 
-        unique_ptr<mfem::HypreParMatrix> edge_d_td_d(ParMult(edge_d_td_, edge_td_d_.get()));
-        HYPRE_Int* junk_map;
-        mfem::SparseMatrix offd;
-        edge_d_td_d->GetOffd(offd, junk_map);
-
-        assert(offd.Height() == weight.Size());
-
-        for (int i = 0; i < weight_cut.Size(); i++)
+    for (int i = 0; i < num_edges; ++i)
+    {
+        if (graph.edge_edge_.GetOffd().RowSize(i) == 0)
         {
-            if (offd.RowSize(i))
-            {
-                weight_cut(i) *= 2;
-            }
-        }
-    }
-    else
-    {
-        weight_cut.SetDataAndSize(weight.GetData(), weight.Size());
-    }
-
-    Init(vertex_edge, weight_cut, w_block);
-}
-
-MixedMatrix::MixedMatrix(const mfem::SparseMatrix& vertex_edge,
-                         const mfem::Vector& weight,
-                         const mfem::Vector& w_block,
-                         const mfem::HypreParMatrix& edge_d_td,
-                         DistributeWeight dist_weight)
-    : MixedMatrix(vertex_edge, weight, VectorToMatrix(w_block), edge_d_td, dist_weight)
-{
-}
-
-MixedMatrix::MixedMatrix(const mfem::SparseMatrix& vertex_edge,
-                         const mfem::Vector& weight,
-                         const mfem::HypreParMatrix& edge_d_td,
-                         DistributeWeight dist_weight)
-    : MixedMatrix(vertex_edge, weight, mfem::Vector(), edge_d_td, dist_weight)
-{
-}
-
-MixedMatrix::MixedMatrix(const mfem::SparseMatrix& vertex_edge,
-                         const mfem::HypreParMatrix& edge_d_td)
-    : MixedMatrix(vertex_edge, mfem::Vector(vertex_edge.Width()) = 1.0, edge_d_td,
-                  DistributeWeight::True)
-{
-
-}
-MixedMatrix::MixedMatrix(std::unique_ptr<mfem::SparseMatrix> M,
-                         std::unique_ptr<mfem::SparseMatrix> D,
-                         std::unique_ptr<mfem::SparseMatrix> W,
-                         const mfem::HypreParMatrix& edge_d_td)
-    :
-    M_(std::move(M)),
-    D_(std::move(D)),
-    W_(std::move(W)),
-    edge_d_td_(&edge_d_td),
-    edge_td_d_(edge_d_td_->Transpose())
-{
-    GenerateRowStarts();
-}
-
-/// @todo better documentation of the 1/-1 issue, make it optional?
-void MixedMatrix::Init(const mfem::SparseMatrix& vertex_edge,
-                       const mfem::Vector& weight,
-                       const mfem::SparseMatrix& w_block)
-{
-
-
-    const mfem::HypreParMatrix& edge_d_td(*edge_d_td_);
-    const int nvertices = vertex_edge.Height();
-    const int nedges = vertex_edge.Width();
-
-    int* M_fine_i = new int [nedges + 1];
-    int* M_fine_j = new int [nedges];
-    double* M_fine_data = new double [nedges];
-    std::iota(M_fine_i, M_fine_i + nedges + 1, 0);
-    std::iota(M_fine_j, M_fine_j + nedges, 0);
-    std::copy_n(weight.GetData(), nedges, M_fine_data);
-
-    for (int i = 0; i < nedges; i++)
-    {
-        assert(M_fine_data[i] != 0.0);
-        M_fine_data[i] = 1.0 / std::fabs(M_fine_data[i]);
-    }
-
-    M_ = make_unique<mfem::SparseMatrix>(M_fine_i, M_fine_j, M_fine_data,
-                                         nedges, nedges);
-
-    if (w_block.Height() == nvertices && w_block.Width() == nvertices)
-    {
-        W_ = make_unique<mfem::SparseMatrix>(w_block);
-        (*W_) *= -1.0;
-    }
-
-    // Nonzero row of edge_owned means the edge is owned by the local proc
-    mfem::SparseMatrix edge_owned;
-    edge_d_td.GetDiag(edge_owned);
-
-    mfem::SparseMatrix graphDT(smoothg::Transpose(vertex_edge));
-
-    // Change the second entries of each row with two nonzeros to 1
-    // Change the only entry in the row corresponding to a shared edge that
-    // is not owned by the local processor to -1
-    int* graphDT_i = graphDT.GetI();
-    double* graphDT_data = graphDT.GetData();
-
-    for (int j = 0; j < graphDT.Height(); j++)
-    {
-        const int row_size = graphDT.RowSize(j);
-        assert(row_size == 1 || row_size == 2);
-
-        graphDT_data[graphDT_i[j]] = 1.;
-
-        if (row_size == 2)
-        {
-            graphDT_data[graphDT_i[j] + 1] = -1.;
-        }
-        else if (edge_owned.RowSize(j) == 0)
-        {
-            assert(row_size == 1);
-            graphDT_data[graphDT_i[j]] = -1.;
+            weight_inv[i] /= 2.0;
         }
     }
 
-    D_ = unique_ptr<mfem::SparseMatrix>(mfem::Transpose(graphDT));
-    GenerateRowStarts();
-}
-
-void MixedMatrix::GenerateRowStarts()
-{
-    const int nvertices = D_->Height();
-    MPI_Comm comm = edge_d_td_->GetComm();
-    Drow_start_ = make_unique<mfem::Array<HYPRE_Int>>();
-    GenerateOffsets(comm, nvertices, *Drow_start_);
-}
-
-unique_ptr<mfem::BlockVector> MixedMatrix::subvecs_to_blockvector(
-    const mfem::Vector& vec_u, const mfem::Vector& vec_p) const
-{
-    auto blockvec = make_unique<mfem::BlockVector>(get_blockoffsets());
-    blockvec->GetBlock(0) = vec_u;
-    blockvec->GetBlock(1) = vec_p;
-    return blockvec;
-}
-
-// overload to be available when parallel = false
-mfem::Array<int>& MixedMatrix::get_blockoffsets() const
-{
-    if (!blockOffsets_)
+    for (int i = 0; i < num_vertices; ++i)
     {
-        blockOffsets_ = make_unique<mfem::Array<int>>(3);
-        (*blockOffsets_)[0] = 0;
-        (*blockOffsets_)[1] = edge_d_td_->GetNumRows();
-        (*blockOffsets_)[2] = (*blockOffsets_)[1] + D_->Height();
+        std::vector<int> edge_dofs = elem_dof_.GetIndices(i);
+
+        int num_dofs = edge_dofs.size();
+
+        M_elem_[i].SetSize(num_dofs);
+        M_elem_[i] = 0.0;
+
+        for (int j = 0; j < num_dofs; ++j)
+        {
+            M_elem_[i](j, j) = weight_inv[edge_dofs[j]];
+        }
     }
 
-    return *blockOffsets_;
+    Init();
 }
 
-mfem::Array<int>& MixedMatrix::get_blockTrueOffsets() const
+MixedMatrix::MixedMatrix(std::vector<DenseMatrix> M_elem, SparseMatrix elem_dof,
+                         SparseMatrix D_local, SparseMatrix W_local,
+                         ParMatrix edge_true_edge, SparseMatrix agg_vertexdof,
+                         SparseMatrix face_facedof_)
+    : edge_true_edge_(std::move(edge_true_edge)),
+      D_local_(std::move(D_local)),
+      W_local_(std::move(W_local)),
+      M_elem_(std::move(M_elem)),
+      elem_dof_(std::move(elem_dof)),
+      agg_vertexdof_(std::move(agg_vertexdof)),
+      face_facedof_(std::move(face_facedof_))
 {
-    if (!blockTrueOffsets_)
+    Init();
+}
+
+void MixedMatrix::Init()
+{
+    MPI_Comm comm = edge_true_edge_.GetComm();
+
+    auto starts = parlinalgcpp::GenerateOffsets(comm, {D_local_.Rows(), D_local_.Cols()});
+    std::vector<HYPRE_Int>& vertex_starts = starts[0];
+    std::vector<HYPRE_Int>& edge_starts = starts[1];
+
+    ParMatrix D_d(comm, vertex_starts, edge_starts, D_local_);
+    D_global_ = D_d.Mult(edge_true_edge_);
+
+    if (M_local_.Rows() == D_local_.Cols())
     {
-        blockTrueOffsets_ = make_unique<mfem::Array<int>>(3);
-        (*blockTrueOffsets_)[0] = 0;
-        (*blockTrueOffsets_)[1] = edge_d_td_->GetNumCols();
-        (*blockTrueOffsets_)[2] = (*blockTrueOffsets_)[1] + D_->Height();
+        ParMatrix M_d(comm, edge_starts, M_local_);
+        M_global_ = parlinalgcpp::RAP(M_d, edge_true_edge_);
     }
 
-    return *(blockTrueOffsets_);
+    if (W_local_.Rows() == D_local_.Rows())
+    {
+        W_global_ = ParMatrix(comm, vertex_starts, W_local_);
+    }
+
+    offsets_ = {0, D_local_.Cols(), D_local_.Cols() + D_local_.Rows()};
+    true_offsets_ = {0, D_global_.Cols(), D_global_.Cols() + D_global_.Rows()};
+}
+
+MixedMatrix::MixedMatrix(const MixedMatrix& other) noexcept
+    : edge_true_edge_(other.edge_true_edge_),
+      M_local_(other.M_local_),
+      D_local_(other.D_local_),
+      W_local_(other.W_local_),
+      M_global_(other.M_global_),
+      D_global_(other.D_global_),
+      W_global_(other.W_global_),
+      offsets_(other.offsets_),
+      true_offsets_(other.true_offsets_),
+      M_elem_(other.M_elem_),
+      elem_dof_(other.elem_dof_),
+      agg_vertexdof_(other.agg_vertexdof_),
+      face_facedof_(other.face_facedof_)
+{
+}
+
+MixedMatrix& MixedMatrix::operator=(MixedMatrix&& other) noexcept
+{
+    swap(*this, other);
+
+    return *this;
+}
+
+MixedMatrix::MixedMatrix(MixedMatrix&& other) noexcept
+{
+    swap(*this, other);
+}
+
+void swap(MixedMatrix& lhs, MixedMatrix& rhs) noexcept
+{
+    swap(lhs.edge_true_edge_, rhs.edge_true_edge_);
+
+    swap(lhs.M_local_, rhs.M_local_);
+    swap(lhs.D_local_, rhs.D_local_);
+    swap(lhs.W_local_, rhs.W_local_);
+
+    swap(lhs.M_global_, rhs.M_global_);
+    swap(lhs.D_global_, rhs.D_global_);
+    swap(lhs.W_global_, rhs.W_global_);
+
+    std::swap(lhs.offsets_, rhs.offsets_);
+    std::swap(lhs.true_offsets_, rhs.true_offsets_);
+
+    swap(lhs.M_elem_, rhs.M_elem_);
+    swap(lhs.elem_dof_, rhs.elem_dof_);
+
+    swap(lhs.agg_vertexdof_, rhs.agg_vertexdof_);
+    std::swap(lhs.face_facedof_, rhs.face_facedof_);
+}
+
+int MixedMatrix::Rows() const
+{
+    return D_local_.Rows() + D_local_.Cols();
+}
+
+int MixedMatrix::Cols() const
+{
+    return D_local_.Rows() + D_local_.Cols();
+}
+
+int MixedMatrix::GlobalRows() const
+{
+    return D_global_.GlobalRows() + D_global_.GlobalCols();
+}
+
+int MixedMatrix::GlobalCols() const
+{
+    return D_global_.GlobalRows() + D_global_.GlobalCols();
+}
+
+int MixedMatrix::NNZ() const
+{
+    return M_local_.nnz() + (2 * D_local_.nnz())
+           + W_local_.nnz();
+}
+
+int MixedMatrix::GlobalNNZ() const
+{
+    return M_global_.nnz() + (2 * D_global_.nnz())
+           + W_global_.nnz();
 }
 
 bool MixedMatrix::CheckW() const
 {
+    int local_size = W_global_.Rows();
+    int global_size;
+
+    MPI_Allreduce(&local_size, &global_size, 1, MPI_INT, MPI_MAX, D_global_.GetComm());
+
     const double zero_tol = 1e-6;
 
-    mfem::HypreParMatrix* W = get_pW();
-
-    return W && MaxNorm(*W) > zero_tol;
+    return global_size > 0 && W_global_.MaxNorm() > zero_tol;
 }
 
-} // namespace smoothg
 
-#endif /* __MIXEDMATRIX_IMPL_HPP__ */
+ParMatrix MixedMatrix::ToPrimal() const
+{
+    assert(M_global_.Cols() == D_global_.Cols());
+    assert(M_global_.Rows() == D_global_.Cols());
+
+    ParMatrix MinvDT = D_global_.Transpose();
+    MinvDT.InverseScaleRows(M_global_.GetDiag().GetDiag());
+
+    ParMatrix A = D_global_.Mult(MinvDT);
+
+    if (CheckW())
+    {
+        A = ParAdd(A, W_global_);
+    }
+
+    return A;
+}
+
+void MixedMatrix::AssembleM()
+{
+    int M_size = D_local_.Cols();
+    CooMatrix M_coo(M_size, M_size);
+
+    int num_aggs = M_elem_.size();
+    int nnz = 0;
+
+    for (const auto& elem : M_elem_)
+    {
+        nnz += elem.Rows() * elem.Cols();
+    }
+
+    M_coo.Reserve(nnz);
+
+    for (int i = 0; i < num_aggs; ++i)
+    {
+        std::vector<int> dofs = elem_dof_.GetIndices(i);
+        M_coo.Add(dofs, dofs, M_elem_[i]);
+    }
+
+    M_coo.EliminateZeros(1e-15);
+    M_local_ = M_coo.ToSparse();
+    ParMatrix M_d(edge_true_edge_.GetComm(), edge_true_edge_.GetRowStarts(), M_local_);
+    M_global_ = parlinalgcpp::RAP(M_d, edge_true_edge_);
+}
+
+void MixedMatrix::AssembleM(const std::vector<double>& agg_weight)
+{
+    assert(agg_weight.size() == M_elem_.size());
+
+    int M_size = D_local_.Cols();
+    CooMatrix M_coo(M_size, M_size);
+
+    int num_aggs = M_elem_.size();
+    int nnz = 0;
+
+    for (const auto& elem : M_elem_)
+    {
+        nnz += elem.Rows() * elem.Cols();
+    }
+
+    M_coo.Reserve(nnz);
+
+    for (int i = 0; i < num_aggs; ++i)
+    {
+        double scale = 1.0 / agg_weight[i];
+        std::vector<int> dofs = elem_dof_.GetIndices(i);
+
+        M_coo.Add(dofs, dofs, scale, M_elem_[i]);
+    }
+
+    M_coo.EliminateZeros(1e-15);
+    M_local_ = M_coo.ToSparse();
+    ParMatrix M_d(edge_true_edge_.GetComm(), edge_true_edge_.GetRowStarts(), M_local_);
+    M_global_ = parlinalgcpp::RAP(M_d, edge_true_edge_);
+}
+
+SparseMatrix MixedMatrix::MakeLocalD(const ParMatrix& edge_true_edge,
+                                     const SparseMatrix& vertex_edge) const
+{
+    SparseMatrix edge_vertex = vertex_edge.Transpose();
+
+    std::vector<int> indptr = edge_vertex.GetIndptr();
+    std::vector<int> indices = edge_vertex.GetIndices();
+    std::vector<double> data = edge_vertex.GetData();
+
+    int num_edges = edge_vertex.Rows();
+    int num_vertices = edge_vertex.Cols();
+
+    const SparseMatrix& owned_edges = edge_true_edge.GetDiag();
+
+    for (int i = 0; i < num_edges; i++)
+    {
+        const int row_edges = edge_vertex.RowSize(i);
+        assert(row_edges == 1 || row_edges == 2);
+
+        data[indptr[i]] = 1.;
+
+        if (row_edges == 2)
+        {
+            data[indptr[i] + 1] = -1.;
+        }
+        else if (owned_edges.RowSize(i) == 0)
+        {
+            assert(row_edges == 1);
+            data[indptr[i]] = -1.;
+        }
+    }
+
+    SparseMatrix DT(std::move(indptr), std::move(indices), std::move(data),
+                    num_edges, num_vertices);
+
+    return DT.Transpose();
+}
+
+
+} // namespace smoothg

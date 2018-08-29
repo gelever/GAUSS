@@ -20,72 +20,54 @@
 */
 
 #include <fstream>
+#include <sstream>
+#include <mpi.h>
 
-#include "mfem.hpp"
-
-#include "../src/GraphCoarsen.hpp"
-#include "../src/utilities.hpp"
-#include "../src/MixedMatrix.hpp"
-#include "../src/MinresBlockSolver.hpp"
-#include "../src/HybridSolver.hpp"
-#include "../src/MatrixUtilities.hpp"
+#include "smoothG.hpp"
 
 using namespace smoothg;
-using std::make_shared;
+using linalgcpp::ReadCSR;
 
 int main(int argc, char* argv[])
 {
-    // this is basically the Minres tolerance
-    const double equality_tolerance = 1.e-9;
+    // Initialize MPI
+    MpiSession mpi_info(argc, argv);
+    MPI_Comm comm = mpi_info.comm_;
+    int myid = mpi_info.myid_;
+    int num_procs = mpi_info.num_procs_;
 
-    // initialize MPI
-    mpi_session session(argc, argv);
-
-    int num_procs, myid;
-    MPI_Comm comm = MPI_COMM_WORLD;
-    MPI_Comm_size(comm, &num_procs);
-    MPI_Comm_rank(comm, &myid);
+    assert(num_procs == 1 || num_procs == 2);
 
     // parse command line options
-    mfem::OptionsParser args(argc, argv);
-    const char* graphFileName = "../../graphdata/vertex_edge_tiny.txt";
-    args.AddOption(&graphFileName, "-g", "--graph",
-                   "Graph connection data.");
-
+    std::string graph_filename = "../../graphdata/vertex_edge_tiny.txt";
     bool weighted = false;
-    args.AddOption(&weighted, "-w", "--weighted", "-no-w",
-                   "--no-weighted", "Use weighted graph.");
     bool w_block = false;
-    args.AddOption(&w_block, "-m", "--w_block", "-no-m",
-                   "--no-w_block", "Use W block.");
 
-    args.Parse();
-    if (!args.Good())
+    linalgcpp::ArgParser arg_parser(argc, argv);
+
+    arg_parser.Parse(graph_filename, "--g", "Graph connection data.");
+    arg_parser.Parse(weighted, "--wg", "Use weighted graph.");
+    arg_parser.Parse(w_block, "--wb", "Use w block.");
+
+    if (!arg_parser.IsGood())
     {
-        if (myid == 0)
-        {
-            args.PrintUsage(std::cout);
-        }
-        MPI_Finalize();
-        return 1;
+        ParPrint(myid, arg_parser.ShowHelp());
+        ParPrint(myid, arg_parser.ShowErrors());
+
+        return EXIT_FAILURE;
     }
-    if (myid == 0)
-    {
-        args.PrintOptions(std::cout);
-    }
+
+    ParPrint(myid, arg_parser.ShowOptions());
 
     // load the graph
-    mfem::SparseMatrix vertex_edge;
-    {
-        std::ifstream graphFile(graphFileName);
-        ReadVertexEdge(graphFile, vertex_edge);
-    }
-    const int nvertices = vertex_edge.Height();
-    const int nedges = vertex_edge.Width();
+    SparseMatrix vertex_edge = ReadCSR(graph_filename);
+
+    const int nvertices = vertex_edge.Rows();
+    const int nedges = vertex_edge.Cols();
 
     assert(nvertices == 6 && nedges == 7);
 
-    mfem::Vector weight(nedges);
+    std::vector<double> weight(nedges, 1.0);
     if (weighted)
     {
         for (int i = 0; i < nedges; ++i)
@@ -93,111 +75,128 @@ int main(int argc, char* argv[])
             weight[i] = i + 1;
         }
     }
-    else
-    {
-        weight = 1.0;
-    }
 
-    mfem::Vector w(nvertices);
+    CooMatrix W_coo(nvertices, nvertices);
+
     if (w_block)
     {
         for (int i = 0; i < nvertices; ++i)
         {
-            w[i] = i + 1;
+            W_coo.Add(i, i, i + 1);
         }
     }
-    else
+    
+    SparseMatrix W_block = W_coo.ToSparse();
+
+    std::vector<int> partition {0, 0, 0, 1, 1, 1};
+
+    Graph graph(comm, vertex_edge, partition, weight, W_block);
+    MixedMatrix mgl(graph);
+    mgl.AssembleM();
+
+    BlockVector sol(mgl.Offsets());
+    BlockVector rhs(mgl.Offsets());
+    rhs.GetBlock(0) = 0.0;
+    rhs.GetBlock(1) = 1.0;
+
+    if (!w_block && myid == 0)
     {
-        w = 0.0;
-    }
-
-    // set the appropriate right hand side and weights for graph problem
-    mfem::Vector rhs_u_fine;
-    mfem::Vector rhs_p_fine;
-    rhs_u_fine.SetSize(nedges);
-    rhs_u_fine = 0.0;
-    rhs_p_fine.SetSize(nvertices);
-    rhs_p_fine = 1.0;
-
-    // setup mixed problem
-    auto edge_d_td_diag = SparseIdentity(nedges);
-    mfem::Array<HYPRE_Int> edge_start(2);
-    edge_start[0] = 0;
-    edge_start[1] = nedges;
-
-    mfem::HypreParMatrix edge_d_td(comm, nedges, edge_start,
-                                   &edge_d_td_diag);
-
-    MixedMatrix mixed_graph_laplacian(vertex_edge, weight, w, edge_d_td);
-
-    mfem::Array<int>& blockOffsets(mixed_graph_laplacian.get_blockoffsets());
-    mfem::BlockVector rhs = *mixed_graph_laplacian.subvecs_to_blockvector(rhs_u_fine, rhs_p_fine);
-    mfem::BlockVector sol(blockOffsets);
-    sol = 0.0;
-
-    // solve
-    MinresBlockSolver mgp(comm, mixed_graph_laplacian);
-    mgp.SetPrintLevel(1);
-    mgp.Mult(rhs, sol);
-
-    int iter = mgp.GetNumIterations();
-    int nnz = mgp.GetNNZ();
-    std::cout << "Global system has " << nnz << " nonzeros." << std::endl;
-    std::cout << "Minres converged in " << iter << " iterations." << std::endl;
-
-    if (!w_block)
-    {
-        orthogonalize_from_constant(sol.GetBlock(1));
+        rhs.GetBlock(1)[0] = -5.0;
     }
 
     // truesol was found "independently" with python: testcode/tinygraph.py
-    mfem::Vector truesol(nvertices);
+    Vector global_truesol(nvertices);
     if (weighted && w_block)
     {
-        truesol[0] = -5.46521374685666e-01;
-        truesol[1] = -4.43419949706622e-01;
-        truesol[2] = -3.71332774518022e-01;
-        truesol[3] = -2.58172673931266e-01;
-        truesol[4] = -2.23976847914538e-01;
-        truesol[5] = -2.16677577841545e-01;
+        global_truesol[0] = -5.46521374685666e-01;
+        global_truesol[1] = -4.43419949706622e-01;
+        global_truesol[2] = -3.71332774518022e-01;
+        global_truesol[3] = -2.58172673931266e-01;
+        global_truesol[4] = -2.23976847914538e-01;
+        global_truesol[5] = -2.16677577841545e-01;
     }
     else if (weighted)
     {
-        truesol[0] = 1.84483857264231e+00;
-        truesol[1] = 2.99384027187765e-01;
-        truesol[2] = 1.17565845369583e-01;
-        truesol[3] = -6.32434154630417e-01;
-        truesol[4] = -8.19350042480884e-01;
-        truesol[5] = -8.10004248088361e-01;
+        global_truesol[0] = 1.84483857264231e+00;
+        global_truesol[1] = 2.99384027187765e-01;
+        global_truesol[2] = 1.17565845369583e-01;
+        global_truesol[3] = -6.32434154630417e-01;
+        global_truesol[4] = -8.19350042480884e-01;
+        global_truesol[5] = -8.10004248088361e-01;
     }
     else if (w_block)
     {
-        truesol[0] = -6.36443964459280e-01;
-        truesol[1] = -5.09155171567424e-01;
-        truesol[2] = -4.00176721810417e-01;
-        truesol[3] = -2.55461194835796e-01;
-        truesol[4] = -2.05439104609494e-01;
-        truesol[5] = -1.82612537430661e-01;
+        global_truesol[0] = -6.36443964459280e-01;
+        global_truesol[1] = -5.09155171567424e-01;
+        global_truesol[2] = -4.00176721810417e-01;
+        global_truesol[3] = -2.55461194835796e-01;
+        global_truesol[4] = -2.05439104609494e-01;
+        global_truesol[5] = -1.82612537430661e-01;
     }
     else
     {
-        truesol[0] = 4.16666666666667e+00;
-        truesol[1] = 2.16666666666667e+00;
-        truesol[2] = 1.16666666666667e+00;
-        truesol[3] = -1.83333333333333e+00;
-        truesol[4] = -2.83333333333333e+00;
-        truesol[5] = -2.83333333333333e+00;
+        global_truesol[0] = 4.16666666666667e+00;
+        global_truesol[1] = 2.16666666666667e+00;
+        global_truesol[2] = 1.16666666666667e+00;
+        global_truesol[3] = -1.83333333333333e+00;
+        global_truesol[4] = -2.83333333333333e+00;
+        global_truesol[5] = -2.83333333333333e+00;
     }
 
-    std::cout.precision(16);
-    sol.GetBlock(1).Print(std::cout, 1);
+    int local_size = 6 / num_procs;
+    Vector local_truesol(local_size);
 
-    truesol -= sol.GetBlock(1);
-    double norm = truesol.Norml2();
-    std::cout << "Error norm: " << norm << std::endl;
+    for (int i = 0; i < local_size; ++i)
+    {
+        local_truesol[i] = global_truesol[i + (myid * 3)];
+    }
 
-    if (norm < equality_tolerance)
-        return 0;
-    else
-        return 1;
+    MinresBlockSolver minres(mgl);
+    HybridSolver hb(mgl);
+    SPDSolver spd(mgl);
+
+    std::map<MGLSolver*, std::string> solver_to_name;
+    solver_to_name[&minres] = "Minres + block preconditioner";
+    solver_to_name[&hb] = "Hybridizaiton + BoomerAMG";
+    solver_to_name[&spd] = "Primal BoomerAMG";
+
+    const double equality_tolerance = 1.e-9;
+    bool some_solver_fails = false;
+
+    for (auto& solver_pair : solver_to_name)
+    {
+        auto& solver = solver_pair.first;
+        auto& name = solver_pair.second;
+
+        sol = 0.0;
+        solver->SetPrintLevel(1);
+        solver->Solve(rhs, sol);
+
+        if (!w_block)
+        {
+            OrthoConstant(comm, sol.GetBlock(1), nvertices);
+        }
+
+        double error = CompareError(comm, sol.GetBlock(1), local_truesol);
+
+        if (error > equality_tolerance)
+        {
+            some_solver_fails = true;
+        }
+
+        if (myid == 0)
+        {
+            int iter = solver->GetNumIterations();
+            int nnz = solver->GetNNZ();
+
+            std::cout << "\n" << name << " Solver:\n";
+            std::cout << "Global system has " << nnz << " nonzeros.\n";
+            std::cout << name << " converged in " << iter << " iterations.\n";
+            std::cout << "Error norm: " << error << "\n";
+            sol.GetBlock(0).Print("Edge Sol:");
+            sol.GetBlock(1).Print("Vertex Sol:");
+        }
+    }
+
+    return some_solver_fails;
 }

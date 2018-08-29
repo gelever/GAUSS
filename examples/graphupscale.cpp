@@ -24,74 +24,89 @@
     * comparing solver types.
 */
 
+#include <fstream>
+#include <sstream>
 #include <mpi.h>
 
-#include "mfem.hpp"
-#include "../src/picojson.h"
-#include "../src/GraphUpscale.hpp"
-#include "../src/smoothG.hpp"
+#include "smoothG.hpp"
 
 using namespace smoothg;
-using namespace mfem;
+
+using linalgcpp::ReadText;
+using linalgcpp::WriteText;
+using linalgcpp::ReadCSR;
 
 int main(int argc, char* argv[])
 {
     // Initialize MPI
-    int myid;
-    MPI_Init(&argc, &argv);
-    MPI_Comm comm = MPI_COMM_WORLD;
-    MPI_Comm_rank(comm, &myid);
+    MpiSession mpi_info(argc, argv);
+    MPI_Comm comm = mpi_info.comm_;
+    int myid = mpi_info.myid_;
+    int num_procs = mpi_info.num_procs_;
 
-    constexpr auto ve_filename = "../../graphdata/vertex_edge_sample.txt";
-    constexpr auto rhs_filename = "../../graphdata/fiedler_sample.txt";
+    std::string ve_filename = "../../graphdata/vertex_edge_sample.txt";
+    std::string rhs_filename = "../../graphdata/fiedler_sample.txt";
 
-    constexpr auto coarse_factor = 100;
-    constexpr auto num_partitions = 10;
-    constexpr auto max_evects = 4;
-    constexpr auto spect_tol = 1.e-3;
-    constexpr auto hybridization = false;
+    int coarse_factor = 100;
+    int num_partitions = 10;
+    int max_evects = 4;
+    double spect_tol = 1.e-3;
+    bool dual_target = false;
+    bool scaled_dual = false;
+    bool energy_dual = false;
+    bool hybridization = false;
 
-    const auto vertex_edge = ReadVertexEdge(ve_filename);
+    SparseMatrix vertex_edge = ReadCSR(ve_filename);
 
     // vertex_edge and partition
     {
-        const auto edge_vertex = smoothg::Transpose(vertex_edge);
-        const auto vertex_vertex = smoothg::Mult(vertex_edge, edge_vertex);
+        std::vector<int> part = PartitionAAT(vertex_edge, coarse_factor);
+        Graph graph(comm, vertex_edge, part);
 
-        mfem::Array<int> global_partitioning(vertex_edge.Height());
-        Partition(vertex_vertex, global_partitioning, num_partitions);
+        GraphUpscale upscale(graph, spect_tol, max_evects, hybridization);
 
-        const auto upscale = GraphUpscale(comm, vertex_edge, global_partitioning,
-                                          spect_tol, max_evects, hybridization);
-
-        const auto rhs_u_fine = upscale.ReadVertexVector(rhs_filename);
-        const auto sol = upscale.Solve(rhs_u_fine);
+        Vector rhs_u_fine = upscale.ReadVertexVector(rhs_filename);
+        Vector sol = upscale.Solve(rhs_u_fine);
 
         upscale.WriteVertexVector(sol, "sol1.out");
     }
 
-    // vertex_edge and coarse factor
+    // Mimic distributed data
     {
-        const auto upscale = GraphUpscale(comm, vertex_edge, coarse_factor,
-                                          spect_tol, max_evects, hybridization);
+        std::vector<int> part = PartitionAAT(vertex_edge, coarse_factor);
+        Graph graph_global(comm, vertex_edge, part);
 
-        const auto rhs_u_fine = upscale.ReadVertexVector(rhs_filename);
-        const auto sol = upscale.Solve(rhs_u_fine);
+        // Pretend these came from some outside distributed source
+        const auto& vertex_edge_local = graph_global.vertex_edge_local_;
+        const auto& edge_true_edge = graph_global.edge_true_edge_;
+        const auto& part_local = graph_global.part_local_;
+        const auto& weight_local = graph_global.weight_local_;
+
+        // Use distrubted constructor
+        Graph graph_local(vertex_edge_local, edge_true_edge, part_local, weight_local);
+        GraphUpscale upscale(graph_local, spect_tol, max_evects, hybridization);
+
+        // This right hand side may not be permuted the same as in the upscaler,
+        // since only local vertex information was given and the vertex map was generated
+        Vector rhs_u_fine = upscale.ReadVertexVector(rhs_filename);
+        Vector sol = upscale.Solve(rhs_u_fine);
 
         upscale.WriteVertexVector(sol, "sol2.out");
     }
 
     // Using coarse space
     {
-        const auto upscale = GraphUpscale(comm, vertex_edge, coarse_factor,
-                                          spect_tol, max_evects, hybridization);
+        std::vector<int> part = PartitionAAT(vertex_edge, coarse_factor);
+        Graph graph(comm, vertex_edge, part);
+
+        GraphUpscale upscale(graph, spect_tol, max_evects, hybridization);
 
         // Start at Fine Level
-        const auto rhs_u_fine = upscale.ReadVertexVector(rhs_filename);
+        Vector rhs_u_fine = upscale.ReadVertexVector(rhs_filename);
 
         // Do work at Coarse Level
-        auto rhs_u_coarse = upscale.Coarsen(rhs_u_fine);
-        auto sol_u_coarse = upscale.SolveCoarse(rhs_u_coarse);
+        Vector rhs_u_coarse = upscale.Restrict(rhs_u_fine);
+        Vector sol_u_coarse = upscale.SolveCoarse(rhs_u_coarse);
 
         // If multiple iterations, reuse vector
         for (int i = 0; i < 5; ++i)
@@ -100,7 +115,7 @@ int main(int argc, char* argv[])
         }
 
         // Interpolate back to Fine Level
-        auto sol_u_fine = upscale.Interpolate(sol_u_coarse);
+        Vector sol_u_fine = upscale.Interpolate(sol_u_coarse);
         upscale.Orthogonalize(sol_u_fine);
 
         upscale.WriteVertexVector(sol_u_fine, "sol3.out");
@@ -108,13 +123,15 @@ int main(int argc, char* argv[])
 
     // Comparing Error; essentially generalgraph.cpp
     {
-        const auto upscale = GraphUpscale(comm, vertex_edge, coarse_factor,
-                                          spect_tol, max_evects, hybridization);
+        std::vector<int> part = PartitionAAT(vertex_edge, coarse_factor);
+        Graph graph(comm, vertex_edge, part);
 
-        mfem::BlockVector fine_rhs = upscale.ReadVertexBlockVector(rhs_filename);
+        GraphUpscale upscale(graph, spect_tol, max_evects, hybridization);
 
-        mfem::BlockVector fine_sol = upscale.SolveFine(fine_rhs);
-        mfem::BlockVector upscaled_sol = upscale.Solve(fine_rhs);
+        BlockVector fine_rhs = upscale.ReadVertexBlockVector(rhs_filename);
+
+        BlockVector fine_sol = upscale.SolveFine(fine_rhs);
+        BlockVector upscaled_sol = upscale.Solve(fine_rhs);
 
         upscale.PrintInfo();
 
@@ -131,20 +148,20 @@ int main(int argc, char* argv[])
 
     // Compare hybridization vs Minres solvers
     {
-        const bool use_hybridization = true;
+        std::vector<int> part = PartitionAAT(vertex_edge, coarse_factor);
+        Graph graph(comm, vertex_edge, part);
 
-        const auto hb_upscale = GraphUpscale(comm, vertex_edge, coarse_factor,
-                                             spect_tol, max_evects, use_hybridization);
+        bool use_hybridization = true;
 
-        const auto minres_upscale = GraphUpscale(comm, vertex_edge, coarse_factor,
-                                                 spect_tol, max_evects, !use_hybridization);
+        GraphUpscale hb_upscale(graph, spect_tol, max_evects, use_hybridization);
+        GraphUpscale minres_upscale(graph, spect_tol, max_evects, !use_hybridization);
 
-        const auto rhs_u_fine = minres_upscale.ReadVertexVector(rhs_filename);
+        Vector rhs_u_fine = minres_upscale.ReadVertexVector(rhs_filename);
 
-        const auto minres_sol = minres_upscale.Solve(rhs_u_fine);
-        const auto hb_sol = hb_upscale.Solve(rhs_u_fine);
+        Vector minres_sol = minres_upscale.Solve(rhs_u_fine);
+        Vector hb_sol = hb_upscale.Solve(rhs_u_fine);
 
-        const auto error = CompareError(comm, minres_sol, hb_sol);
+        auto error = CompareError(comm, minres_sol, hb_sol);
 
         if (myid == 0)
         {
@@ -153,10 +170,7 @@ int main(int argc, char* argv[])
             std::cout << "HB vs Minres Error: " <<  error << "\n";
             std::cout.precision(3);
         }
-
     }
-
-    MPI_Finalize();
 
     return EXIT_SUCCESS;
 }

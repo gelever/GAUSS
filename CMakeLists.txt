@@ -14,122 +14,102 @@
 #
 #################################################################### EHEADER #
 
-cmake_minimum_required(VERSION 2.6)
+###############################################################
+# MIT License
+# 
+# Copyright (c) 2018 Pablo Arias
+# 
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+# 
+# The above copyright notice and this permission notice shall be included
+# in all copies or substantial portions of the Software.
+# 
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+# INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+# PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+# COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+# WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF
+# OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+# 
+###############################################################
 
-set(PROJECT_NAME smoothG)
-project(${PROJECT_NAME})
+###############################################################
+# Using https://github.com/pabloariasal/modern-cmake-sample
+# Modified by gelever on April 1st, 2018 #
+###############################################################
+
+cmake_minimum_required(VERSION 3.5)
+project(smoothG VERSION 1.0 LANGUAGES CXX)
 enable_testing()
 
-set(HOME_DIR $ENV{HOME})
-set(${PROJECT_NAME}_CMAKE_PATH ${PROJECT_SOURCE_DIR}/cmake)
-set(CMAKE_MODULE_PATH ${${PROJECT_NAME}_CMAKE_PATH}/modules)
+option(SMOOTHG_USE_ARPACK "Should ARPACK be enabled?" NO)
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DSMOOTHG_DEBUG")
+find_package(linalgcpp REQUIRED)
+find_package(parlinalgcpp REQUIRED)
+find_package(partition REQUIRED)
+find_package(sparsesolve REQUIRED)
 
-set(${PROJECT_NAME}_GRAPHDATA ${PROJECT_SOURCE_DIR}/graphdata)
-
-#####
-# set up external dependencies
-# (this is a mess, seems to work, but I don't know what
-#  I'm doing and I'm sure it can be greatly simplified)
-# (also should take some directory hints from config.sh)
-#####
-
-# This is a list of TPLs that are used by all targets
-set(TPL_LIBRARIES "")
-
-# This is a list of linker flags to be used with TPLs for all targets
-set(TPL_LINKER_FLAGS "")
-
-# MFEM
-find_path(MFEM_INCLUDE_PATH mfem.hpp
-          HINTS ${MFEM_DIR}/include)
-set(MFEM_LIB_NAME libmfem.a)
-find_path(MFEM_LIBRARY_PATH ${MFEM_LIB_NAME}
-  ${MFEM_DIR}/lib)
-include_directories(${MFEM_INCLUDE_PATH})
-add_library(MFEM_LIB STATIC IMPORTED)
-set_property(TARGET MFEM_LIB PROPERTY IMPORTED_LOCATION ${MFEM_LIBRARY_PATH}/${MFEM_LIB_NAME})
-list(APPEND TPL_LIBRARIES ${MFEM_LIBRARY_PATH}/${MFEM_LIB_NAME})
-
-# Hypre
-find_path(HYPRE_INCLUDE_PATH HYPRE.h
-          HINTS ${HYPRE_DIR}/include)
-include_directories(${HYPRE_INCLUDE_PATH})
-set(HYPRE_LIB_NAME libHYPRE.a)
-find_library(HYPRE_LIB HYPRE
-  ${HYPRE_DIR}/lib)
-list(APPEND TPL_LIBRARIES ${HYPRE_LIB})
-
-# MPI
-find_package(MPI REQUIRED)
-include_directories(${MPI_INCLUDE_PATH})
-list(APPEND TPL_LIBRARIES ${MPI_LIBRARIES})
-if(MPI_CXX_COMPILE_FLAGS)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${MPI_CXX_COMPILE_FLAGS}")
+if (SMOOTHG_USE_ARPACK)
+    list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
+    find_package(ARPACK REQUIRED)
 endif()
 
-# Metis
-find_path(METIS_INCLUDE_PATH metis.h
-  HINTS ${METIS_DIR}/include)
-set(METIS_LIB_NAME libmetis.a)
-find_path(METIS_LIBRARY_PATH ${METIS_LIB_NAME}
-  ${METIS_DIR}/lib)
-include_directories(${METIS_INCLUDE_PATH})
-add_library(METIS_LIB STATIC IMPORTED)
-set_property(TARGET METIS_LIB PROPERTY IMPORTED_LOCATION ${METIS_LIBRARY_PATH}/${METIS_LIB_NAME})
-list(APPEND TPL_LIBRARIES ${METIS_LIBRARY_PATH}/${METIS_LIB_NAME})
+add_library(smoothG
+    src/GraphCoarsen.cpp
+    src/Graph.cpp
+    src/GraphEdgeSolver.cpp
+    src/GraphGenerator.cpp
+    src/GraphTopology.cpp
+    src/GraphUpscale.cpp
+    src/HybridSolver.cpp
+    src/LocalEigenSolver.cpp
+    src/MGLSolver.cpp
+    src/MinresBlockSolver.cpp
+    src/MixedMatrix.cpp
+    src/SharedEntityComm.cpp
+    src/SPDSolver.cpp
+    src/Utilities.cpp
+)
 
-# SuiteSparse
-find_package(SuiteSparse REQUIRED)
-include_directories(${SuiteSparse_INCLUDE_DIRS})
-list(APPEND TPL_LIBRARIES ${SuiteSparse_LIBRARIES})
+set_target_properties(smoothG PROPERTIES
+        CXX_STANDARD 11
+        CXX_STANDARD_REQUIRED YES
+        CXX_EXTENSIONS NO
+)
 
-# ARPACK
-# there are several sources for ARPACK, I recommend
-#    https://github.com/opencollab/arpack-ng.git
-# and
-#    https://github.com/m-reuter/arpackpp.git
-option(USE_ARPACK "Should ARPACK be enabled?" ON)
-if(USE_ARPACK)
-  find_path(ARPACK_INCLUDE_PATH argsym.h
-    HINTS ${ARPACKPP_DIR}/include $ENV{ARPACK_DIR}/include)
-  set(ARPACK_LIB_NAME libarpack.a)
-  if(APPLE)
-    set(ARPACK_LIB_NAME libarpack.dylib)
-  endif(APPLE)
-  find_path(ARPACK_LIBRARY_PATH ${ARPACK_LIB_NAME}
-             HINTS ${ARPACK_DIR}
-                   ${ARPACK_DIR}/lib64
-                   $ENV{ARPACK_DIR}/lib)
-  include_directories(${ARPACK_INCLUDE_PATH})
-  add_library(ARPACK_LIB STATIC IMPORTED)
-  set_property(TARGET ARPACK_LIB PROPERTY IMPORTED_LOCATION
-    ${ARPACK_LIBRARY_PATH}/${ARPACK_LIB_NAME})
-  set(${PROJECT_NAME}_USE_ARPACK 1)
-  list(APPEND TPL_LIBRARIES ${ARPACK_LIBRARY_PATH}/${ARPACK_LIB_NAME})
-else()
-  set(${PROJECT_NAME}_USE_ARPACK 0)
-endif()
+target_compile_options(smoothG PRIVATE $<$<CXX_COMPILER_ID:GNU>:-Wall -Wextra -Wpedantic -O2>)
+target_compile_options(smoothG PRIVATE $<$<CXX_COMPILER_ID:Clang>:-Wall -Wextra -Wpedantic -O2>)
 
-# BLAS/LAPACK
-find_package(BLAS REQUIRED)
-find_package(LAPACK REQUIRED)
-list(APPEND TPL_LIBRARIES ${LAPACK_LIBRARIES})
-list(APPEND TPL_LIBRARIES ${BLAS_LIBRARIES})
-list(APPEND TPL_LIBRARIES "gfortran")
+target_link_libraries(smoothG
+    PUBLIC
+        parlinalgcpp::parlinalgcpp
+        partition::partition
+        sparsesolve::sparsesolve
+        linalgcpp::linalgcpp
+        $<$<BOOL:${SMOOTHG_USE_ARPACK}>:Arpack::Arpack>
+)
 
-list(REMOVE_DUPLICATES TPL_LIBRARIES)
+target_include_directories(smoothG
+    PUBLIC
+		$<INSTALL_INTERFACE:include>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}>
+)
 
-# SPE10 data (not a package, but we want it for testing)
-# (this file is available in http://www.spe.org/web/csp/datasets/por_perm_case2a.zip)
-find_file(SPE10_PERM spe_perm.dat
-  HINTS ${SPE10_DIR})
+# Astyle
+find_program(ASTYLE_COMMAND astyle HINTS ${ASTYLE_DIR})
+add_custom_target(style
+    ${ASTYLE_COMMAND} --options=smoothg.astylerc src/*.cpp include/*.hpp examples/*.?pp # testcode/*.?pp
+    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+    COMMENT "Formating source code" VERBATIM
+    )
 
-# for valgrind memory testing
+# Valgrind
 find_program(MEMORYCHECK_COMMAND valgrind)
 set(MEMORYCHECK_COMMAND_OPTIONS "")
 list(APPEND MEMORYCHECK_COMMAND_OPTIONS "--leak-check=full")
@@ -138,50 +118,59 @@ function(add_valgrind_test name binary)
   add_test(${name} ${MEMORYCHECK_COMMAND} ${MEMORYCHECK_COMMAND_OPTIONS} ./${binary})
 endfunction(add_valgrind_test)
 
-#####
-# documentation
-#####
+# Installation
+include(GNUInstallDirs)
+set(INSTALL_CONFIGDIR ${CMAKE_INSTALL_LIBDIR}/cmake/libsmoothg)
 
-# add a target to generate API documentation with Doxygen
-find_package(Doxygen)
-if(DOXYGEN_FOUND)
-  configure_file(${PROJECT_SOURCE_DIR}/Doxyfile.in ${PROJECT_BINARY_DIR}/Doxyfile @ONLY)
-  add_custom_target(doc
-    ${DOXYGEN_EXECUTABLE} ${PROJECT_BINARY_DIR}/Doxyfile
-    WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
-    COMMENT "Generating API documentation with Doxygen" VERBATIM
-    )
-endif(DOXYGEN_FOUND)
+install(TARGETS smoothG
+    EXPORT smoothg-targets
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+)
 
-#####
-# Astyle
-#####
+install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
-find_program(ASTYLE_COMMAND astyle HINTS ${ASTYLE_DIR})
+# Export targets to a script
+install(EXPORT smoothg-targets
+    FILE smoothgTargets.cmake
+    NAMESPACE smoothg::
+    DESTINATION ${INSTALL_CONFIGDIR}
+)
 
-# add a target to format code
-add_custom_target(style
-    ${ASTYLE_COMMAND} --options=smoothg.astylerc src/*.?pp examples/*.?pp testcode/*.?pp
-    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
-    COMMENT "Formating source code" VERBATIM
-    )
+# Create Config files
+include(CMakePackageConfigHelpers)
+write_basic_package_version_file(
+    ${CMAKE_CURRENT_BINARY_DIR}/smoothgConfigVersion.cmake
+    VERSION ${PROJECT_VERSION}
+    COMPATIBILITY AnyNewerVersion
+)
 
-#####
-# export configuration of optional packages
-#####
+configure_package_config_file(
+    ${CMAKE_CURRENT_LIST_DIR}/cmake/smoothgConfig.cmake.in
+    ${CMAKE_CURRENT_BINARY_DIR}/smoothgConfig.cmake
+    INSTALL_DESTINATION ${INSTALL_CONFIGDIR}
+)
+
 configure_file(
-  "${PROJECT_SOURCE_DIR}/${PROJECT_NAME}_config.h.in"
-  "${PROJECT_BINARY_DIR}/${PROJECT_NAME}_config.h"
+  "${PROJECT_SOURCE_DIR}/config/smoothG_config.h.in"
+  "${PROJECT_BINARY_DIR}/smoothG_config.h"
   )
-include_directories(${PROJECT_BINARY_DIR}) # for _config.h
 
-#####
-# generate lib file
-#####
-add_subdirectory(src)
+# Install Config files
+install(FILES
+    ${CMAKE_CURRENT_BINARY_DIR}/smoothgConfig.cmake
+    ${CMAKE_CURRENT_BINARY_DIR}/smoothgConfigVersion.cmake
+    DESTINATION ${INSTALL_CONFIGDIR}
+)
 
-#####
-# actual executables and tests
-#####
+# Export from the build tree
+export(EXPORT smoothg-targets
+       FILE ${CMAKE_CURRENT_BINARY_DIR}/smoothgTargets.cmake
+       NAMESPACE smoothg::
+       )
+
+export(PACKAGE smoothG)
+
+# Sub Directories
 add_subdirectory(examples)
 add_subdirectory(testcode)

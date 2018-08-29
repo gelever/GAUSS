@@ -14,31 +14,45 @@
 #
 #################################################################### EHEADER #
 
-
-# add executables
-add_executable(finitevolume finitevolume.cpp)
-target_link_libraries(finitevolume smoothg ${TPL_LIBRARIES})
+# Apply flags to all test targets
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED YES)
+set(CMAKE_CXX_EXTENSIONS NO)
 
 add_executable(generalgraph generalgraph.cpp)
-target_link_libraries(generalgraph smoothg ${TPL_LIBRARIES})
+target_link_libraries(generalgraph smoothG)
 
 add_executable(timestep timestep.cpp)
-target_link_libraries(timestep smoothg ${TPL_LIBRARIES})
+target_link_libraries(timestep smoothG)
 
 add_executable(graphupscale graphupscale.cpp)
-target_link_libraries(graphupscale smoothg ${TPL_LIBRARIES})
+target_link_libraries(graphupscale smoothG)
 
 add_executable(poweriter poweriter.cpp)
-target_link_libraries(poweriter smoothg ${TPL_LIBRARIES})
+target_link_libraries(poweriter smoothG)
 
-# add tests
+add_executable(mltopo mltopo.cpp)
+target_link_libraries(mltopo smoothG)
+
+add_executable(mlmc mlmc.cpp)
+target_link_libraries(mlmc smoothG)
+
+add_executable(mleigen mleigen.cpp)
+target_link_libraries(mleigen smoothG)
+
+add_executable(sampler sampler.cpp)
+target_link_libraries(sampler smoothG)
+
+if (NOT DEFINED SMOOTHG_TEST_TOL)
+    set(SMOOTHG_TEST_TOL 1e-4)
+endif()
+if (NOT DEFINED SMOOTHG_TEST_PROCS)
+    set(SMOOTHG_TEST_PROCS 4)
+endif()
+
 configure_file(
   "${PROJECT_SOURCE_DIR}/examples/stest.py"
   "${PROJECT_BINARY_DIR}/examples/stest.py" @ONLY)
-configure_file(
-  "${PROJECT_SOURCE_DIR}/examples/readjson.py"
-  "${PROJECT_BINARY_DIR}/examples/readjson.py"
-  COPYONLY)
 
 add_test(eigenvector1 python stest.py eigenvector1)
 add_test(eigenvector4 python stest.py eigenvector4)
@@ -47,9 +61,12 @@ add_test(slice19 python stest.py slice19)
 add_test(samplegraph1 python stest.py samplegraph1)
 add_test(samplegraph4 python stest.py samplegraph4)
 add_test(graph-hybridization python stest.py graph-hybridization)
-add_test(poweriter python stest.py poweriter)
 add_test(graph-weight python stest.py graph-weight)
 add_test(timestep python stest.py timestep)
+add_test(graphupscale graphupscale)
+add_test(mltopo mltopo)
+add_test(mlmc mlmc)
+add_test(mleigen mleigen)
 
 add_test(pareigenvector1 python stest.py pareigenvector1)
 add_test(pareigenvector4 python stest.py pareigenvector4)
@@ -58,33 +75,32 @@ add_test(parslice19 python stest.py parslice19)
 add_test(parsamplegraph1 python stest.py parsamplegraph1)
 add_test(parsamplegraph4 python stest.py parsamplegraph4)
 add_test(pargraph-hybridization python stest.py pargraph-hybridization)
-add_test(parpoweriter python stest.py parpoweriter)
-add_test(partimestep python stest.py partimestep)
+add_test(pargraphupscale mpirun -np ${SMOOTHG_TEST_PROCS} ./graphupscale)
+add_test(parmltopo mpirun -np ${SMOOTHG_TEST_PROCS} ./mltopo)
+add_test(parmlmc mpirun -np ${SMOOTHG_TEST_PROCS} ./mlmc)
+add_test(parmleigen mpirun -np ${SMOOTHG_TEST_PROCS} ./mleigen)
 
 if (APPLE)
-  add_test(fv-metis python stest.py fv-metis-mac)
   add_test(graph-metis python stest.py graph-metis-mac)
-  add_test(graph-usegenerator python stest.py graph-usegenerator-mac)
-  add_test(pargraph-usegenerator python stest.py pargraph-usegenerator-mac)
+
+  # TODO(gelever1): figure out why these are so different on osx
+  #add_test(graph-usegenerator python stest.py graph-usegenerator-mac)
+  #add_test(pargraph-usegenerator python stest.py pargraph-usegenerator-mac)
+
   add_test(pargraph-metis python stest.py pargraph-metis-mac)
 else()
-  add_test(fv-metis python stest.py fv-metis)
   add_test(graph-metis python stest.py graph-metis)
   add_test(graph-usegenerator python stest.py graph-usegenerator)
   add_test(pargraph-usegenerator python stest.py pargraph-usegenerator)
   add_test(pargraph-metis python stest.py pargraph-metis)
+
+  add_test(veigenvector python stest.py veigenvector)
+  add_test(vgraph-small-usegenerator python stest.py vgraph-small-usegenerator)
+  add_test(vgraph-small-usegenerator-hb python stest.py vgraph-small-usegenerator-hb)
+
+  # TODO(gelever1): figure out why these are so different on osx
+  add_test(poweriter python stest.py poweriter)
+  add_test(parpoweriter python stest.py parpoweriter)
 endif()
-add_test(isolate_coarsen python stest.py isolate-coarsen)
 
-add_test(vgraph-small-usegenerator python stest.py vgraph-small-usegenerator)
-add_test(vgraph-small-usegenerator-hb python stest.py vgraph-small-usegenerator-hb)
-
-add_test(NAME style
-  COMMAND ${ASTYLE_COMMAND} --options=smoothg.astylerc --dry-run src/*.?pp examples/*.?pp testcode/*.?pp
-  WORKING_DIRECTORY ${PROJECT_SOURCE_DIR})
-set_tests_properties(style
-  PROPERTIES FAIL_REGULAR_EXPRESSION
-  "Formatted")
-
-# this test takes too long so we are deprecating it, but you should run it once in a while
-# add_test(veigenvector python stest.py veigenvector)
+#add_test(isolate_coarsen python stest.py isolate-coarsen)
