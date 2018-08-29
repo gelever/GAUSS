@@ -1,4 +1,4 @@
-smoothG [![Build Status](https://travis-ci.org/gelever/smoothG.svg?branch=no-mfem)](https://travis-ci.org/gelever/smoothG)
+smoothG [![Build Status](https://travis-ci.org/gelever/smoothG.svg?branch=master)](https://travis-ci.org/gelever/smoothG)
 =================
 
 <!-- BHEADER ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
