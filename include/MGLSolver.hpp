@@ -63,6 +63,7 @@ public:
     */
     virtual void Solve(const BlockVector& rhs, BlockVector& sol) const = 0;
     virtual void Mult(const BlockVector& rhs, BlockVector& sol) const;
+    virtual BlockVector Mult(const BlockVector& rhs) const;
 
     /**
        @brief Solve the graph Laplacian problem as primal.
@@ -73,8 +74,7 @@ public:
     */
     virtual void Solve(const VectorView& rhs, VectorView sol) const;
     virtual void Mult(const VectorView& rhs, VectorView sol) const;
-
-    using linalgcpp::Operator::Mult;
+    virtual Vector Mult(const VectorView& rhs) const;
 
     ///@name Set solver parameters
     ///@{

@@ -82,7 +82,7 @@ public:
 
        @param mgL Mixed matrices for the graph Laplacian
     */
-    HybridSolver(const MixedMatrix& mgL);
+    HybridSolver(const MixedMatrix& mgL, const GraphSpace& graph_space);
 
     virtual ~HybridSolver() = default;
 
@@ -141,6 +141,8 @@ private:
 
     void InitSolver(SparseMatrix local_hybrid);
 
+    ParMatrix ComputeScaledSystem(const ParMatrix& hybrid_d);
+
     SparseMatrix agg_vertexdof_;
     SparseMatrix agg_edgedof_;
     SparseMatrix agg_multiplier_;
@@ -170,6 +172,9 @@ private:
     mutable Vector trueMu_;
     mutable Vector Hrhs_;
     mutable Vector Mu_;
+    mutable std::vector<double> diag_scaling_;
+
+    int rescale_iter_;
 };
 
 

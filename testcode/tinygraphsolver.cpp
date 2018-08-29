@@ -152,7 +152,7 @@ int main(int argc, char* argv[])
     }
 
     MinresBlockSolver minres(mgl);
-    HybridSolver hb(mgl);
+    HybridSolver hb(mgl, FineGraphSpace(graph));
     SPDSolver spd(mgl);
 
     std::map<MGLSolver*, std::string> solver_to_name;

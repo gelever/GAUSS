@@ -53,9 +53,9 @@ Graph::Graph(MPI_Comm comm, const SparseMatrix& vertex_edge_global,
     proc_edge.SortIndices();
 
     vertex_map_ = proc_vert.GetIndices(myid);
-    edge_map_ = proc_edge.GetIndices(myid);
+    std::vector<int> edge_map = proc_edge.GetIndices(myid);
 
-    vertex_edge_local_ = vertex_edge_global.GetSubMatrix(vertex_map_, edge_map_);
+    vertex_edge_local_ = vertex_edge_global.GetSubMatrix(vertex_map_, edge_map);
     vertex_edge_local_ = 1.0;
 
     int nvertices_local = proc_vert.RowSize(myid);
@@ -68,27 +68,29 @@ Graph::Graph(MPI_Comm comm, const SparseMatrix& vertex_edge_global,
         part_local_[i] = part_global[vertex_map_[i]] - agg_begin;
     }
 
-    edge_true_edge_ = MakeEdgeTrueEdge(comm, proc_edge, edge_map_);
+    edge_true_edge_ = MakeEdgeTrueEdge(comm, proc_edge, edge_map);
 
     ParMatrix edge_true_edge_T = edge_true_edge_.Transpose();
     edge_edge_ = edge_true_edge_.Mult(edge_true_edge_T);
 
-    MakeLocalWeight(weight_global);
+    MakeLocalWeight(edge_map, weight_global);
     MakeLocalW(W_block_global);
 }
 
-void Graph::MakeLocalWeight(const std::vector<double>& global_weight)
+void Graph::MakeLocalWeight(const std::vector<int>& edge_map, const std::vector<double>& global_weight)
 {
-    int size = edge_map_.size();
+    int num_edges = vertex_edge_local_.Cols();
 
-    weight_local_.resize(size);
+    weight_local_.resize(num_edges);
 
     if (static_cast<int>(global_weight.size()) == edge_true_edge_.GlobalCols())
     {
-        for (int i = 0; i < size; ++i)
+        assert(static_cast<int>(edge_map.size()) == num_edges);
+
+        for (int i = 0; i < num_edges; ++i)
         {
-            assert(std::fabs(global_weight[edge_map_[i]]) > 1e-14);
-            weight_local_[i] = std::fabs(global_weight[edge_map_[i]]);
+            assert(std::fabs(global_weight[edge_map[i]]) > 1e-14);
+            weight_local_[i] = std::fabs(global_weight[edge_map[i]]);
         }
     }
     else
@@ -98,9 +100,9 @@ void Graph::MakeLocalWeight(const std::vector<double>& global_weight)
 
     const SparseMatrix& edge_offd = edge_edge_.GetOffd();
 
-    assert(edge_offd.Rows() == size);
+    assert(edge_offd.Rows() == num_edges);
 
-    for (int i = 0; i < size; ++i)
+    for (int i = 0; i < num_edges; ++i)
     {
         if (edge_offd.RowSize(i))
         {
@@ -138,48 +140,20 @@ Graph::Graph(SparseMatrix vertex_edge_local, ParMatrix edge_true_edge,
     auto vertex_starts = parlinalgcpp::GenerateOffsets(comm, num_vertices);
 
     global_vertices_ = vertex_starts.back();
+
     vertex_map_.resize(num_vertices);
-    edge_map_.resize(num_edges);
-
     std::iota(std::begin(vertex_map_), std::end(vertex_map_), vertex_starts[0]);
-
-    const auto& edge_diag = edge_true_edge_.GetDiag();
-    const auto& edge_offd = edge_true_edge_.GetOffd();
-    const auto& edge_offset = edge_true_edge_.GetColStarts()[0];
-    const auto& edge_colmap = edge_true_edge_.GetColMap();
-
-    const auto& diag_indptr = edge_diag.GetIndptr();
-    const auto& diag_indices = edge_diag.GetIndices();
-
-    const auto& offd_indptr = edge_offd.GetIndptr();
-    const auto& offd_indices = edge_offd.GetIndices();
-
-    assert(edge_true_edge_.Rows() == num_edges);
-
-    for (int i = 0; i < num_edges; ++i)
-    {
-        if (edge_diag.RowSize(i) > 0)
-        {
-            assert(edge_diag.RowSize(i) == 1);
-            edge_map_[i] = edge_offset + diag_indices[diag_indptr[i]];
-        }
-        else
-        {
-            edge_map_[i] = edge_colmap[offd_indices[offd_indptr[i]]];
-        }
-    }
 
     if (static_cast<int>(weight_local_.size()) != num_edges)
     {
-        MakeLocalWeight(std::vector<double>());
+        MakeLocalWeight();
     }
 
     W_local_ *= -1.0;
 }
 
 Graph::Graph(const Graph& other) noexcept
-    : edge_map_(other.edge_map_),
-      vertex_map_(other.vertex_map_),
+    : vertex_map_(other.vertex_map_),
       part_local_(other.part_local_),
       vertex_edge_local_(other.vertex_edge_local_),
       edge_true_edge_(other.edge_true_edge_),
@@ -206,7 +180,6 @@ Graph& Graph::operator=(Graph other) noexcept
 
 void swap(Graph& lhs, Graph& rhs) noexcept
 {
-    std::swap(lhs.edge_map_, rhs.edge_map_);
     std::swap(lhs.vertex_map_, rhs.vertex_map_);
     std::swap(lhs.part_local_, rhs.part_local_);
 

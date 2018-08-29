@@ -70,6 +70,14 @@ void MGLSolver::Mult(const BlockVector& rhs, BlockVector& sol) const
     Solve(rhs, sol);
 }
 
+BlockVector MGLSolver::Mult(const BlockVector& rhs) const
+{
+    sol_ = 0.0;
+    Solve(rhs, sol_);
+
+    return sol_;
+}
+
 void MGLSolver::Solve(const VectorView& rhs, VectorView sol) const
 {
     rhs_.GetBlock(0) = 0.0;
@@ -83,6 +91,14 @@ void MGLSolver::Solve(const VectorView& rhs, VectorView sol) const
 void MGLSolver::Mult(const VectorView& rhs, VectorView sol) const
 {
     Solve(rhs, sol);
+}
+
+Vector MGLSolver::Mult(const VectorView& rhs) const
+{
+    sol_.GetBlock(1) = 0.0;
+    Solve(rhs, sol_.GetBlock(1));
+
+    return Vector(sol_.GetBlock(1));
 }
 
 } // namespace smoothg

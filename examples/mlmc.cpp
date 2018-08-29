@@ -141,23 +141,23 @@ int main(int argc, char* argv[])
     Graph graph(comm, vertex_edge_global, part, weight);
 
     int sampler_seed = initial_seed + myid;
-    PDESampler sampler(std::move(sampler_graph), spect_tol, max_evects, hybridization,
+    PDESampler sampler(sampler_graph, {spect_tol, max_evects, hybridization},
                        dimension, kappa, cell_volume, sampler_seed);
-    GraphUpscale upscale(std::move(graph), spect_tol, max_evects, hybridization);
+    GraphUpscale upscale(graph, {spect_tol, max_evects, hybridization});
 
     /// [Upscale]
 
     /// [Right Hand Side]
-    BlockVector fine_rhs = upscale.GetFineBlockVector();
+    BlockVector fine_rhs = upscale.GetBlockVector(0);
 
     fine_rhs.GetBlock(0) = 0.0;
-    fine_rhs.GetBlock(1) = upscale.ReadVertexVector(fiedler_filename);
+    fine_rhs.GetBlock(1) = ReadVertexVector(graph, fiedler_filename);
     /// [Right Hand Side]
 
     /// [Solve]
 
-    BlockVector fine_sol = upscale.GetFineBlockVector();
-    BlockVector upscaled_sol = upscale.GetFineBlockVector();
+    BlockVector fine_sol = upscale.GetBlockVector(0);
+    BlockVector upscaled_sol = upscale.GetBlockVector(0);
 
     for (int i = 1; i <= num_samples; ++i)
     {
@@ -170,18 +170,21 @@ int main(int argc, char* argv[])
         const auto& coarse_coeff = sampler.GetCoefficientCoarse();
         const auto& upscaled_coeff = sampler.GetCoefficientUpscaled();
 
-        upscale.MakeCoarseSolver(coarse_coeff);
-        upscale.MakeFineSolver(fine_coeff);
+        upscale.MakeSolver(1, coarse_coeff);
+        upscale.MakeSolver(0, fine_coeff);
 
-        upscale.Solve(fine_rhs, upscaled_sol);
-        upscale.SolveFine(fine_rhs, fine_sol);
+        fine_sol = 0.0;
+        upscaled_sol = 0.0;
+
+        upscale.Solve(1, fine_rhs, upscaled_sol);
+        upscale.Solve(0, fine_rhs, fine_sol);
 
         if (save_output)
         {
-            SaveOutput(upscale, upscaled_sol.GetBlock(1), "coarse_sol_", i);
-            SaveOutput(upscale, fine_sol.GetBlock(1), "fine_sol_", i);
-            SaveOutput(upscale, upscaled_coeff, "coarse_coeff_", i);
-            SaveOutput(upscale, fine_coeff, "fine_coeff_", i);
+            SaveOutput(graph, upscaled_sol.GetBlock(1), "coarse_sol_", i);
+            SaveOutput(graph, fine_sol.GetBlock(1), "fine_sol_", i);
+            SaveOutput(graph, upscaled_coeff, "coarse_coeff_", i);
+            SaveOutput(graph, fine_coeff, "fine_coeff_", i);
         }
 
         upscale.ShowCoarseSolveInfo();

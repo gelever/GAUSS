@@ -33,12 +33,12 @@ namespace smoothg
     @param index filename suffix
 */
 template <typename T>
-void SaveOutput(const GraphUpscale& upscale, const T& vect, const std::string& prefix, int index)
+void SaveOutput(const Graph& graph, const T& vect, const std::string& prefix, int index)
 {
     std::stringstream ss;
     ss << prefix << std::setw(5) << std::setfill('0') << index << ".txt";
 
-    upscale.WriteVertexVector(vect, ss.str());
+    WriteVertexVector(graph, vect, ss.str());
 }
 
 /** @brief Scalar normal distribution */
@@ -85,7 +85,7 @@ public:
         @param kappa inverse correlation length for Matern covariance
         @param seed seed for random number generator
      */
-    PDESampler(Graph graph, double spect_tol, int max_evects, bool hybridization,
+    PDESampler(const Graph& graph, const UpscaleParams& params,
                int dimension, double kappa, double cell_volume, int seed);
 
     /** @brief Default Destructor */
@@ -147,19 +147,19 @@ private:
 };
 
 
-PDESampler::PDESampler(Graph graph, double spect_tol, int max_evects, bool hybridization,
+PDESampler::PDESampler(const Graph& graph, const UpscaleParams& params,
                        int dimension, double kappa, double cell_volume, int seed)
-    : upscale_(std::move(graph), spect_tol, max_evects, hybridization),
+    : upscale_(graph, params),
       normal_dist_(0.0, 1.0, seed),
       cell_volume_(cell_volume),
-      rhs_fine_(upscale_.GetFineVector()),
-      rhs_coarse_(upscale_.GetCoarseVector()),
-      sol_fine_(upscale_.GetFineVector()),
-      sol_coarse_(upscale_.GetCoarseVector()),
+      rhs_fine_(upscale_.GetVector(0)),
+      rhs_coarse_(upscale_.GetVector(1)),
+      sol_fine_(upscale_.GetVector(0)),
+      sol_coarse_(upscale_.GetVector(1)),
       coefficient_fine_(upscale_.Rows()),
-      coefficient_coarse_(upscale_.NumAggs()),
+      coefficient_coarse_(upscale_.Coarsener(0).Topology().NumAggs()),
       coefficient_upscaled_(upscale_.Rows()),
-      constant_coarse_(upscale_.GetCoarseConstant())
+      constant_coarse_(upscale_.ConstantRep(1))
 {
     upscale_.PrintInfo();
     upscale_.ShowSetupTime();
@@ -195,7 +195,7 @@ void PDESampler::Sample(bool coarse_sample)
     }
 
     // Set Coarse Coefficient
-    upscale_.SolveCoarse(rhs_coarse_, sol_coarse_);
+    upscale_.SolveLevel(1, rhs_coarse_, sol_coarse_);
 
     assert(constant_coarse_.size() == coarse_size);
 
@@ -215,10 +215,10 @@ void PDESampler::Sample(bool coarse_sample)
         }
     }
 
-    assert(agg_index == upscale_.NumAggs());
+    assert(agg_index == upscale_.Coarsener(0).Topology().NumAggs());
 
     // Set Fine Coefficient
-    upscale_.SolveFine(rhs_fine_, sol_fine_);
+    upscale_.Solve(0, rhs_fine_, sol_fine_);
 
     assert(coefficient_fine_.size() == fine_size);
 
@@ -236,11 +236,11 @@ void PDESampler::Sample(bool coarse_sample)
     upscale_.ShowCoarseSolveInfo();
     upscale_.ShowFineSolveInfo();
 
-    total_coarse_iters_ += upscale_.GetCoarseSolveIters();
-    total_fine_iters_ += upscale_.GetFineSolveIters();
+    total_coarse_iters_ += upscale_.SolveIters(1);
+    total_fine_iters_ += upscale_.SolveIters(0);
 
-    total_coarse_time_ += upscale_.GetCoarseSolveTime();
-    total_fine_time_ += upscale_.GetFineSolveTime();
+    total_coarse_time_ += upscale_.SolveTime(1);
+    total_fine_time_ += upscale_.SolveTime(0);
 }
 
 

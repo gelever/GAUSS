@@ -52,12 +52,14 @@ int main(int argc, char* argv[])
     std::string weight_filename = "";
     std::string w_block_filename = "";
 
+
     int isolate = -1;
+    int num_partitions = 12;
+    bool metis_agglomeration = false;
+
     int max_evects = 4;
     double spect_tol = 1e-3;
-    int num_partitions = 12;
     bool hybridization = false;
-    bool metis_agglomeration = false;
     int num_levels = 2;
 
     bool generate_fiedler = false;
@@ -145,52 +147,48 @@ int main(int argc, char* argv[])
     // Set up GraphUpscale
     /// [Upscale]
     Graph graph(comm, vertex_edge_global, global_partitioning, weight);
-    GraphUpscale upscale(graph, spect_tol, max_evects, hybridization, num_levels);
+    GraphUpscale upscale(graph, {spect_tol, max_evects, hybridization, num_levels});
 
     upscale.PrintInfo();
     upscale.ShowSetupTime();
     /// [Upscale]
 
     /// [Right Hand Side]
-    BlockVector fine_rhs = upscale.GetFineBlockVector();
+    BlockVector fine_rhs = upscale.GetBlockVector(0);
     fine_rhs.GetBlock(0) = 0.0;
 
     if (generate_graph || generate_fiedler)
     {
-        fine_rhs.GetBlock(1) = ComputeFiedlerVector(upscale.GetFineMatrix());
+        fine_rhs.GetBlock(1) = ComputeFiedlerVector(upscale.GetMatrix(0));
     }
     else
     {
-        fine_rhs.GetBlock(1) = upscale.ReadVertexVector(fiedler_filename);
+        fine_rhs.GetBlock(1) = ReadVertexVector(graph, fiedler_filename);
     }
 
     /// [Right Hand Side]
 
-    /// [Solve]
+    /// [Solve and Check Error]
     auto sols = upscale.MultMultiLevel(fine_rhs);
 
     upscale.ShowFineSolveInfo();
     upscale.ShowCoarseSolveInfo();
-    /// [Solve]
 
-    /// [Check Error]
-    upscale.Orthogonalize(sols[0]);
-
-    for (int i = 1; i < num_levels; ++i)
+    // Compare Coarse Levels
+    for (int level = 1; level < num_levels; ++level)
     {
-        ParPrint(myid, std::cout << "Level " << i << " errors: \n");
-        upscale.Orthogonalize(sols[i]);
-        upscale.ShowErrors(sols[i], sols[0]);
+        ParPrint(myid, std::cout << "Level " << level << " errors: \n");
+        upscale.ShowErrors(sols[level], sols[0]);
     }
 
-    /// [Check Error]
+    /// [Solve and Check Error]
 
     if (save_fiedler)
     {
-        upscale.WriteVertexVector(fine_rhs.GetBlock(1), fiedler_filename);
+        WriteVertexVector(graph, fine_rhs.GetBlock(1), fiedler_filename);
     }
 
-    return 0;
+    return EXIT_SUCCESS;
 }
 
 std::vector<int> MetisPart(const SparseMatrix& vertex_edge, int num_parts)
@@ -214,8 +212,6 @@ Vector ComputeFiedlerVector(const MixedMatrix& mgl)
         A.AddDiag(1.0);
     }
 
-    BoomerAMG boomer(A);
-
     int num_evects = 2;
     std::vector<Vector> evects(num_evects, Vector(A.Rows()));
     for (Vector& evect : evects)
@@ -223,6 +219,7 @@ Vector ComputeFiedlerVector(const MixedMatrix& mgl)
         evect.Randomize();
     }
 
+    BoomerAMG boomer(A);
     std::vector<double> evals = LOBPCG(A, evects, &boomer);
 
     assert(static_cast<int>(evals.size()) == num_evects);
