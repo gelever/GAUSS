@@ -24,30 +24,20 @@ namespace smoothg
 {
 
 MixedMatrix::MixedMatrix(const Graph& graph)
-    : vertex_vdof(SparseIdentity(graph.vertex_edge_local_.Rows())),
-      vertex_edof(graph.vertex_edge_local_),
-      vertex_bdof(SparseMatrix(graph.vertex_edge_local_.Rows(), graph.vertex_edge_local_.Cols())),
-      edge_edof(SparseIdentity(graph.vertex_edge_local_.Cols())),
-      constant_vect_(graph.vertex_edge_local_.Rows(), 1.0),
-      edge_true_edge_(graph.edge_true_edge_),
+    : edge_true_edge_(graph.edge_true_edge_),
       D_local_(MakeLocalD(graph.edge_true_edge_, graph.vertex_edge_local_)),
       W_local_(graph.W_local_),
-      elem_dof_(graph.vertex_edge_local_),
-      agg_vertexdof_(SparseIdentity(D_local_.Rows())),
-      face_facedof_(SparseIdentity(elem_dof_.Cols()))
+      elem_dof_(graph.vertex_edge_local_)
 {
     int num_vertices = D_local_.Rows();
     int num_edges = D_local_.Cols();
 
-    M_elem_.resize(num_vertices);
-
-    SparseMatrix edge_vertex = D_local_.Transpose();
     std::vector<double> weight_inv = graph.weight_local_;
 
     for (auto& i : weight_inv)
     {
         assert(std::fabs(i) > 1e-12);
-        assert(i == i);
+        assert(std::isfinite(i));
         i = 1.0 / i;
     }
 
@@ -58,6 +48,8 @@ MixedMatrix::MixedMatrix(const Graph& graph)
             weight_inv[i] /= 2.0;
         }
     }
+
+    M_elem_.resize(num_vertices);
 
     for (int i = 0; i < num_vertices; ++i)
     {
@@ -79,15 +71,12 @@ MixedMatrix::MixedMatrix(const Graph& graph)
 
 MixedMatrix::MixedMatrix(std::vector<DenseMatrix> M_elem, SparseMatrix elem_dof,
                          SparseMatrix D_local, SparseMatrix W_local,
-                         ParMatrix edge_true_edge, SparseMatrix agg_vertexdof,
-                         SparseMatrix face_facedof_)
+                         ParMatrix edge_true_edge)
     : edge_true_edge_(std::move(edge_true_edge)),
       D_local_(std::move(D_local)),
       W_local_(std::move(W_local)),
       M_elem_(std::move(M_elem)),
-      elem_dof_(std::move(elem_dof)),
-      agg_vertexdof_(std::move(agg_vertexdof)),
-      face_facedof_(std::move(face_facedof_))
+      elem_dof_(std::move(elem_dof))
 {
     Init();
 }
@@ -119,12 +108,7 @@ void MixedMatrix::Init()
 }
 
 MixedMatrix::MixedMatrix(const MixedMatrix& other) noexcept
-    : vertex_vdof(other.vertex_vdof),
-      vertex_edof(other.vertex_edof),
-      vertex_bdof(other.vertex_bdof),
-      edge_edof(other.edge_edof),
-      constant_vect_(other.constant_vect_),
-      edge_true_edge_(other.edge_true_edge_),
+    : edge_true_edge_(other.edge_true_edge_),
       M_local_(other.M_local_),
       D_local_(other.D_local_),
       W_local_(other.W_local_),
@@ -134,9 +118,7 @@ MixedMatrix::MixedMatrix(const MixedMatrix& other) noexcept
       offsets_(other.offsets_),
       true_offsets_(other.true_offsets_),
       M_elem_(other.M_elem_),
-      elem_dof_(other.elem_dof_),
-      agg_vertexdof_(other.agg_vertexdof_),
-      face_facedof_(other.face_facedof_)
+      elem_dof_(other.elem_dof_)
 {
 }
 
@@ -169,15 +151,6 @@ void swap(MixedMatrix& lhs, MixedMatrix& rhs) noexcept
 
     swap(lhs.M_elem_, rhs.M_elem_);
     swap(lhs.elem_dof_, rhs.elem_dof_);
-
-    swap(lhs.agg_vertexdof_, rhs.agg_vertexdof_);
-    std::swap(lhs.face_facedof_, rhs.face_facedof_);
-
-    swap(lhs.vertex_vdof, rhs.vertex_vdof);
-    swap(lhs.vertex_edof, rhs.vertex_edof);
-    swap(lhs.vertex_bdof, rhs.vertex_bdof);
-    swap(lhs.edge_edof, rhs.edge_edof);
-    swap(lhs.constant_vect_, rhs.constant_vect_);
 }
 
 int MixedMatrix::Rows() const
@@ -245,29 +218,9 @@ ParMatrix MixedMatrix::ToPrimal() const
 
 void MixedMatrix::AssembleM()
 {
-    int M_size = D_local_.Cols();
-    CooMatrix M_coo(M_size, M_size);
+    std::vector<double> agg_weight(M_elem_.size(), 1.0);
 
-    int num_aggs = M_elem_.size();
-    int nnz = 0;
-
-    for (const auto& elem : M_elem_)
-    {
-        nnz += elem.Rows() * elem.Cols();
-    }
-
-    M_coo.Reserve(nnz);
-
-    for (int i = 0; i < num_aggs; ++i)
-    {
-        std::vector<int> dofs = elem_dof_.GetIndices(i);
-        M_coo.Add(dofs, dofs, M_elem_[i]);
-    }
-
-    M_coo.EliminateZeros(1e-15);
-    M_local_ = M_coo.ToSparse();
-    ParMatrix M_d(edge_true_edge_.GetComm(), edge_true_edge_.GetRowStarts(), M_local_);
-    M_global_ = parlinalgcpp::RAP(M_d, edge_true_edge_);
+    AssembleM(agg_weight);
 }
 
 void MixedMatrix::AssembleM(const std::vector<double>& agg_weight)

@@ -21,15 +21,19 @@
 #ifndef __GRAPHUPSCALE_HPP__
 #define __GRAPHUPSCALE_HPP__
 
+#include <utility>
+
 #include "linalgcpp.hpp"
 #include "parlinalgcpp.hpp"
 #include "partition.hpp"
+
 
 #include "Utilities.hpp"
 #include "MixedMatrix.hpp"
 #include "GraphCoarsen.hpp"
 #include "MGLSolver.hpp"
 #include "Graph.hpp"
+#include "Level.hpp"
 
 #include "MinresBlockSolver.hpp"
 #include "HybridSolver.hpp"
@@ -39,9 +43,47 @@ namespace smoothg
 {
 
 /**
+   @brief Collection of parameters for GraphUpscale
+*/
+struct UpscaleParams
+{
+    /**
+       @brief Default Constructor
+    */
+    UpscaleParams() : UpscaleParams(0.001, 4) { }
+
+    /**
+       @brief Individual Parameter Constructor
+
+       @param spect_tol_in spectral tolerance determines how many eigenvectors to
+                        keep per aggregate
+       @param max_evects_in maximum number of eigenvectors to keep per aggregate
+       @param hybridization_in use hybridization as solver
+       @param max_levels_in maximum number of levels to coarsen
+       @param coarsen_factor_in metis coarsening factor if using multilevel upscaling
+       @param elim_edge_dofs_in edge dofs to eliminate on the fine level
+    */
+    UpscaleParams(double spect_tol_in, int max_evects_in, bool hybridization_in = false,
+                  int max_levels_in = 2, double coarsen_factor_in = 4.0,
+                  const std::vector<int>& elim_edge_dofs_in = {})
+        : hybridization(hybridization_in),
+          max_levels(max_levels_in), coarsen_factor(coarsen_factor_in),
+          spectral_pair(max_levels_in - 1, {spect_tol_in, max_evects_in}),
+          elim_edge_dofs(elim_edge_dofs_in)
+          { }
+
+    bool hybridization;
+    int max_levels;
+    double coarsen_factor;
+
+    std::vector<SpectralPair> spectral_pair;
+    std::vector<int> elim_edge_dofs;
+};
+
+
+/**
    @brief Use upscaling as operator
 */
-
 class GraphUpscale : public linalgcpp::Operator
 {
 public:
@@ -51,14 +93,10 @@ public:
     /**
        @brief Graph Constructor
 
-       @param graph contains input graph information
-       @param spect_tol spectral tolerance determines how many eigenvectors to
-                        keep per aggregate
-       @param max_evects maximum number of eigenvectors to keep per aggregate
-       @param hybridization use hybridization as solver
+       @param graph input graph information
+       @param params set of upscaling parameters
     */
-    GraphUpscale(Graph graph, double spect_tol = 0.001, int max_evects = 4,
-                 bool hybridization = false, int num_levels = 2, const std::vector<int>& elim_edge_dofs = {});
+    GraphUpscale(const Graph& graph, const UpscaleParams& params = {});
 
     /// Default Destructor
     ~GraphUpscale() = default;
@@ -68,34 +106,6 @@ public:
 
     /// Get global number of columns (vertex dofs)
     int GlobalCols() const;
-
-    /// Extract a local fine vertex space vector from global vector
-    template <typename T>
-    T GetVertexVector(const T& global_vect) const;
-
-    /// Extract a local fine edge space vector from global vector
-    template <typename T>
-    T GetEdgeVector(const T& global_vect) const;
-
-    /// Read permuted vertex vector
-    Vector ReadVertexVector(const std::string& filename) const;
-
-    /// Read permuted edge vector
-    Vector ReadEdgeVector(const std::string& filename) const;
-
-    /// Read permuted vertex vector, in mixed form
-    BlockVector ReadVertexBlockVector(const std::string& filename) const;
-
-    /// Read permuted edge vector, in mixed form
-    BlockVector ReadEdgeBlockVector(const std::string& filename) const;
-
-    /// Write permuted vertex vector
-    template <typename T>
-    void WriteVertexVector(const T& vect, const std::string& filename) const;
-
-    /// Write permuted edge vector
-    template <typename T>
-    void WriteEdgeVector(const T& vect, const std::string& filename) const;
 
     /// Create Weighted Solver
     void MakeSolver(int level);
@@ -176,6 +186,10 @@ public:
     MixedMatrix& GetMatrix(int level);
     const MixedMatrix& GetMatrix(int level) const;
 
+    /// Get GraphSpace by level
+    GraphSpace& GetGraphSpace(int level) { return GetLevel(level).graph_space; }
+    const GraphSpace& GetGraphSpace(int level) const { return GetLevel(level).graph_space; }
+
     /// Show Solver Information
     void PrintInfo(std::ostream& out = std::cout) const;
 
@@ -213,16 +227,17 @@ public:
     const GraphCoarsen& Coarsener(int level) const { return coarsener_.at(level); }
 
     /// Get Solver
-    const MGLSolver& Solver(int level) const { return *solver_.at(level); }
+    const MGLSolver& Solver(int level) const { return *GetLevel(level).solver; }
+
+    /// Get Level
+    Level& GetLevel(int level) { return levels_.at(level); }
+    const Level& GetLevel(int level) const { return levels_.at(level); }
 
     /// Number of levels
-    int NumLevels() const { return solver_.size(); }
+    int NumLevels() const { return levels_.size(); }
 
     /// Get Normalized Constant Representation
-    const Vector& ConstantRep(int level) const { return constant_rep_.at(level); }
-
-    /// Get Fine Level Graph
-    const Graph& FineGraph() const { return graph_; }
+    const Vector& ConstantRep(int level) const { return GetLevel(level).constant_rep; }
 
     /// Compare errors between upscaled and fine solution.
     /// Returns {vertex_error, edge_error, div_error} array.
@@ -236,60 +251,20 @@ public:
 
     ParMatrix ToPrimal() const;
 
-protected:
-    void MakeVectors(int level);
-
-    std::vector<MixedMatrix> mgl_;
+private:
+    std::vector<Level> levels_;
     std::vector<GraphCoarsen> coarsener_;
-    std::vector<std::unique_ptr<MGLSolver>> solver_;
-    mutable std::vector<BlockVector> rhs_;
-    mutable std::vector<BlockVector> sol_;
-    std::vector<Vector> constant_rep_;
-    std::vector<std::vector<int>> elim_dofs_;
 
     MPI_Comm comm_;
     int myid_;
-
-    int global_vertices_;
-    int global_edges_;
 
     double setup_time_;
 
     std::unordered_map<int, int> size_to_level_;
 
-private:
-    double spect_tol_;
-    int max_evects_;
     bool hybridization_;
-
-    Graph graph_;
-
     bool do_ortho_;
 };
-
-template <typename T>
-T GraphUpscale::GetVertexVector(const T& global_vect) const
-{
-    return GetSubVector(global_vect, graph_.vertex_map_);
-}
-
-template <typename T>
-T GraphUpscale::GetEdgeVector(const T& global_vect) const
-{
-    return GetSubVector(global_vect, graph_.edge_map_);
-}
-
-template <typename T>
-void GraphUpscale::WriteVertexVector(const T& vect, const std::string& filename) const
-{
-    WriteVector(comm_, vect, filename, global_vertices_, graph_.vertex_map_);
-}
-
-template <typename T>
-void GraphUpscale::WriteEdgeVector(const T& vect, const std::string& filename) const
-{
-    WriteVector(comm_, vect, filename, global_edges_, graph_.edge_map_);
-}
 
 } // namespace smoothg
 

@@ -62,7 +62,7 @@ int main(int argc, char* argv[])
     std::vector<int> part = PartitionAAT(vertex_edge, coarse_factor);
     Graph graph(comm, vertex_edge, part);
 
-    GraphUpscale upscale(graph, spect_tol, max_evects, hybridization);
+    GraphUpscale upscale(graph, {spect_tol, max_evects, hybridization});
 
     // Wrapper for solving on the fine level, no upscaling
     UpscaleSolveLevel fine_solver(upscale, 0);
@@ -70,7 +70,7 @@ int main(int argc, char* argv[])
     upscale.PrintInfo();
 
     // Read and normalize true Fiedler vector
-    Vector true_sol = upscale.ReadVertexVector(rhs_filename);
+    Vector true_sol = ReadVertexVector(graph, rhs_filename);
     true_sol /= ParL2Norm(comm, true_sol);
 
     // Power Iteration for each Operator

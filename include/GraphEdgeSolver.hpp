@@ -64,7 +64,7 @@ public:
        @param M matrix \f$ M \f$ in the formula in the class description
        @param D matrix \f$ D \f$ in the formula in the class description
     */
-    GraphEdgeSolver(const SparseMatrix& M, const SparseMatrix& D);
+    GraphEdgeSolver(SparseMatrix M, SparseMatrix D);
 
     /**
        @brief Constructor of the local saddle point solver.
@@ -148,6 +148,9 @@ public:
        @param u_sol \f$ \u \f$ in the formula above
     */
     void Mult(const DenseMatrix& rhs, DenseMatrix& sigma_sol, DenseMatrix& u_sol) const;
+
+    void BlockMult(const VectorView& edge_rhs, const VectorView& vertex_rhs, VectorView sigma_sol) const;
+    void BlockMult(const DenseMatrix& edge_rhs, const DenseMatrix& vertex_rhs, DenseMatrix& sigma_sol) const;
 
     /**
        @brief Solves \f$ (D M^{-1} D^T) u = g\f$, \f$ \sigma = M^{-1} D^T u \f$.

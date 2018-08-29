@@ -87,6 +87,11 @@ public:
     int NumEdges() const { return agg_edge_local_.Cols(); }
     int NumFaces() const { return agg_face_local_.Cols(); }
 
+    int GlobalNumAggs() const { return agg_ext_vertex_.GlobalRows(); }
+    int GlobalNumVertices() const { return agg_ext_vertex_.GlobalCols(); }
+    int GlobalNumEdges() const { return face_edge_.GlobalCols(); }
+    int GlobalNumFaces() const { return face_edge_.GlobalRows(); }
+
     // Local topology
     SparseMatrix agg_vertex_local_; // Aggregate to vertex, not exteneded
     SparseMatrix agg_edge_local_;   // Aggregate to edge, not extended
@@ -108,15 +113,15 @@ private:
               const ParMatrix& edge_edge,
               ParMatrix edge_true_edge);
 
-    SparseMatrix MakeFaceAggInt(const ParMatrix& agg_agg);
+    SparseMatrix MakeFaceIntAgg(const ParMatrix& agg_agg);
 
     SparseMatrix MakeFaceEdge(const ParMatrix& agg_agg,
                               const ParMatrix& edge_edge,
                               const SparseMatrix& agg_edge_ext,
-                              const SparseMatrix& face_edge_ext);
+                              const SparseMatrix& face_int_agg_edge);
 
     SparseMatrix ExtendFaceAgg(const ParMatrix& agg_agg,
-                               const SparseMatrix& face_agg_int);
+                               const SparseMatrix& face_int_agg);
 
 };
 
