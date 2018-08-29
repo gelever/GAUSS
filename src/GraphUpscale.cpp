@@ -42,25 +42,25 @@ GraphUpscale::GraphUpscale(const Graph& graph, const UpscaleParams& params)
     }
 
     // Fine Level
-    int level_i = 0;
     {
         levels_.emplace_back(MixedMatrix(graph), FineGraphSpace(graph));
         levels_.back().elim_dofs = params.elim_edge_dofs;
-
-        MakeSolver(level_i);
     }
 
-    // Coarse Levels
-    for (level_i = 1; level_i < params.max_levels; ++level_i)
+    // Coarsen Levels
+    for (int level_i = 0; level_i < params.max_levels - 1; ++level_i)
     {
-        auto& gt_i = gts[level_i - 1];
-        const auto& spect_pair_i = params.spectral_pair[level_i - 1];
-
-        const auto& prev_level = GetLevel(level_i - 1);
+        auto& gt_i = gts[level_i];
+        const auto& prev_level = GetLevel(level_i);
+        const auto& spect_pair_i = params.spectral_pair[level_i];
 
         coarsener_.emplace_back(std::move(gt_i), prev_level, spect_pair_i);
         levels_.push_back(coarsener_.back().Coarsen(prev_level));
+    }
 
+    // Generate Solvers
+    for (int level_i = 0; level_i < NumLevels(); ++level_i)
+    {
         MakeSolver(level_i);
     }
 

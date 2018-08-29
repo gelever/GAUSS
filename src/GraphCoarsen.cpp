@@ -1264,6 +1264,7 @@ GraphSpace GraphCoarsen::BuildGraphSpace() const
 
     vertex_vdof = 1.0;
     vertex_edof = 1.0;
+    vertex_bdof = 1.0;
     edge_edof = 1.0;
 
     int num_vertices = vertex_vdof.Rows();

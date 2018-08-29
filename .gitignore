@@ -8,5 +8,3 @@ build/
 *.py~
 *.in~
 *.md~
-*.swp
-*.bak
