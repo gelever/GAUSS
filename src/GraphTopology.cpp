@@ -97,7 +97,7 @@ void GraphTopology::Init(const SparseMatrix& vertex_edge,
     face_edge_ = ParMatrix(comm, face_starts, edge_starts, face_edge_local_);
 
     face_face_ = smoothg::Mult(face_edge_, edge_edge, face_edge_.Transpose());
-    face_face_ = 1;
+    face_face_ = 1.0;
 
     face_true_face_ = MakeEntityTrueEntity(face_face_);
 
@@ -207,6 +207,7 @@ SparseMatrix GraphTopology::MakeFaceEdge(const ParMatrix& agg_agg,
                                          const SparseMatrix& face_int_agg_edge)
 {
     const auto& agg_agg_offd = agg_agg.GetOffd();
+    const auto& edge_ext_agg_offd = edge_ext_agg.GetOffd();
 
     int num_aggs = agg_agg_offd.Rows();
     int num_edges = face_int_agg_edge.Cols();
@@ -228,7 +229,7 @@ SparseMatrix GraphTopology::MakeFaceEdge(const ParMatrix& agg_agg,
     {
         for (int j = ext_indptr[i]; j < ext_indptr[i + 1]; j++)
         {
-            if (ext_data[j] > 1)
+            if (ext_data[j] > 1.5)
             {
                 indices.push_back(ext_indices[j]);
             }
@@ -244,8 +245,8 @@ SparseMatrix GraphTopology::MakeFaceEdge(const ParMatrix& agg_agg,
     const auto& agg_offd_indices = agg_agg_offd.GetIndices();
     const auto& agg_colmap = agg_agg.GetColMap();
 
-    const auto& edge_offd_indptr = edge_ext_agg.GetOffd().GetIndptr();
-    const auto& edge_offd_indices = edge_ext_agg.GetOffd().GetIndices();
+    const auto& edge_offd_indptr = edge_ext_agg_offd.GetIndptr();
+    const auto& edge_offd_indices = edge_ext_agg_offd.GetIndices();
     const auto& edge_colmap = edge_ext_agg.GetColMap();
 
     for (int i = 0; i < num_aggs; ++i)
@@ -258,7 +259,7 @@ SparseMatrix GraphTopology::MakeFaceEdge(const ParMatrix& agg_agg,
             {
                 int edge = agg_edge_indices[k];
 
-                if (edge_offd_indptr[edge + 1] > edge_offd_indptr[edge])
+                if (edge_ext_agg_offd.RowSize(edge) > 0)
                 {
                     int edge_loc = edge_offd_indices[edge_offd_indptr[edge]];
 
@@ -275,7 +276,7 @@ SparseMatrix GraphTopology::MakeFaceEdge(const ParMatrix& agg_agg,
 
     assert(static_cast<int>(indptr.size()) == num_faces + 1);
 
-    std::vector<double> data(indices.size(), 1);
+    std::vector<double> data(indices.size(), 1.0);
 
     return SparseMatrix(std::move(indptr), std::move(indices), std::move(data),
                         num_faces, num_edges);
@@ -304,7 +305,7 @@ SparseMatrix GraphTopology::ExtendFaceAgg(const ParMatrix& agg_agg,
 
     int num_faces = indptr.size() - 1;
 
-    std::vector<double> data(indices.size(), 1);
+    std::vector<double> data(indices.size(), 1.0);
 
     return SparseMatrix(std::move(indptr), std::move(indices), std::move(data),
                         num_faces, num_aggs);

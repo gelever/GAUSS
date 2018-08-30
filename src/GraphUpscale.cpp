@@ -43,8 +43,7 @@ GraphUpscale::GraphUpscale(const Graph& graph, const UpscaleParams& params)
 
     // Fine Level
     {
-        levels_.emplace_back(MixedMatrix(graph), FineGraphSpace(graph));
-        levels_.back().elim_dofs = params.elim_edge_dofs;
+        levels_.emplace_back(graph, params.elim_edge_dofs);
     }
 
     // Coarsen Levels
@@ -58,7 +57,7 @@ GraphUpscale::GraphUpscale(const Graph& graph, const UpscaleParams& params)
         levels_.push_back(coarsener_.back().Coarsen(prev_level));
     }
 
-    // Generate Solvers
+    // Generate Solvers (potentially optional)
     for (int level_i = 0; level_i < NumLevels(); ++level_i)
     {
         MakeSolver(level_i);
@@ -85,7 +84,7 @@ void GraphUpscale::MakeSolver(int level_i)
     }
     else
     {
-        level.solver = make_unique<MinresBlockSolver>(mm);
+        level.solver = make_unique<MinresBlockSolver>(mm, level.elim_dofs);
     }
 
     size_to_level_[mm.LocalD().Rows()] = level_i;
@@ -115,7 +114,7 @@ void GraphUpscale::MakeSolver(int level_i, const std::vector<double>& agg_weight
     else
     {
         mm.AssembleM(agg_weights);
-        level.solver = make_unique<MinresBlockSolver>(mm);
+        level.solver = make_unique<MinresBlockSolver>(mm, level.elim_dofs);
     }
 
     size_to_level_[mm.LocalD().Rows()] = level_i;

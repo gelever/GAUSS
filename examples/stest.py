@@ -176,6 +176,71 @@ def make_tests():
           "finest-u-error": 0.3215799309244913,
           "operator-complexity": 1.072906479217604}]
 
+    tests["ml_eigenvector1"] = \
+        [["./generalgraph",
+          "--g", graph_data + "/fe_vertex_edge.txt",
+          "--w", graph_data + "/fe_weight_0.txt",
+          "--p", graph_data + "/fe_part.txt",
+          "--f", graph_data + "/fe_rhs.txt",
+          "--nl", "3",
+          "--t", "1.0", "--m", "1"],
+         {"finest-div-error": 0.866025403654853,
+          "finest-p-error": 0.4389207202939637,
+          "finest-u-error": 0.5840467142900041,
+          "operator-complexity": 1.051176650366748}]
+
+    tests["ml_eigenvector4"] = \
+        [["./generalgraph",
+          "--g", graph_data + "/fe_vertex_edge.txt",
+          "--w", graph_data + "/fe_weight_0.txt",
+          "--p", graph_data + "/fe_part.txt",
+          "--f", graph_data + "/fe_rhs.txt",
+          "--nl", "3",
+          "--t", "1.0", "--m", "4"],
+         {"finest-div-error": 0.7563840937673728,
+          "finest-p-error": 0.09070417618672037,
+          "finest-u-error": 0.1723071082049305,
+          "operator-complexity": 1.799526283618582}]
+
+    tests["ml_fv-hybridization"] = \
+        [["./generalgraph",
+          "--g", graph_data + "/fe_vertex_edge.txt",
+          "--w", graph_data + "/fe_weight_0.txt",
+          "--p", graph_data + "/fe_part.txt",
+          "--f", graph_data + "/fe_rhs.txt",
+          "--nl", "3",
+          "--t", "1.0", "--m", "4", "--hb"],
+         {"finest-div-error": 0.7563840937673726,
+          "finest-p-error": 0.09070417618671657,
+          "finest-u-error": 0.1723071081957017,
+          "operator-complexity": 1.516136919315404}]
+
+    tests["ml_slice19"] = \
+        [["./generalgraph",
+          "--g", graph_data + "/fe_vertex_edge.txt",
+          "--w", graph_data + "/fe_weight_19.txt",
+          "--p", graph_data + "/fe_part.txt",
+          "--f", graph_data + "/fe_rhs.txt",
+          "--nl", "3",
+          "--t", "1.0", "--m", "1"],
+         {"finest-div-error": 0.8660254037177664,
+          "finest-p-error": 0.5230891010892769,
+          "finest-u-error": 0.6533601334384469,
+          "operator-complexity": 1.051176650366748}]
+
+    tests["ml_fv-metis"] = \
+        [["./generalgraph",
+          "--g", graph_data + "/fe_vertex_edge.txt",
+          "--w", graph_data + "/fe_weight_0.txt",
+          "--p", graph_data + "/fe_part.txt",
+          "--f", graph_data + "/fe_rhs.txt",
+          "--nl", "3",
+          "--t", "1.0", "--m", "1", "--ma", "--np", "132"],
+         {"finest-div-error": 0.8717940470061135,
+          "finest-p-error": 0.8299754850553135,
+          "finest-u-error": 0.8124032450721445,
+          "operator-complexity": 1.087438875305623}]
+
     tests["samplegraph1"] = \
         [["./generalgraph",
           "--t", "1.0", "--m", "1"],
@@ -300,6 +365,58 @@ def make_tests():
           "finest-p-error": 0.23763409361749516,
           "finest-u-error": 0.16419932734829923,
           "operator-complexity": 1.0372402200488997}]
+
+    tests["ml_pareigenvector1"] = \
+        [["mpirun", "-n", num_procs, "./generalgraph",
+          "--g", graph_data + "/fe_vertex_edge.txt",
+          "--w", graph_data + "/fe_weight_0.txt",
+          "--p", graph_data + "/fe_part.txt",
+          "--f", graph_data + "/fe_rhs.txt",
+          "--nl", "3",
+          "--t", "1.0", "--m", "1"],
+          {"finest-div-error": 0.8660254037057484,
+           "finest-p-error": 0.3773306923339783,
+           "finest-u-error": 0.5825279137318974,
+           "operator-complexity": 1.050641809290954}]
+
+    tests["ml_pareigenvector4"] = \
+        [["mpirun", "-n", num_procs, "./generalgraph",
+          "--g", graph_data + "/fe_vertex_edge.txt",
+          "--w", graph_data + "/fe_weight_0.txt",
+          "--p", graph_data + "/fe_part.txt",
+          "--f", graph_data + "/fe_rhs.txt",
+          "--nl", "3",
+          "--t", "1.0", "--m", "4"],
+          {"finest-div-error": 0.5444352590444889,
+           "finest-p-error": 0.08638296004048358,
+           "finest-u-error": 0.1669725154444071,
+           "operator-complexity": 1.79138141809291}]
+
+    tests["ml_parfv-hybridization"] = \
+        [["mpirun", "-n", num_procs, "./generalgraph",
+          "--g", graph_data + "/fe_vertex_edge.txt",
+          "--w", graph_data + "/fe_weight_0.txt",
+          "--p", graph_data + "/fe_part.txt",
+          "--f", graph_data + "/fe_rhs.txt",
+          "--nl", "3",
+          "--t", "1.0", "--m", "4", "--hb"],
+          {"finest-div-error": 0.5444352590444889,
+           "finest-p-error": 0.08638296003783284,
+           "finest-u-error": 0.1669725154350003,
+           "operator-complexity": 1.508557457212714}]
+
+    tests["ml_parslice19"] = \
+        [["mpirun", "-n", num_procs, "./generalgraph",
+          "--g", graph_data + "/fe_vertex_edge.txt",
+          "--w", graph_data + "/fe_weight_19.txt",
+          "--p", graph_data + "/fe_part.txt",
+          "--f", graph_data + "/fe_rhs.txt",
+          "--nl", "3",
+          "--t", "1.0", "--m", "1"],
+         {"finest-div-error": 0.8660254037895041,
+          "finest-p-error": 0.6012889024709256,
+          "finest-u-error": 0.7610749599920256,
+          "operator-complexity": 1.050641809290954}]
 
     tests["parsamplegraph1"] = \
         [["mpirun", "-n", num_procs, "./generalgraph",

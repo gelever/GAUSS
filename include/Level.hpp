@@ -39,8 +39,9 @@ namespace smoothg
 struct Level
 {
     Level() = default;
-    Level(MixedMatrix mm, GraphSpace gs, bool assemble_M = true);
-    Level(MixedMatrix mm, GraphSpace gs, Vector const_vect, bool assemble_M = true);
+    Level(const Graph& graph, std::vector<int> elim_dofs_in = {});
+    Level(MixedMatrix mm, GraphSpace gs, Vector const_vect,
+          bool assemble_M = true, std::vector<int> elim_dofs_in = {});
 
     MixedMatrix mixed_matrix;
     GraphSpace graph_space;
@@ -54,22 +55,21 @@ struct Level
 };
 
 inline
-Level::Level(MixedMatrix mm, GraphSpace gs, bool assemble_M)
-: mixed_matrix(std::move(mm)), graph_space(std::move(gs)),
-  constant_rep(mixed_matrix.LocalD().Rows(), 1.0 / std::sqrt(mixed_matrix.GlobalD().GlobalRows())),
-  rhs(mixed_matrix.Offsets()), sol(mixed_matrix.Offsets())
+Level::Level(const Graph& graph, std::vector<int> elim_dofs_in)
+: Level(MixedMatrix(graph), FineGraphSpace(graph),
+        Vector(graph.vertex_edge_local_.Rows(), 1.0 / std::sqrt(graph.global_vertices_)),
+        true, std::move(elim_dofs_in))
 {
-    if (assemble_M)
-    {
-        mixed_matrix.AssembleM();
-    }
+
 }
 
 inline
-Level::Level(MixedMatrix mm, GraphSpace gs, Vector const_vect, bool assemble_M)
+Level::Level(MixedMatrix mm, GraphSpace gs, Vector const_vect,
+             bool assemble_M, std::vector<int> elim_dofs_in)
 : mixed_matrix(std::move(mm)), graph_space(std::move(gs)),
   constant_rep(std::move(const_vect)),
-  rhs(mixed_matrix.Offsets()), sol(mixed_matrix.Offsets())
+  rhs(mixed_matrix.Offsets()), sol(mixed_matrix.Offsets()),
+  elim_dofs(std::move(elim_dofs_in))
 {
     if (assemble_M)
     {
