@@ -58,13 +58,6 @@ add_test(eigenvector1 python stest.py eigenvector1)
 add_test(eigenvector4 python stest.py eigenvector4)
 add_test(fv-hybridization python stest.py fv-hybridization)
 add_test(slice19 python stest.py slice19)
-add_test(fv-metis python stest.py fv-metis)
-
-add_test(ml_eigenvector1 python stest.py ml_eigenvector1)
-add_test(ml_eigenvector4 python stest.py ml_eigenvector4)
-add_test(ml_fv-hybridization python stest.py ml_fv-hybridization)
-add_test(ml_slice19 python stest.py ml_slice19)
-add_test(ml_fv-metis python stest.py ml_fv-metis)
 
 add_test(samplegraph1 python stest.py samplegraph1)
 add_test(samplegraph4 python stest.py samplegraph4)
@@ -80,11 +73,6 @@ add_test(pareigenvector1 python stest.py pareigenvector1)
 add_test(pareigenvector4 python stest.py pareigenvector4)
 add_test(parfv-hybridization python stest.py parfv-hybridization)
 add_test(parslice19 python stest.py parslice19)
-
-add_test(ml_pareigenvector1 python stest.py ml_pareigenvector1)
-add_test(ml_pareigenvector4 python stest.py ml_pareigenvector4)
-add_test(ml_parfv-hybridization python stest.py ml_parfv-hybridization)
-add_test(ml_parslice19 python stest.py ml_parslice19)
 
 add_test(parsamplegraph1 python stest.py parsamplegraph1)
 add_test(parsamplegraph4 python stest.py parsamplegraph4)
@@ -104,6 +92,22 @@ if (APPLE)
 
   add_test(pargraph-metis python stest.py pargraph-metis-mac)
 else()
+
+  # NOTE(gelever1): ML tests depend on metis to coarsen topology
+  # but metis produces different results on APPLE
+  # so these tests only hold on linux
+  add_test(ml_eigenvector1 python stest.py ml_eigenvector1)
+  add_test(ml_eigenvector4 python stest.py ml_eigenvector4)
+  add_test(ml_fv-hybridization python stest.py ml_fv-hybridization)
+  add_test(ml_slice19 python stest.py ml_slice19)
+  add_test(ml_fv-metis python stest.py ml_fv-metis)
+
+  add_test(ml_pareigenvector1 python stest.py ml_pareigenvector1)
+  add_test(ml_pareigenvector4 python stest.py ml_pareigenvector4)
+  add_test(ml_parfv-hybridization python stest.py ml_parfv-hybridization)
+  add_test(ml_parslice19 python stest.py ml_parslice19)
+
+  add_test(fv-metis python stest.py fv-metis)
   add_test(graph-metis python stest.py graph-metis)
   add_test(graph-usegenerator python stest.py graph-usegenerator)
   add_test(pargraph-usegenerator python stest.py pargraph-usegenerator)
