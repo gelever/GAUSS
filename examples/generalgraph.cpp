@@ -138,15 +138,19 @@ int main(int argc, char* argv[])
     {
         weight = linalgcpp::ReadText(weight_filename);
     }
-    else
-    {
-        weight = std::vector<double>(nedges_global, 1.0);
-    }
     /// [Load the edge weights]
+
+    /// [Load W block]
+    SparseMatrix W_block;
+    if (!w_block_filename.empty())
+    {
+        W_block = linalgcpp::ReadCSR(w_block_filename);
+    }
+    /// [Load W block]
 
     // Set up GraphUpscale
     /// [Upscale]
-    Graph graph(comm, vertex_edge_global, global_partitioning, weight);
+    Graph graph(comm, vertex_edge_global, global_partitioning, weight, W_block);
     GraphUpscale upscale(graph, {spect_tol, max_evects, hybridization, num_levels});
 
     upscale.PrintInfo();

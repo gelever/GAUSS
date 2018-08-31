@@ -34,7 +34,7 @@ GraphTopology::GraphTopology(const Graph& graph)
 GraphTopology::GraphTopology(const GraphTopology& fine_topology, double coarsening_factor)
 {
     const auto& vertex_edge = fine_topology.agg_face_local_;
-    const auto& part = PartitionAAT(vertex_edge, coarsening_factor, 1.0);
+    const auto& part = PartitionAAT(vertex_edge, coarsening_factor, 1.2);
 
     Init(vertex_edge, part, fine_topology.face_face_, fine_topology.face_true_face_);
 }

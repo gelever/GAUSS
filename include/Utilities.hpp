@@ -227,11 +227,12 @@ void PrintJSON(const std::map<std::string, double>& values, std::ostream& out = 
 SparseMatrix MakeAggVertex(const std::vector<int>& partition);
 
 /** @brief Create processor to aggregate relationship
-    @param num_procs number of processors
-    @param num_aggs_global number of global aggregates
+    @param comm MPI Communicator
+    @param agg_vertex global aggregate to vertex relationship
+    @param vertex_edge global vertex to edge relationship
     @returns proc_agg processor to aggregate relationship
 */
-SparseMatrix MakeProcAgg(int num_procs, int num_aggs_global);
+SparseMatrix MakeProcAgg(MPI_Comm comm, const SparseMatrix& agg_vertex, const SparseMatrix& vertex_edge);
 
 /** @brief Use power iterations to find the maximum eigenpair of A
     @param comm MPI Communicator
@@ -414,6 +415,9 @@ ParMatrix Mult(const ParMatrix& R, const ParMatrix& A, const ParMatrix& P)
 
 /// Rescale edge weights such that e_ij = floor(log_2(e_ij / e_ij_min)) + 1
 SparseMatrix RescaleLog(SparseMatrix A);
+
+/// Shifts partition such that indices are in [0, num_parts]
+void ShiftPartition(std::vector<int>& partition);
 
 } //namespace smoothg
 

@@ -33,19 +33,10 @@ Graph::Graph(MPI_Comm comm, const SparseMatrix& vertex_edge_global,
     assert(static_cast<int>(part_global.size()) == vertex_edge_global.Rows());
 
     int myid;
-    int num_procs;
     MPI_Comm_rank(comm, &myid);
-    MPI_Comm_size(comm, &num_procs);
-
-    int num_aggs_global = *std::max_element(std::begin(part_global), std::end(part_global)) + 1;
 
     SparseMatrix agg_vert = MakeAggVertex(part_global);
-
-    // TODO(gelever1): We may be able to produce better processor partitioning by
-    // using metis w/ PartitionAAT(proc_edge, num_procs);
-    // This will group aggregates together on a processor if they are connected
-    // by an edge
-    SparseMatrix proc_agg = MakeProcAgg(num_procs, num_aggs_global);
+    SparseMatrix proc_agg = MakeProcAgg(comm, agg_vert, vertex_edge_global);
 
     SparseMatrix proc_vert = proc_agg.Mult(agg_vert);
     SparseMatrix proc_edge = proc_vert.Mult(vertex_edge_global);
@@ -61,12 +52,12 @@ Graph::Graph(MPI_Comm comm, const SparseMatrix& vertex_edge_global,
     int nvertices_local = proc_vert.RowSize(myid);
     part_local_.resize(nvertices_local);
 
-    const int agg_begin = proc_agg.GetIndptr()[myid];
-
     for (int i = 0; i < nvertices_local; ++i)
     {
-        part_local_[i] = part_global[vertex_map_[i]] - agg_begin;
+        part_local_[i] = part_global[vertex_map_[i]];
     }
+
+    ShiftPartition(part_local_);
 
     edge_true_edge_ = MakeEdgeTrueEdge(comm, proc_edge, edge_map);
 

@@ -571,29 +571,68 @@ void PrintJSON(const std::map<std::string, double>& values, std::ostream& out,
     out << "}" << new_line;
 }
 
-SparseMatrix MakeProcAgg(int num_procs, int num_aggs_global)
+double Density(const SparseMatrix& A)
 {
-    int num_aggs_local = num_aggs_global / num_procs;
-    int num_left = num_aggs_global % num_procs;
+    long long denom = A.Rows() * (long) A.Cols();
+    return A.nnz() / denom;
+}
 
-    std::vector<int> indptr(num_procs + 1);
-    std::vector<int> indices(num_aggs_global);
-    std::vector<double> data(num_aggs_global, 1.0);
+SparseMatrix MakeProcAgg(MPI_Comm comm, const SparseMatrix& agg_vertex, const SparseMatrix& vertex_edge)
+{
+    int num_procs;
+    int num_aggs = agg_vertex.Rows();
 
-    std::iota(std::begin(indices), std::end(indices), 0);
+    MPI_Comm_size(comm, &num_procs);
 
-    for (int i = 0; i <= num_left; ++i)
+    if (num_procs == 0)
     {
-        indptr[i] = i * (num_aggs_local + 1);
+        std::vector<int> trivial_partition(num_aggs, 0);
+        return MakeAggVertex(std::move(trivial_partition));
     }
 
-    for (int i = num_left + 1; i <= num_procs; ++i)
+    SparseMatrix agg_edge = agg_vertex.Mult(vertex_edge);
+    SparseMatrix agg_agg = agg_edge.Mult(agg_edge.Transpose());
+
+    // Metis doesn't behave well w/ very dense sparse partition
+    // so we partition by hand if aggregates are densely connected
+    const double density = Density(agg_agg);
+    const double density_tol = 0.8;
+
+    std::vector<int> partition;
+
+    if (density < density_tol)
     {
-        indptr[i] = indptr[i - 1] + num_aggs_local;
+        double ubal = 1.0;
+        partition = Partition(agg_agg, num_procs, ubal);
+    }
+    else
+    {
+        partition.resize(num_aggs);
+
+        int num_each = num_aggs / num_procs;
+        int num_left = num_aggs % num_procs;
+
+        int count = 0;
+
+        for (int proc = 0; proc < num_procs; ++proc)
+        {
+            int local_num = num_each + (proc < num_left ? 1 : 0);
+
+            for (int i = 0; i < local_num; ++i)
+            {
+                partition[count++] = proc;
+            }
+        }
+
+        assert(count == num_aggs);
     }
 
-    return SparseMatrix(std::move(indptr), std::move(indices), std::move(data),
-                        num_procs, num_aggs_global);
+    SparseMatrix proc_agg = MakeAggVertex(std::move(partition));
+
+    assert(proc_agg.Cols() == num_aggs);
+    assert(proc_agg.Rows() == num_procs);
+
+    return proc_agg;
 }
 
 SparseMatrix MakeAggVertex(const std::vector<int>& partition)
@@ -1050,6 +1089,19 @@ void OuterProduct(const VectorView& lhs, const VectorView& rhs, DenseMatrix& pro
         }
     }
 }
+
+void ShiftPartition(std::vector<int>& partition)
+{
+    int min_part = *std::min_element(std::begin(partition), std::end(partition));
+
+    for (auto& i : partition)
+    {
+        i -= min_part;
+    }
+
+    linalgcpp::RemoveEmpty(partition);
+}
+
 
 
 } // namespace smoothg
