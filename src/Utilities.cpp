@@ -573,7 +573,7 @@ void PrintJSON(const std::map<std::string, double>& values, std::ostream& out,
 
 double Density(const SparseMatrix& A)
 {
-    long long denom = A.Rows() * (long) A.Cols();
+    long long denom = A.Rows() * (long long) A.Cols();
     return A.nnz() / denom;
 }
 
@@ -596,7 +596,7 @@ SparseMatrix MakeProcAgg(MPI_Comm comm, const SparseMatrix& agg_vertex, const Sp
     // Metis doesn't behave well w/ very dense sparse partition
     // so we partition by hand if aggregates are densely connected
     const double density = Density(agg_agg);
-    const double density_tol = 0.8;
+    const double density_tol = 0.7;
 
     std::vector<int> partition;
 
@@ -607,12 +607,10 @@ SparseMatrix MakeProcAgg(MPI_Comm comm, const SparseMatrix& agg_vertex, const Sp
     }
     else
     {
-        partition.resize(num_aggs);
+        partition.reserve(num_aggs);
 
         int num_each = num_aggs / num_procs;
         int num_left = num_aggs % num_procs;
-
-        int count = 0;
 
         for (int proc = 0; proc < num_procs; ++proc)
         {
@@ -620,11 +618,11 @@ SparseMatrix MakeProcAgg(MPI_Comm comm, const SparseMatrix& agg_vertex, const Sp
 
             for (int i = 0; i < local_num; ++i)
             {
-                partition[count++] = proc;
+                partition.push_back(proc);
             }
         }
 
-        assert(count == num_aggs);
+        assert(static_cast<int>(partition.size()) == num_aggs);
     }
 
     SparseMatrix proc_agg = MakeAggVertex(std::move(partition));

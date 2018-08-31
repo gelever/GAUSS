@@ -51,7 +51,7 @@ struct Level
     mutable BlockVector rhs;
     mutable BlockVector sol;
 
-    std::vector<int> elim_dofs;
+    std::vector<int> edge_elim_dofs;
 };
 
 inline
@@ -69,7 +69,7 @@ Level::Level(MixedMatrix mm, GraphSpace gs, Vector const_vect,
 : mixed_matrix(std::move(mm)), graph_space(std::move(gs)),
   constant_rep(std::move(const_vect)),
   rhs(mixed_matrix.Offsets()), sol(mixed_matrix.Offsets()),
-  elim_dofs(std::move(elim_dofs_in))
+  edge_elim_dofs(std::move(elim_dofs_in))
 {
     if (assemble_M)
     {
