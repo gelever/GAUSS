@@ -96,16 +96,16 @@ else()
   # NOTE(gelever1): ML tests depend on metis to coarsen topology
   # but metis produces different results on APPLE
   # so these tests only hold on linux
-  add_test(ml_eigenvector1 python stest.py ml_eigenvector1)
-  add_test(ml_eigenvector4 python stest.py ml_eigenvector4)
-  add_test(ml_fv-hybridization python stest.py ml_fv-hybridization)
-  add_test(ml_slice19 python stest.py ml_slice19)
-  add_test(ml_fv-metis python stest.py ml_fv-metis)
+  #add_test(ml_eigenvector1 python stest.py ml_eigenvector1)
+  #add_test(ml_eigenvector4 python stest.py ml_eigenvector4)
+  #add_test(ml_fv-hybridization python stest.py ml_fv-hybridization)
+  #add_test(ml_slice19 python stest.py ml_slice19)
+  #add_test(ml_fv-metis python stest.py ml_fv-metis)
 
-  add_test(ml_pareigenvector1 python stest.py ml_pareigenvector1)
-  add_test(ml_pareigenvector4 python stest.py ml_pareigenvector4)
-  add_test(ml_parfv-hybridization python stest.py ml_parfv-hybridization)
-  add_test(ml_parslice19 python stest.py ml_parslice19)
+  #add_test(ml_pareigenvector1 python stest.py ml_pareigenvector1)
+  #add_test(ml_pareigenvector4 python stest.py ml_pareigenvector4)
+  #add_test(ml_parfv-hybridization python stest.py ml_parfv-hybridization)
+  #add_test(ml_parslice19 python stest.py ml_parslice19)
 
   add_test(fv-metis python stest.py fv-metis)
   add_test(graph-metis python stest.py graph-metis)

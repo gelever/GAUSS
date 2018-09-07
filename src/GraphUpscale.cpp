@@ -81,7 +81,7 @@ void GraphUpscale::MakeSolver(int level_i, MixedMatrix& mm)
     if (level_i == 0)
     {
         mm.AssembleM();
-        level.solver = make_unique<SPDSolver>(mm, level.elim_dofs);
+        level.solver = make_unique<SPDSolver>(mm, level.edge_elim_dofs);
     }
     else if (hybridization_)
     {
@@ -90,7 +90,7 @@ void GraphUpscale::MakeSolver(int level_i, MixedMatrix& mm)
     else
     {
         mm.AssembleM();
-        level.solver = make_unique<MinresBlockSolver>(mm, level.elim_dofs);
+        level.solver = make_unique<MinresBlockSolver>(mm, level.edge_elim_dofs);
     }
 
     size_to_level_[mm.LocalD().Rows()] = level_i;
@@ -110,7 +110,7 @@ void GraphUpscale::RescaleSolver(int level_i, const std::vector<double>& agg_wei
     {
         mm.AssembleM(agg_weights);
 
-        level.solver = make_unique<SPDSolver>(mm, level.elim_dofs);
+        level.solver = make_unique<SPDSolver>(mm, level.edge_elim_dofs);
     }
     else if (hybridization_)
     {
@@ -125,7 +125,7 @@ void GraphUpscale::RescaleSolver(int level_i, const std::vector<double>& agg_wei
     else
     {
         mm.AssembleM(agg_weights);
-        level.solver = make_unique<MinresBlockSolver>(mm, level.elim_dofs);
+        level.solver = make_unique<MinresBlockSolver>(mm, level.edge_elim_dofs);
     }
 
     size_to_level_[mm.LocalD().Rows()] = level_i;
@@ -750,11 +750,11 @@ ParMatrix GraphUpscale::ToPrimal() const
 
     bool use_w = mgl.CheckW();
 
-    if (GetLevel(0).elim_dofs.size() > 0)
+    if (GetLevel(0).edge_elim_dofs.size() > 0)
     {
         std::vector<int> marker(D_elim.Cols(), 0);
 
-        for (auto&& dof : GetLevel(0).elim_dofs)
+        for (auto&& dof : GetLevel(0).edge_elim_dofs)
         {
             marker[dof] = 1;
         }
