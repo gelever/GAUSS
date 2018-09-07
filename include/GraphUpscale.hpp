@@ -107,11 +107,14 @@ public:
     /// Get global number of columns (vertex dofs)
     int GlobalCols() const;
 
-    /// Create Weighted Solver
+    /// Create Solver
     void MakeSolver(int level);
+    void MakeSolver(int level, MixedMatrix& mm);
 
-    /// Create Weighted Solver
-    void MakeSolver(int level, const std::vector<double>& agg_weights);
+    /// Rescale solver w/ weights per aggregate
+    void RescaleSolver(int level, const std::vector<double>& agg_weights);
+    void RescaleSolver(int level, const std::vector<double>& agg_weights,
+                    MixedMatrix& mm);
 
     /// Wrapper for applying the upscaling, in linalgcpp terminology
     void Mult(const VectorView& x, VectorView y) const override;
@@ -250,6 +253,15 @@ public:
                     const BlockVector& fine_sol) const;
 
     ParMatrix ToPrimal() const;
+
+    /// Set orthogonalization against constant of vertex solution after solving
+    void SetOrthogonalize(bool do_ortho = true) { do_ortho_ = do_ortho; }
+
+    /// Check use of hybridizaiton solver
+    bool Hybridization() const { return hybridization_; }
+
+    /// Check use of orthogonalization
+    bool Orthogonalization() const { return do_ortho_; }
 
 private:
     std::vector<Level> levels_;

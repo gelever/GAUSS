@@ -139,6 +139,7 @@ private:
                             std::vector<int>& edge_map,
                             std::vector<bool>& edge_marker) const;
 
+    void CountEdgeDofs();
     void InitSolver(SparseMatrix local_hybrid);
 
     ParMatrix ComputeScaledSystem(const ParMatrix& hybrid_d);
@@ -158,6 +159,7 @@ private:
     linalgcpp::PCGSolver cg_;
     parlinalgcpp::BoomerAMG prec_;
 
+    std::vector<DenseMatrix> Minv_;
     std::vector<DenseMatrix> MinvDT_;
     std::vector<DenseMatrix> MinvCT_;
     std::vector<DenseMatrix> AinvDMinvCT_;
@@ -165,7 +167,10 @@ private:
     std::vector<DenseMatrix> hybrid_elem_;
 
     mutable std::vector<Vector> Ainv_f_;
+    mutable std::vector<Vector> Minv_g_;
+    mutable std::vector<Vector> AinvDMinv_g_;
 
+    std::vector<int> edgedof_count_;
     std::vector<double> agg_weights_;
 
     mutable Vector trueHrhs_;

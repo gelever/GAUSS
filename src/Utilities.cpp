@@ -480,7 +480,6 @@ double DivError(MPI_Comm comm, const SparseMatrix& D, const VectorView& numer,
 
     const double error = parlinalgcpp::ParL2Norm(comm, Ddiff) /
                          parlinalgcpp::ParL2Norm(comm, Dfine);
-
     return error;
 }
 
@@ -573,7 +572,7 @@ void PrintJSON(const std::map<std::string, double>& values, std::ostream& out,
 
 double Density(const SparseMatrix& A)
 {
-    long long denom = A.Rows() * (long) A.Cols();
+    double denom = A.Rows() * (double) A.Cols();
     return A.nnz() / denom;
 }
 
@@ -596,7 +595,7 @@ SparseMatrix MakeProcAgg(MPI_Comm comm, const SparseMatrix& agg_vertex, const Sp
     // Metis doesn't behave well w/ very dense sparse partition
     // so we partition by hand if aggregates are densely connected
     const double density = Density(agg_agg);
-    const double density_tol = 0.8;
+    const double density_tol = 0.80;
 
     std::vector<int> partition;
 
@@ -811,8 +810,11 @@ std::vector<int> PartitionPostIsolate(const SparseMatrix& A, std::vector<int> pa
 
     for (auto&& vertex : isolated_vertices)
     {
-        partition.at(vertex) = num_parts++;
+        //partition.at(vertex) = num_parts++;
+        partition.at(vertex) = num_parts;
     }
+
+    num_parts++;
 
     std::vector<int> component(num_vertices, -1);
     std::vector<int> offset_comp(num_parts + 1, 0);

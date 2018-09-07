@@ -63,7 +63,7 @@ GraphUpscale::GraphUpscale(const Graph& graph, const UpscaleParams& params)
         MakeSolver(level_i);
     }
 
-    do_ortho_ = !GetMatrix(0).CheckW();
+    SetOrthogonalize(!GetMatrix(0).CheckW());
 
     timer.Click();
     setup_time_ += timer.TotalTime();
@@ -71,11 +71,16 @@ GraphUpscale::GraphUpscale(const Graph& graph, const UpscaleParams& params)
 
 void GraphUpscale::MakeSolver(int level_i)
 {
-    auto& mm = GetMatrix(level_i);
+    MakeSolver(level_i, GetMatrix(level_i));
+}
+
+void GraphUpscale::MakeSolver(int level_i, MixedMatrix& mm)
+{
     auto& level = GetLevel(level_i);
 
     if (level_i == 0)
     {
+        mm.AssembleM();
         level.solver = make_unique<SPDSolver>(mm, level.elim_dofs);
     }
     else if (hybridization_)
@@ -84,15 +89,21 @@ void GraphUpscale::MakeSolver(int level_i)
     }
     else
     {
+        mm.AssembleM();
         level.solver = make_unique<MinresBlockSolver>(mm, level.elim_dofs);
     }
 
     size_to_level_[mm.LocalD().Rows()] = level_i;
 }
 
-void GraphUpscale::MakeSolver(int level_i, const std::vector<double>& agg_weights)
+void GraphUpscale::RescaleSolver(int level_i, const std::vector<double>& agg_weights)
 {
-    auto& mm = GetMatrix(level_i);
+    RescaleSolver(level_i, agg_weights, GetMatrix(level_i));
+}
+
+void GraphUpscale::RescaleSolver(int level_i, const std::vector<double>& agg_weights,
+                                 MixedMatrix& mm)
+{
     auto& level = GetLevel(level_i);
 
     if (level_i == 0)
