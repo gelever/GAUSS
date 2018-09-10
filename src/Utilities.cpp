@@ -42,7 +42,7 @@ ParMatrix MakeEdgeTrueEdge(MPI_Comm comm, const SparseMatrix& proc_edge,
     MPI_Comm_size(comm, &num_procs);
     MPI_Comm_rank(comm, &myid);
 
-    auto edge_proc = proc_edge.Transpose();
+    SparseMatrix edge_proc = proc_edge.Transpose();
 
     int num_edges_local = proc_edge.RowSize(myid);
     int num_tedges_global = proc_edge.Cols();

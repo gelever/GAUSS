@@ -236,10 +236,7 @@ SparseMatrix HybridSolver::AssembleHybridSystem(
         std::vector<int> local_edgedof = agg_edgedof_.GetIndices(agg);
         std::vector<int> local_multiplier = agg_multiplier_.GetIndices(agg);
 
-        const int nlocal_vertexdof = local_vertexdof.size();
-        const int nlocal_multiplier = local_multiplier.size();
-
-        assert(nlocal_vertexdof > 0);
+        assert(local_vertexdof.size() > 0);
 
         SparseMatrix Dloc = mgl.LocalD().GetSubMatrix(local_vertexdof, local_edgedof,
                                                       edge_map);
@@ -264,14 +261,6 @@ SparseMatrix HybridSolver::AssembleHybridSystem(
 
         M_el[agg].Invert(Minv);
 
-        AinvDMinvCT_i.SetSize(nlocal_vertexdof, nlocal_multiplier);
-        hybrid_elem.SetSize(nlocal_multiplier, nlocal_multiplier);
-        Aloc.SetSize(nlocal_vertexdof, nlocal_vertexdof);
-        DMinvCT.SetSize(nlocal_vertexdof, nlocal_multiplier);
-
-        MinvDT_i.SetSize(Minv.Cols(), Dloc.Rows());
-        MinvCT_i.SetSize(Minv.Cols(), Cloc.Rows());
-
         Dloc.MultCT(Minv, MinvDT_i);
         Cloc.MultCT(Minv, MinvCT_i);
 
@@ -293,7 +282,6 @@ SparseMatrix HybridSolver::AssembleHybridSystem(
 
         if (DMinvCT.Cols() > 0)
         {
-            CMDADMC.SetSize(nlocal_multiplier, nlocal_multiplier);
             AinvDMinvCT_i.MultAT(DMinvCT, CMDADMC);
             hybrid_elem -= CMDADMC;
         }
@@ -386,7 +374,6 @@ void HybridSolver::RHSTransform(const BlockVector& OriginalRHS,
         std::vector<int> local_multiplier = agg_multiplier_.GetIndices(iAgg);
 
         int nlocal_edgedof = local_edgedof.size();
-        int nlocal_vertexdof = local_vertexdof.size();
         int nlocal_multiplier = local_multiplier.size();
 
         // Compute local contribution to the RHS of the hybrid system
@@ -404,18 +391,12 @@ void HybridSolver::RHSTransform(const BlockVector& OriginalRHS,
             assert(count == 1 || count == 2);
         }
 
-        CMinvDTAinv_f_loc.SetSize(nlocal_multiplier);
         AinvDMinvCT_[iAgg].MultAT(f_loc, CMinvDTAinv_f_loc);
-
-        CMinv_g_loc.SetSize(nlocal_multiplier);
         MinvCT_[iAgg].MultAT(g_loc, CMinv_g_loc);
-        CMinv_g_loc *= agg_weights_[iAgg];
-
-        DMinv_g_loc.SetSize(nlocal_vertexdof);
         MinvDT_[iAgg].MultAT(g_loc, DMinv_g_loc);
-
-        CMinvDTAinvDM_g_loc.SetSize(nlocal_multiplier);
         AinvDMinvCT_[iAgg].MultAT(DMinv_g_loc, CMinvDTAinvDM_g_loc);
+
+        CMinv_g_loc *= agg_weights_[iAgg];
         CMinvDTAinvDM_g_loc *= agg_weights_[iAgg];
 
         CMinvDTAinv_f_loc -= CMinvDTAinvDM_g_loc;
@@ -427,15 +408,10 @@ void HybridSolver::RHSTransform(const BlockVector& OriginalRHS,
         }
 
         // Save the element rhs [M B^T;B 0]^-1[f;g] for solution recovery
-        Ainv_f_[iAgg].SetSize(nlocal_vertexdof);
         Ainv_[iAgg].Mult(f_loc, Ainv_f_[iAgg]);
         Ainv_f_[iAgg] /= agg_weights_[iAgg];
 
-
-        AinvDMinv_g_[iAgg].SetSize(nlocal_vertexdof);
         Ainv_[iAgg].Mult(DMinv_g_loc, AinvDMinv_g_[iAgg]);
-
-        Minv_g_[iAgg].SetSize(nlocal_edgedof);
         Minv_[iAgg].Mult(g_loc, Minv_g_[iAgg]);
     }
 }
@@ -476,17 +452,12 @@ void HybridSolver::RecoverOriginalSolution(const VectorView& HybridSol,
             HybridSol.GetSubVector(local_multiplier, mu_loc);
 
             // Compute u = (DMinvDT)^-1(f-DMinvC^T mu)
-            //AinvDMinvCT_[iAgg].AddMult_a(-1., mu_loc, u_loc);
-            tmp.SetSize(u_loc.size());
             AinvDMinvCT_[iAgg].Mult(mu_loc, tmp);
             u_loc -= tmp;
             u_loc -= AinvDMinv_g_[iAgg];
 
             // Compute -sigma = Minv(DT u + DT mu)
-            sigma_loc.SetSize(nlocal_edgedof);
             MinvDT_[iAgg].Mult(u_loc, sigma_loc);
-            //MinvCT_[iAgg].AddMult(mu_loc, sigma_loc);
-            tmp.SetSize(sigma_loc.size());
             MinvCT_[iAgg].Mult(mu_loc, tmp);
             sigma_loc += tmp;
             sigma_loc += Minv_g_[iAgg];
