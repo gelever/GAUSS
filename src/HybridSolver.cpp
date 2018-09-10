@@ -409,12 +409,14 @@ void HybridSolver::RHSTransform(const BlockVector& OriginalRHS,
 
         CMinv_g_loc.SetSize(nlocal_multiplier);
         MinvCT_[iAgg].MultAT(g_loc, CMinv_g_loc);
+        CMinv_g_loc *= agg_weights_[iAgg];
 
         DMinv_g_loc.SetSize(nlocal_vertexdof);
         MinvDT_[iAgg].MultAT(g_loc, DMinv_g_loc);
 
         CMinvDTAinvDM_g_loc.SetSize(nlocal_multiplier);
         AinvDMinvCT_[iAgg].MultAT(DMinv_g_loc, CMinvDTAinvDM_g_loc);
+        CMinvDTAinvDM_g_loc *= agg_weights_[iAgg];
 
         CMinvDTAinv_f_loc -= CMinvDTAinvDM_g_loc;
         CMinvDTAinv_f_loc += CMinv_g_loc;
