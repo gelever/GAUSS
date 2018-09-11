@@ -65,7 +65,7 @@ add_test(graph-hybridization python stest.py graph-hybridization)
 add_test(graph-weight python stest.py graph-weight)
 add_test(timestep python stest.py timestep)
 add_test(graphupscale graphupscale)
-add_test(mltopo mltopo)
+add_test(graph_mltopo graph_mltopo)
 add_test(graph_mlmc graph_mlmc)
 add_test(mleigen mleigen)
 
