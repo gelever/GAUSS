@@ -44,88 +44,48 @@
 ###############################################################
 
 cmake_minimum_required(VERSION 3.5)
-project(smoothG VERSION 1.0 LANGUAGES CXX)
+project(ReservoirSimulator2000 VERSION 1.0 LANGUAGES CXX)
 enable_testing()
 
-option(SMOOTHG_USE_ARPACK "Should ARPACK be enabled?" NO)
-option(SMOOTHG_ENABLE_MFEM_MINIAPPS "Should miniapps that depend on MFEM be enabled?" NO)
-option(SMOOTHG_ENABLE_PARELAGMC_MINIAPPS "Should miniapps that depend on ParELAGMC be enabled?" NO)
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
+find_package(MFEM REQUIRED)
+find_package(smoothg REQUIRED)
 
-find_package(linalgcpp REQUIRED)
-find_package(parlinalgcpp REQUIRED)
-find_package(partition REQUIRED)
-find_package(sparsesolve REQUIRED)
-
-if (SMOOTHG_USE_ARPACK)
-    list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
-    find_package(ARPACK REQUIRED)
-endif()
-
-add_library(smoothG
-    src/GraphCoarsen.cpp
-    src/Graph.cpp
-    src/GraphEdgeSolver.cpp
-    src/GraphGenerator.cpp
-    src/GraphTopology.cpp
-    src/GraphUpscale.cpp
-    src/HybridSolver.cpp
-    src/LocalEigenSolver.cpp
-    src/MGLSolver.cpp
-    src/MinresBlockSolver.cpp
-    src/MixedMatrix.cpp
-    src/SharedEntityComm.cpp
-    src/SPDSolver.cpp
+add_library(ReservoirSimulator2000
+    src/spe10.cpp
+    src/Sampler.cpp
+    src/DarcySolver.cpp
     src/Utilities.cpp
 )
 
-set_target_properties(smoothG PROPERTIES
+set_target_properties(ReservoirSimulator2000 PROPERTIES
         CXX_STANDARD 11
         CXX_STANDARD_REQUIRED YES
         CXX_EXTENSIONS NO
 )
 
-target_compile_options(smoothG PRIVATE $<$<CXX_COMPILER_ID:GNU>:-Wall -Wextra -Wpedantic -O2>)
-target_compile_options(smoothG PRIVATE $<$<CXX_COMPILER_ID:Clang>:-Wall -Wextra -Wpedantic -O2>)
+target_compile_options(ReservoirSimulator2000 PRIVATE $<$<CXX_COMPILER_ID:GNU>:-Wall -Wextra -Wpedantic -O2>)
+target_compile_options(ReservoirSimulator2000 PRIVATE $<$<CXX_COMPILER_ID:Clang>:-Wall -Wextra -Wpedantic -O2>)
 
-target_link_libraries(smoothG
+target_link_libraries(ReservoirSimulator2000
     PUBLIC
-        parlinalgcpp::parlinalgcpp
-        partition::partition
-        sparsesolve::sparsesolve
-        linalgcpp::linalgcpp
-        $<$<BOOL:${SMOOTHG_USE_ARPACK}>:Arpack::Arpack>
+        mfem::mfem
+        smoothg::smoothG
 )
 
-target_include_directories(smoothG
+target_include_directories(ReservoirSimulator2000
     PUBLIC
 		$<INSTALL_INTERFACE:include>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}>
 )
 
-# Astyle
-find_program(ASTYLE_COMMAND astyle HINTS ${ASTYLE_DIR})
-add_custom_target(style
-    ${ASTYLE_COMMAND} --options=smoothg.astylerc src/*.cpp include/*.hpp examples/*.?pp # testcode/*.?pp
-    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
-    COMMENT "Formating source code" VERBATIM
-    )
-
-# Valgrind
-find_program(MEMORYCHECK_COMMAND valgrind)
-set(MEMORYCHECK_COMMAND_OPTIONS "")
-list(APPEND MEMORYCHECK_COMMAND_OPTIONS "--leak-check=full")
-list(APPEND MEMORYCHECK_COMMAND_OPTIONS "--error-exitcode=1")
-function(add_valgrind_test name binary)
-  add_test(${name} ${MEMORYCHECK_COMMAND} ${MEMORYCHECK_COMMAND_OPTIONS} ./${binary})
-endfunction(add_valgrind_test)
-
 # Installation
 include(GNUInstallDirs)
 set(INSTALL_CONFIGDIR ${CMAKE_INSTALL_LIBDIR}/cmake/libsmoothg)
 
-install(TARGETS smoothG
-    EXPORT smoothg-targets
+install(TARGETS ReservoirSimulator2000
+    EXPORT ReservoirSimulator2000-targets
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
@@ -133,47 +93,46 @@ install(TARGETS smoothG
 install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
 # Export targets to a script
-install(EXPORT smoothg-targets
-    FILE smoothgTargets.cmake
-    NAMESPACE smoothg::
+install(EXPORT ReservoirSimulator2000-targets
+    FILE ReservoirSimulator2000Targets.cmake
+    NAMESPACE ReservoirSimulator2000::
     DESTINATION ${INSTALL_CONFIGDIR}
 )
 
 # Create Config files
 include(CMakePackageConfigHelpers)
 write_basic_package_version_file(
-    ${CMAKE_CURRENT_BINARY_DIR}/smoothgConfigVersion.cmake
+    ${CMAKE_CURRENT_BINARY_DIR}/ReservoirSimulator2000ConfigVersion.cmake
     VERSION ${PROJECT_VERSION}
     COMPATIBILITY AnyNewerVersion
 )
 
 configure_package_config_file(
-    ${CMAKE_CURRENT_LIST_DIR}/cmake/smoothgConfig.cmake.in
-    ${CMAKE_CURRENT_BINARY_DIR}/smoothgConfig.cmake
+    ${CMAKE_CURRENT_LIST_DIR}/cmake/ReservoirSimulator2000Config.cmake.in
+    ${CMAKE_CURRENT_BINARY_DIR}/ReservoirSimulator2000Config.cmake
     INSTALL_DESTINATION ${INSTALL_CONFIGDIR}
 )
 
 configure_file(
-  "${PROJECT_SOURCE_DIR}/config/smoothG_config.h.in"
-  "${PROJECT_BINARY_DIR}/smoothG_config.h"
+    "${PROJECT_SOURCE_DIR}/config/ReservoirSimulator2000_config.h.in"
+    "${PROJECT_BINARY_DIR}/ReservoirSimulator2000_config.h"
   )
 
 # Install Config files
 install(FILES
-    ${CMAKE_CURRENT_BINARY_DIR}/smoothgConfig.cmake
-    ${CMAKE_CURRENT_BINARY_DIR}/smoothgConfigVersion.cmake
+    ${CMAKE_CURRENT_BINARY_DIR}/ReservoirSimulator2000Config.cmake
+    ${CMAKE_CURRENT_BINARY_DIR}/ReservoirSimulator2000ConfigVersion.cmake
     DESTINATION ${INSTALL_CONFIGDIR}
 )
 
 # Export from the build tree
-export(EXPORT smoothg-targets
-       FILE ${CMAKE_CURRENT_BINARY_DIR}/smoothgTargets.cmake
-       NAMESPACE smoothg::
+export(EXPORT ReservoirSimulator2000-targets
+    FILE ${CMAKE_CURRENT_BINARY_DIR}/ReservoirSimulator2000Targets.cmake
+       NAMESPACE ReservoirSimulator2000::
        )
 
-export(PACKAGE smoothG)
+   export(PACKAGE ReservoirSimulator2000)
 
 # Sub Directories
 add_subdirectory(examples)
-add_subdirectory(testcode)
-add_subdirectory(miniapps)
+#add_subdirectory(testcode)

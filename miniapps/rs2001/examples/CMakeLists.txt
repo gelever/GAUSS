@@ -1,0 +1,17 @@
+add_executable(finitevolume finitevolume.cpp)
+target_link_libraries(finitevolume ReservoirSimulator2000)
+
+add_executable(timestep timestep.cpp)
+target_link_libraries(timestep ReservoirSimulator2000)
+
+add_executable(mltopo mltopo.cpp)
+target_link_libraries(mltopo ReservoirSimulator2000)
+
+add_executable(PDESamplerTest PDESamplerTest.cpp)
+target_link_libraries(PDESamplerTest ReservoirSimulator2000)
+
+add_executable(MLMC_SPE10 MLMC_SPE10.cpp)
+target_link_libraries(MLMC_SPE10 ReservoirSimulator2000)
+
+add_executable(dirichlet dirichlet.cpp)
+target_link_libraries(dirichlet ReservoirSimulator2000)
