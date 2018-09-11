@@ -170,8 +170,8 @@ int main(int argc, char* argv[])
         const auto& coarse_coeff = sampler.GetCoefficientCoarse();
         const auto& upscaled_coeff = sampler.GetCoefficientUpscaled();
 
-        upscale.MakeSolver(1, coarse_coeff);
-        upscale.MakeSolver(0, fine_coeff);
+        upscale.RescaleSolver(1, coarse_coeff);
+        upscale.RescaleSolver(0, fine_coeff);
 
         fine_sol = 0.0;
         upscaled_sol = 0.0;

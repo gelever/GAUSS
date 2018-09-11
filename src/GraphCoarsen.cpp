@@ -429,7 +429,6 @@ void GraphCoarsen::ScaleEdgeTargets(const MixedMatrix& mgl, const VectorView& co
 
         constant_vect.GetSubVector(vertices, one);
 
-        oneD.SetSize(D_transfer.Cols());
         D_transfer.MultAT(one, oneD);
 
         VectorView pv_trace = edge_traces.GetColView(0);
@@ -822,9 +821,6 @@ void GraphCoarsen::BuildPedge(const MixedMatrix& mgl, const VectorView& constant
             SparseMatrix M_transfer = mgl.LocalM().GetSubMatrix(edge_dofs, face_fine_dofs, col_marker_);
             SparseMatrix D_transfer = mgl.LocalD().GetSubMatrix(vertex_dofs, face_fine_dofs, col_marker_);
 
-            M_trace.SetSize(M_transfer.Rows(), edge_targets_[face].Cols());
-            D_trace.SetSize(D_transfer.Rows(), edge_targets_[face].Cols());
-
             M_transfer.Mult(edge_targets_[face], M_trace);
             D_transfer.Mult(edge_targets_[face], D_trace);
 
@@ -915,8 +911,6 @@ void GraphCoarsen::BuildQedge(const MixedMatrix& mgl, const VectorView& constant
         constant_vect.GetSubVector(vertex_dofs, one_rep);
 
         SparseMatrix D_transfer = mgl.LocalD().GetSubMatrix(vertex_dofs, face_fine_dofs, col_marker_);
-
-        one_D.SetSize(D_transfer.Cols());
         D_transfer.MultAT(one_rep, one_D);
 
         double one_D_PV = one_D.Mult(PV_trace);
@@ -931,7 +925,6 @@ void GraphCoarsen::BuildQedge(const MixedMatrix& mgl, const VectorView& constant
         {
             trace.GetCol(1, trace.Cols(), sigma_f);
 
-            sigma_f_PV.SetSize(sigma_f.Cols());
             sigma_f.MultAT(PV_trace, sigma_f_PV);
             OuterProduct(one_D, sigma_f_PV, DT_one_sigma_f_PV);
             DT_one_sigma_f_PV /= one_D_PV;
@@ -1177,9 +1170,6 @@ std::vector<DenseMatrix> GraphCoarsen::BuildElemM(const MixedMatrix& mgl,
         auto cdofs = agg_cdof_edge.GetIndices(i);
 
         GetSubMatrix(P_edge_, agg_dofs, cdofs, col_marker_, P_sub);
-
-        M_tmp.SetSize(P_sub.Cols(), M_loc.Cols());
-        M_elem[i].SetSize(P_sub.Cols(), P_sub.Cols());
 
         M_loc.Mult(P_sub, M_tmp);
         P_sub.MultAT(M_tmp, M_elem[i]);
