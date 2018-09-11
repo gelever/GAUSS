@@ -21,8 +21,8 @@ Several examples are provided:
 
 | Name        | Description |
 | ----------- |-------------|
-| `finitevolume.cpp`- | Finite volume upscaling |
-| `dirichlet.cpp`- | Application of Dirichlet boundary conditions |
-| `MLMC_SPE10.cpp`- | Sample generation and element scaling |
-| `PDESamplerTest.cpp`- | Generate samples and statistics|
-| `timestep.cpp`- | Diffusion over time |
+| `finitevolume.cpp` | Finite volume upscaling |
+| `dirichlet.cpp` | Application of Dirichlet boundary conditions |
+| `MLMC_SPE10.cpp`| Sample generation and element scaling |
+| `PDESamplerTest.cpp` | Generate samples and statistics|
+| `timestep.cpp` | Diffusion over time |
