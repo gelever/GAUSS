@@ -80,7 +80,7 @@ def main(mat_filename, pos_filename, vis_data=[], node_size=40, cols=1, dark=Tru
         mat_filename:   Filename of matrix data
         pos_filename:   Filename of position data
         vis_data:       Data to visualize, else just show graph
-        node_size:      Data to visualize, else just show graph
+        node_size:      Node size
         cols:           Columns in output
         dark:           Use dark background
         dual:           If input graph A is not square, use A^T A instead of AA^T

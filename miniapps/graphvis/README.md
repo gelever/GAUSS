@@ -16,7 +16,7 @@ Generates a position file using graphvis' sfdp.
 ---
 ## `graph_vis.py`
 Visualize a graph and optional node data.  
-If node data is not provided, edge colors will be base on their Euclidian length.
+If node data is not provided, edge colors will be based on the Euclidian length.
 
 ### Usage: 
 `python3 graph_vis.py matrix_filename.txt position_filename.pos [node_data] [-ns 40.0] [-cols 2] [-d] [-l] [-log][-cm jet]`

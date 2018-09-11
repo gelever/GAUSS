@@ -14,6 +14,9 @@
 #
 #################################################################### EHEADER #
 
+option(SMOOTHG_ENABLE_MFEM_MINIAPPS "Should miniapps that depend on MFEM be enabled?" NO)
+option(SMOOTHG_ENABLE_PARELAGMC_MINIAPPS "Should miniapps that depend on ParELAGMC be enabled?" NO)
+
 add_subdirectory(graphvis)
 
 if (SMOOTHG_ENABLE_MFEM_MINIAPPS)

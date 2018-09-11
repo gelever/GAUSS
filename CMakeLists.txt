@@ -48,8 +48,6 @@ project(smoothG VERSION 1.0 LANGUAGES CXX)
 enable_testing()
 
 option(SMOOTHG_USE_ARPACK "Should ARPACK be enabled?" NO)
-option(SMOOTHG_ENABLE_MFEM_MINIAPPS "Should miniapps that depend on MFEM be enabled?" NO)
-option(SMOOTHG_ENABLE_PARELAGMC_MINIAPPS "Should miniapps that depend on ParELAGMC be enabled?" NO)
 
 find_package(linalgcpp REQUIRED)
 find_package(parlinalgcpp REQUIRED)
