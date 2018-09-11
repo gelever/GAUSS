@@ -69,7 +69,7 @@ Colormaps from matplotlib can be set from the command line
 
 Node size can also be set from the command line
 
-`python3 graph_vis.py graphdata/internet.txt internet.pos -l -cm magma -ns 0.1`
+`python3 graph_vis.py graphdata/internet.txt internet.pos fiedler.txt part100.txt part300.txt -l -cm magma -ns 0.1`
 ![](imgs/internet_fielder_part_magma_ns0.1.png)
 
 
