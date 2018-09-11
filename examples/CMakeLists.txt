@@ -80,7 +80,7 @@ add_test(pargraph-hybridization python stest.py pargraph-hybridization)
 add_test(partimestep python stest.py partimestep)
 add_test(pargraphupscale mpirun -np ${SMOOTHG_TEST_PROCS} ./graphupscale)
 add_test(parmltopo mpirun -np ${SMOOTHG_TEST_PROCS} ./graph_mltopo)
-add_test(parmlmc mpirun -np ${SMOOTHG_TEST_PROCS} ./mlmc)
+add_test(parmlmc mpirun -np ${SMOOTHG_TEST_PROCS} ./graph_mlmc)
 add_test(parmleigen mpirun -np ${SMOOTHG_TEST_PROCS} ./mleigen)
 
 if (APPLE)
