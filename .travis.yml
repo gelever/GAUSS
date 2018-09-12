@@ -55,9 +55,10 @@ before_install:
     - export PATH=$TRAVIS_BUILD_DIR/extern/mpich/bin:$PATH;
     - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install metis; fi
     - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install suite-sparse; fi
+    - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install astyle; fi
 
 install:
-    - if [ ! -d extern/astyle/bin ]; then
+    - if [ ! -d extern/astyle/bin ] && [[ "$TRAVIS_OS_NAME" != "osx" ]]; then
         sh config/build_scripts/build_astyle.sh;
      else
         echo "Reusing cached astyle";
