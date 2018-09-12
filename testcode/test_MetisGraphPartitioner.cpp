@@ -76,7 +76,8 @@ int main(int argc, char* argv[])
     // Test PostIsolating
 
     std::vector<int> isolated_vertices {4, 2};
-    std::vector<int> isolated_partition = PartitionPostIsolate(vertex_vertex, partition, isolated_vertices);
+    std::vector<int> isolated_partition = PartitionPostIsolate(vertex_vertex, partition,
+                                                               isolated_vertices);
 
     std::cout << "\nIsolated Partition: " << isolated_partition;
 

@@ -105,44 +105,45 @@ std::vector<int> MetisPart(const smoothg::SparseMatrix& vertex_edge, int num_par
 
 void SetVisView(mfem::socketstream& vis_v, VisType view)
 {
-    switch(view)
+    switch (view)
     {
         case VisType::Angle:
-            {
-                vis_v << vis_flatten << vis_flatten;
-                vis_v << vis_embiggen << vis_embiggen;
-                vis_v << vis_embiggen << vis_embiggen;
-                vis_v << vis_angle_view;
-                vis_v << vis_mesh_blend;
-                vis_v << vis_mesh_level_lines;
-                vis_v << vis_cet_rainbow_colormap;
-                vis_v << vis_colorbar;
+        {
+            vis_v << vis_flatten << vis_flatten;
+            vis_v << vis_embiggen << vis_embiggen;
+            vis_v << vis_embiggen << vis_embiggen;
+            vis_v << vis_angle_view;
+            vis_v << vis_mesh_blend;
+            vis_v << vis_mesh_level_lines;
+            vis_v << vis_cet_rainbow_colormap;
+            vis_v << vis_colorbar;
 
-                break;
-            }
+            break;
+        }
         case VisType::Top:
-            {
-                vis_v << vis_top_view;
-                vis_v << vis_light;
-                vis_v << vis_perspective;
-                vis_v << vis_embiggen << vis_embiggen;
-                vis_v << vis_embiggen << vis_embiggen;
-                vis_v << vis_embiggen << vis_embiggen;
-                vis_v << vis_colorbar;
-                break;
-            }
+        {
+            vis_v << vis_top_view;
+            vis_v << vis_light;
+            vis_v << vis_perspective;
+            vis_v << vis_embiggen << vis_embiggen;
+            vis_v << vis_embiggen << vis_embiggen;
+            vis_v << vis_embiggen << vis_embiggen;
+            vis_v << vis_colorbar;
+            break;
+        }
         case VisType::Big:
-            {
-                vis_v << vis_embiggen << vis_embiggen;
-                break;
-            }
+        {
+            vis_v << vis_embiggen << vis_embiggen;
+            break;
+        }
         default: throw std::runtime_error("Invalid View Selected!");
     }
 }
 
 void VisSetup(MPI_Comm comm, mfem::socketstream& vis_v, mfem::ParGridFunction& field,
               mfem::ParMesh& pmesh,
-              VisRange range, const std::string& title, const std::string& caption, bool show_log, VisType vis_type)
+              VisRange range, const std::string& title, const std::string& caption, bool show_log,
+              VisType vis_type)
 {
     const char vishost[] = "localhost";
     const int  visport   = 19916;
@@ -162,7 +163,7 @@ void VisSetup(MPI_Comm comm, mfem::socketstream& vis_v, mfem::ParGridFunction& f
     vis_v << "autoscale off\n";
 
     // update value-range; keep mesh-extents fixed
-    vis_v << "valuerange " << range.first << " " << range.second <<"\n";
+    vis_v << "valuerange " << range.first << " " << range.second << "\n";
 
     SetVisView(vis_v, vis_type);
 
@@ -320,10 +321,10 @@ std::vector<int> CartPart(std::vector<int>& num_procs_xyz,
 }
 
 void EliminateEssentialBC(smoothg::GraphUpscale& upscale,
-                                     const smoothg::SparseMatrix& bdr_attr_vertex,
-                                     const std::vector<int>& ess_bdr,
-                                     const smoothg::BlockVector& x,
-                                     smoothg::BlockVector& b)
+                          const smoothg::SparseMatrix& bdr_attr_vertex,
+                          const std::vector<int>& ess_bdr,
+                          const smoothg::BlockVector& x,
+                          smoothg::BlockVector& b)
 {
     const auto& mm_0 = upscale.GetLevel(0).mixed_matrix;
 

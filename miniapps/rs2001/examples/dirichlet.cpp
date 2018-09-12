@@ -26,7 +26,8 @@
 
 using namespace rs2000;
 
-smoothg::SparseMatrix ComputeD(const smoothg::GraphUpscale& upscale, const smoothg::SparseMatrix& boundary_att_vertex,
+smoothg::SparseMatrix ComputeD(const smoothg::GraphUpscale& upscale,
+                               const smoothg::SparseMatrix& boundary_att_vertex,
                                const std::vector<int>& ess_bdr);
 
 int main(int argc, char* argv[])
@@ -243,7 +244,7 @@ int main(int argc, char* argv[])
     std::vector<int> ess_bdr(boundary_att_vertex.Rows(), 0);
     std::vector<double> ess_vals(boundary_att_vertex.Rows(), 0);
 
-    switch(bndr_type)
+    switch (bndr_type)
     {
         case 0: { ess_bdr[0] = 1; ess_bdr[2] = 1; ess_vals[2] = ess_val; break; }
         case 1: { ess_bdr[2] = 1; ess_bdr[0] = 1; ess_vals[0] = ess_val; break; }
@@ -272,7 +273,7 @@ int main(int argc, char* argv[])
     {
         VisRange range = GetVisRange(comm, ess_conditions.GetBlock(1));
         Visualize(VectorToVector(ess_conditions.GetBlock(1)), *pmesh, vertex_gf,
-                range, "Ess U data", 0);
+                  range, "Ess U data", 0);
     }
 
     {
@@ -317,7 +318,8 @@ int main(int argc, char* argv[])
     return EXIT_SUCCESS;
 }
 
-smoothg::SparseMatrix ComputeD(const smoothg::GraphUpscale& upscale, const smoothg::SparseMatrix& boundary_att_vertex,
+smoothg::SparseMatrix ComputeD(const smoothg::GraphUpscale& upscale,
+                               const smoothg::SparseMatrix& boundary_att_vertex,
                                const std::vector<int>& ess_bdr)
 {
     smoothg::SparseMatrix D = upscale.GetMatrix(0).LocalD();

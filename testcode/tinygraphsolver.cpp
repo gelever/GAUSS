@@ -85,7 +85,7 @@ int main(int argc, char* argv[])
             W_coo.Add(i, i, i + 1);
         }
     }
-    
+
     SparseMatrix W_block = W_coo.ToSparse();
 
     std::vector<int> partition {0, 0, 0, 1, 1, 1};

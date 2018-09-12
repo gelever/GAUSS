@@ -68,7 +68,8 @@ Graph::Graph(MPI_Comm comm, const SparseMatrix& vertex_edge_global,
     MakeLocalW(W_block_global);
 }
 
-void Graph::MakeLocalWeight(const std::vector<int>& edge_map, const std::vector<double>& global_weight)
+void Graph::MakeLocalWeight(const std::vector<int>& edge_map,
+                            const std::vector<double>& global_weight)
 {
     int num_edges = vertex_edge_local_.Cols();
 

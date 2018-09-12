@@ -80,6 +80,14 @@ target_include_directories(ReservoirSimulator2000
         $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}>
 )
 
+# Astyle
+find_program(ASTYLE_COMMAND astyle HINTS ${ASTYLE_DIR})
+add_custom_target(rs2001_style
+    ${ASTYLE_COMMAND} --options=rs2001.astylerc src/*.cpp include/*.hpp examples/*.?pp testcode/*.?pp
+    WORKING_DIRECTORY ${ReservoirSimulator2000_SOURCE_DIR}
+    COMMENT "Formating source code" VERBATIM
+    )
+
 # Installation
 include(GNUInstallDirs)
 set(INSTALL_CONFIGDIR ${CMAKE_INSTALL_LIBDIR}/cmake/libsmoothg)

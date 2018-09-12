@@ -203,7 +203,7 @@ void GraphCoarsen::ComputeVertexTargets(const ParMatrix& M_ext_global,
         }
 
         DenseMatrix evects_restricted = RestrictLocal(evects, col_marker_,
-                vertex_dofs_ext, vertex_dofs_local);
+                                                      vertex_dofs_ext, vertex_dofs_local);
 
         VectorView first_vect = evects_restricted.GetColView(0);
         vertex_targets_[agg] = Orthogonalize(evects_restricted, first_vect, 1, max_evects_);
@@ -270,7 +270,7 @@ std::vector<std::vector<Vector>> GraphCoarsen::CollectConstant(const VectorView&
             auto sub_vect = constant_vect.GetSubVector(agg_vertices);
 
             constant_data.insert(std::end(constant_data), std::begin(sub_vect),
-                                   std::end(sub_vect));
+                                 std::end(sub_vect));
         }
 
         sec_constant.ReduceSend(face, Vector(std::move(constant_data)));
@@ -458,7 +458,8 @@ void GraphCoarsen::ScaleEdgeTargets(const MixedMatrix& mgl, const VectorView& co
     }
 }
 
-SparseMatrix GraphCoarsen::CombineM(const std::vector<SparseMatrix>& face_M, int num_face_edges) const
+SparseMatrix GraphCoarsen::CombineM(const std::vector<SparseMatrix>& face_M,
+                                    int num_face_edges) const
 {
     assert(face_M.size() == 2);
 
@@ -507,7 +508,7 @@ SparseMatrix GraphCoarsen::CombineM(const std::vector<SparseMatrix>& face_M, int
 }
 
 SparseMatrix GraphCoarsen::CombineD(const std::vector<SparseMatrix>& face_D,
-                                   int num_face_edges) const
+                                    int num_face_edges) const
 {
     assert(face_D.size() == 2);
 
@@ -735,7 +736,7 @@ void GraphCoarsen::BuildPvertex()
     }
 
     P_vertex_ = SparseMatrix(std::move(indptr), std::move(indices), std::move(data),
-                             num_vertexdofs , coarse_dof_counter);
+                             num_vertexdofs, coarse_dof_counter);
 }
 
 int GraphCoarsen::ComputeEdgeNNZ() const
@@ -1268,7 +1269,8 @@ GraphSpace GraphCoarsen::BuildGraphSpace() const
 
     auto starts = GenerateOffsets(comm, {num_vertices, num_vertex_dof,
                                          num_edges, num_edge_dof,
-                                         num_aggs, num_face_dofs});
+                                         num_aggs, num_face_dofs
+                                        });
     return
     {
         {comm, starts[0], starts[1], std::move(vertex_vdof)},

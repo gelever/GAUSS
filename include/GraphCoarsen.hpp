@@ -204,10 +204,10 @@ private:
     int GetSplit(int face) const;
 
     void BuildAggFaceM(const MixedMatrix& mgl, int face, int agg,
-                      const SparseMatrix& vertex_agg,
-                      const SparseMatrix& edge_vertex,
-                      std::vector<int>& col_marker,
-                      DenseMatrix& M_local) const;
+                       const SparseMatrix& vertex_agg,
+                       const SparseMatrix& edge_vertex,
+                       std::vector<int>& col_marker,
+                       DenseMatrix& M_local) const;
 
     void BuildAggBubbleDof();
     void BuildFaceCoarseDof();

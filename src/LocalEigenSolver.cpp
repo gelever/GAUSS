@@ -340,8 +340,8 @@ public:
         :
         ARPACK_operator_adapter(D.Rows()),
         A_({0, M.Rows(), M.Rows() + D.Rows()}),
-        rhs_({0, M.Rows(), M.Rows() + D.Rows()}),
-        sol_({0, M.Rows(), M.Rows() + D.Rows()})
+    rhs_({0, M.Rows(), M.Rows() + D.Rows()}),
+    sol_({0, M.Rows(), M.Rows() + D.Rows()})
     {
         rhs_ = 0.0;
 
@@ -544,7 +544,7 @@ void LocalEigenSolver::Compute(
 }
 
 void LocalEigenSolver::SparseBlockCompute(SparseMatrix M, SparseMatrix D,
-                                    std::vector<double>& evals, DenseMatrix& evects)
+                                          std::vector<double>& evals, DenseMatrix& evects)
 {
     if (IsDiag(M))
     {

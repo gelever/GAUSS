@@ -108,7 +108,8 @@ smoothg::GraphCoarsen BuildCoarsener(const smoothg::Graph& graph,
 {
     smoothg::GraphTopology gt(graph);
     smoothg::GraphSpace graph_space = smoothg::FineGraphSpace(graph);
-    smoothg::Vector constant_rep(graph.vertex_edge_local_.Rows(), 1.0 / std::sqrt(graph.global_vertices_));
+    smoothg::Vector constant_rep(graph.vertex_edge_local_.Rows(),
+                                 1.0 / std::sqrt(graph.global_vertices_));
     smoothg::SpectralPair spect_info{1.0, 3};
 
     return smoothg::GraphCoarsen(std::move(gt), graph_space, mixed_matrix, constant_rep, spect_info);
@@ -207,14 +208,14 @@ int main(int argc, char* argv[])
     if (fine_diff > tol)
     {
         ParPrint(myid, std::cerr << "Fine level rescaling is NOT working as expected: "
-                                 << fine_diff << "\n");
+                 << fine_diff << "\n");
         failed = true;
     }
 
     if (coarse_diff > tol)
     {
         ParPrint(myid, std::cerr << "Coarse level rescaling is NOT working as expected: "
-                                 << coarse_diff << "\n");
+                 << coarse_diff << "\n");
         failed = true;
     }
 
