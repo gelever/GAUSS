@@ -188,17 +188,21 @@ void InversePermeabilityFunction::Set2DSlice(SliceOrientation o, int npos_ )
 
 void InversePermeabilityFunction::ReadPermeabilityFile(const std::string& fileName)
 {
-    std::ifstream permfile(fileName.c_str());
+    std::ifstream buffer(fileName.c_str());
 
-    if (!permfile.is_open())
+    if (!buffer.is_open())
     {
         std::cout << "Error in opening file " << fileName << std::endl;
         mfem::mfem_error("File does not exist");
     }
 
+    std::stringstream permfile;
+    permfile << buffer.rdbuf();
+
     inversePermeability = new double [3 * Nx * Ny * Nz];
     double* ip = inversePermeability;
-    double tmp;
+    std::string tmp;
+
     for (int l = 0; l < 3; l++)
     {
         for (int k = 0; k < Nz; k++)
@@ -207,9 +211,9 @@ void InversePermeabilityFunction::ReadPermeabilityFile(const std::string& fileNa
             {
                 for (int i = 0; i < Nx; i++)
                 {
-                    permfile >> *ip;
-                    *ip = 1. / (*ip);
-                    ip++;
+                    tmp.clear();
+                    permfile >> tmp;
+                    *ip++ = 1. / (std::stod(tmp));
                 }
                 for (int i = 0; i < 60 - Nx; i++)
                     permfile >> tmp; // skip unneeded part
