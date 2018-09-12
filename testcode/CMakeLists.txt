@@ -41,8 +41,8 @@ target_link_libraries(test_Graph smoothG)
 add_executable(test_projection test_projection.cpp)
 target_link_libraries(test_projection smoothG)
 
-add_executable(test_Solvers test_Solvers.cpp)
-target_link_libraries(test_Solvers smoothG)
+#add_executable(test_Solvers test_Solvers.cpp)
+#target_link_libraries(test_Solvers smoothG)
 
 # add tests
 # add_test(lineargraph lineargraph)
