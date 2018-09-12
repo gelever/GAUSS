@@ -73,8 +73,8 @@ Log permeability of several slices of SPE10 dataset.  Using the `-d` flag to vis
 ## Color and size
 Colormaps from matplotlib can be set from the command line
 
-`python3 graph_vis.py graphdata/internet.txt internet.pos -l -cm jet_r`
-![](imgs/internet_jet_r.png)
+`python3 graph_vis.py graphdata/internet.txt internet.pos -l -cm Blues_r`
+![](imgs/internet_pos.png)
 
 Node size can also be set from the command line
 
