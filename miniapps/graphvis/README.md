@@ -34,7 +34,7 @@ If node data is not provided, edge colors will be based on the Euclidian length.
   
   
 # Examples:
-## Geometetric Positions
+## Geometric Positions
 If node positions are known beforehand, such as from a mesh, they can be used to get a more accurate graph image.
 
 `python3 graph_vis.py graphdata/fe_vertex_edge.txt geometric.pos`
@@ -54,14 +54,23 @@ Multiple node data can be sepecified at the command line
 `python3 graph_vis.py graphdata/fe_vertex_edge.txt geometric.pos graphdata/fe_rhs.txt graphdata/fe_part.txt`
 ![](imgs/fe_ve_prism_part_rhs.png)
 
+If node data is not provided, the node connections will be colored based on Euclidian distance.
+
+`python3 graph_vis.py graphdata/vertex_edge_sample.txt sample.pos`
+![](imgs/sample_jet.png)
+
+`python3 graph_vis.py graphdata/vertex_edge_sample.txt sample.edge.pos -d`
+![](imgs/sample__dual_jet.png)
+
 ## Dual Graph
-Dual graph can be visualized using the `-d` flag.  Where the position file corresponds to the dual graph as well.
+If the input graph `A` is not square, the default action is to visualize `AA^T`.
+The dual graph `A^T A` can be visualized using the `-d` flag.  Where the position file corresponds to the dual graph as well.
 
 Log permeability of several slices of SPE10 dataset.  Using the `-d` flag to visualize `edge_vertex * vertex_edge` relationship:
 `python3 graph_vis.py graphdata/fe_vertex_edge.txt generated.edge.pos graphdata/fe_weight_0.txt graphdata/fe_weight_19.txt -d -log -l`
 ![](imgs/fe_ve_weights.png)
 
-## Internet Graph Visualizations
+## Color and size
 Colormaps from matplotlib can be set from the command line
 
 `python3 graph_vis.py graphdata/internet.txt internet.pos -l -cm jet_r`
@@ -71,13 +80,3 @@ Node size can also be set from the command line
 
 `python3 graph_vis.py graphdata/internet.txt internet.pos fiedler.txt part100.txt part300.txt -l -cm magma -ns 0.1`
 ![](imgs/internet_fielder_part_magma_ns0.1.png)
-
-
-## Sample Graph Visualizations
-If node data is not provided, the node connections will be colored based on Euclidian distance.
-
-### Sample graph:
-![](imgs/sample_jet.png)
-
-### Sample dual graph:
-![](imgs/sample__dual_jet.png)
