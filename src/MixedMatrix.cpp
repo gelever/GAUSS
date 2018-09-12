@@ -255,7 +255,7 @@ void MixedMatrix::AssembleM(const std::vector<double>& agg_weight)
 }
 
 SparseMatrix MixedMatrix::MakeLocalD(const ParMatrix& edge_true_edge,
-                                     const SparseMatrix& vertex_edge) const
+                                     const SparseMatrix& vertex_edge)
 {
     SparseMatrix edge_vertex = vertex_edge.Transpose();
 

@@ -144,11 +144,13 @@ public:
     /* @brief Block true offsets */
     const std::vector<int>& TrueOffsets() const { return true_offsets_; }
 
+    /* @brief Create Local D */
+    static
+    SparseMatrix MakeLocalD(const ParMatrix& edge_true_edge,
+                            const SparseMatrix& vertex_edge);
+
 protected:
     void Init();
-
-    SparseMatrix MakeLocalD(const ParMatrix& edge_true_edge,
-                            const SparseMatrix& vertex_edge) const;
 
     ParMatrix edge_true_edge_;
 
