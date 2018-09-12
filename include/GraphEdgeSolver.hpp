@@ -64,7 +64,7 @@ public:
        @param M matrix \f$ M \f$ in the formula in the class description
        @param D matrix \f$ D \f$ in the formula in the class description
     */
-    GraphEdgeSolver(const SparseMatrix& M, const SparseMatrix& D);
+    GraphEdgeSolver(SparseMatrix M, SparseMatrix D);
 
     /**
        @brief Constructor of the local saddle point solver.
@@ -73,8 +73,10 @@ public:
        @param D matrix \f$ D \f$ in the formula in the class description
 
     */
+    /*
     GraphEdgeSolver(const std::vector<double>& M_data,
                     const SparseMatrix& D);
+                    */
 
     /** @brief Default Destructor */
     ~GraphEdgeSolver() noexcept = default;
@@ -147,6 +149,11 @@ public:
     */
     void Mult(const DenseMatrix& rhs, DenseMatrix& sigma_sol, DenseMatrix& u_sol) const;
 
+    void BlockMult(const VectorView& edge_rhs, const VectorView& vertex_rhs,
+                   VectorView sigma_sol) const;
+    void BlockMult(const DenseMatrix& edge_rhs, const DenseMatrix& vertex_rhs,
+                   DenseMatrix& sigma_sol) const;
+
     /**
        @brief Solves \f$ (D M^{-1} D^T) u = g\f$, \f$ \sigma = M^{-1} D^T u \f$.
               Offsets the right hand side by set amount.
@@ -194,10 +201,14 @@ public:
                     DenseMatrix& u_sol) const;
 
 private:
-    SparseMatrix MinvDT_;
-    SparseSolver Ainv_;
+    SparseSolver block_Ainv_;
 
-    mutable Vector vect_sol_;
+    SparseMatrix MinvDT_;
+
+    bool is_diag_;
+
+    mutable BlockVector rhs_;
+    mutable BlockVector sol_;
 };
 
 } // namespace smoothg

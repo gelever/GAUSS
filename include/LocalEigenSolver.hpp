@@ -85,6 +85,8 @@ public:
     */
     double Compute(SparseMatrix& A, DenseMatrix& evects);
 
+    double BlockCompute(SparseMatrix M, SparseMatrix D, DenseMatrix& evects);
+
     /**
        Given symmetric matrices \f$ A, B \f$, find the eigenvectors
        corresponding to the smallest few eigenvalues of the generalized eigen
@@ -119,6 +121,12 @@ private:
     */
     int Compute(int n, double* a, std::vector<double>& evals, DenseMatrix& evects);
 
+
+    void SparseBlockCompute(SparseMatrix M, SparseMatrix D, std::vector<double>& evals,
+                            DenseMatrix& evects);
+    void DenseBlockCompute(const SparseMatrix& M, const SparseMatrix& D, std::vector<double>& evals,
+                           DenseMatrix& evects);
+
     int max_num_evects_;
     double rel_tol_;
     int size_offset_;
@@ -128,6 +136,11 @@ private:
     DenseMatrix dense_B_;
     double eig_max_;
     double* eig_max_ptr_;
+
+    DenseMatrix DT_;
+    DenseMatrix Minv_;
+    DenseMatrix DMinv_;
+    DenseMatrix DMinvDT_;
 
     ///@name LAPACK parameters and workspace
     ///@{

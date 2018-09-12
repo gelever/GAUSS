@@ -126,7 +126,7 @@ int main(int argc, char* argv[])
 
     /// [Upscale]
     Graph graph(comm, vertex_edge_global, global_partitioning, weight, W_block);
-    GraphUpscale upscale(graph, spect_tol, max_evects, hybridization);
+    GraphUpscale upscale(graph, {spect_tol, max_evects, hybridization});
 
 
     upscale.PrintInfo();
@@ -134,12 +134,12 @@ int main(int argc, char* argv[])
     /// [Upscale]
 
     /// [Right Hand Side]
-    BlockVector fine_rhs = upscale.GetFineBlockVector();
+    BlockVector fine_rhs = upscale.GetBlockVector(0);
     fine_rhs.GetBlock(0) = 0.0;
 
     if (!rhs_filename.empty())
     {
-        fine_rhs.GetBlock(1) = upscale.ReadVertexVector(rhs_filename);
+        fine_rhs.GetBlock(1) = ReadVertexVector(graph, rhs_filename);
     }
     else
     {
@@ -148,9 +148,9 @@ int main(int argc, char* argv[])
     /// [Right Hand Side]
 
     /// [Time Step]
-    std::vector<std::vector<int>> offsets{upscale.FineBlockOffsets(), upscale.CoarseBlockOffsets()};
+    std::vector<std::vector<int>> offsets{upscale.BlockOffsets(0), upscale.BlockOffsets(1)};
 
-    BlockVector fine_u = upscale.GetFineBlockVector();
+    BlockVector fine_u = upscale.GetBlockVector(0);
     fine_u.GetBlock(0) = 0.0;
 
     // Set initial condition
@@ -161,7 +161,7 @@ int main(int argc, char* argv[])
         std::fill(std::begin(u_half), std::begin(u_half) + half, -1.0);
         std::fill(std::begin(u_half) + half, std::end(u_half), 1.0);
 
-        fine_u.GetBlock(1) = upscale.GetVertexVector(u_half);
+        fine_u.GetBlock(1) = GetVertexVector(graph, u_half);
     }
 
     BlockVector tmp(offsets[k]);
@@ -193,7 +193,7 @@ int main(int argc, char* argv[])
         std::stringstream ss;
         ss << output_dir << std::setw(5) << std::setfill('0') << count << ".txt";
 
-        upscale.WriteVertexVector(fine_u.GetBlock(1), ss.str());
+        WriteVertexVector(graph, fine_u.GetBlock(1), ss.str());
     }
 
     Timer chrono(Timer::Start::True);
@@ -205,14 +205,7 @@ int main(int argc, char* argv[])
         tmp += work_rhs;
         tmp *= -1.0;
 
-        if (k == 0)
-        {
-            upscale.SolveFine(tmp, work_u);
-        }
-        else
-        {
-            upscale.SolveCoarse(tmp, work_u);
-        }
+        upscale.SolveLevel(k, tmp, work_u);
 
         if (myid == 0)
         {
@@ -236,7 +229,7 @@ int main(int argc, char* argv[])
             std::stringstream ss;
             ss << output_dir << std::setw(5) << std::setfill('0') << count << ".txt";
 
-            upscale.WriteVertexVector(fine_u.GetBlock(1), ss.str());
+            WriteVertexVector(graph, fine_u.GetBlock(1), ss.str());
         }
 
         chrono.Click();

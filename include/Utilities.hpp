@@ -24,6 +24,7 @@
 #define __UTILITIES_HPP__
 
 #include <map>
+#include <unordered_map>
 
 #include "linalgcpp.hpp"
 #include "parlinalgcpp.hpp"
@@ -56,6 +57,11 @@ using BlockMatrix = linalgcpp::BlockMatrix<double>;
 using ParMatrix = parlinalgcpp::ParMatrix;
 using Timer = linalgcpp::Timer;
 
+/// Paramaters to determine how many eigenvectors to keep
+/// The double is a spectral tolerance threshold
+/// The integer is a maximum number of eigenvectors per aggregate
+using SpectralPair = std::pair<double, int>;
+
 /** @brief Find processor id on given communicator
     @param comm MPI Communicator
     @returns processor id
@@ -75,13 +81,13 @@ ParMatrix MakeEdgeTrueEdge(MPI_Comm comm, const SparseMatrix& proc_edge,
     @param mat extended aggregate relationship
     @param mat interior aggregate relationship
 */
-SparseMatrix RestrictInterior(const SparseMatrix& mat);
+SparseMatrix RemoveLargeEntries(const SparseMatrix& mat, double tol = 1.0);
 
 /** @brief Restricts aggregate relationship to interior only
     @param mat extended aggregate relationship
     @returns mat interior aggregate relationship
 */
-ParMatrix RestrictInterior(const ParMatrix& mat);
+ParMatrix RemoveLargeEntries(const ParMatrix& mat, double tol = 1.0);
 
 /** @brief Create entity to true entity relationship
     @param entity_entity entity to entity relationship on false dofs
@@ -135,6 +141,8 @@ DenseMatrix Orthogonalize(DenseMatrix& mat, VectorView vect, int offset, int max
     @param mat Dense matrix of vectors to orthogonalize
 */
 void OrthoConstant(DenseMatrix& mat);
+
+void OrthoConstant(DenseMatrix& mat, const VectorView& constant);
 
 /** @brief Orthogonalize this vector from the constant vector.
     This is equivalent to shifting the vector so it has zero mean.
@@ -219,11 +227,13 @@ void PrintJSON(const std::map<std::string, double>& values, std::ostream& out = 
 SparseMatrix MakeAggVertex(const std::vector<int>& partition);
 
 /** @brief Create processor to aggregate relationship
-    @param num_procs number of processors
-    @param num_aggs_global number of global aggregates
+    @param comm MPI Communicator
+    @param agg_vertex global aggregate to vertex relationship
+    @param vertex_edge global vertex to edge relationship
     @returns proc_agg processor to aggregate relationship
 */
-SparseMatrix MakeProcAgg(int num_procs, int num_aggs_global);
+SparseMatrix MakeProcAgg(MPI_Comm comm, const SparseMatrix& agg_vertex,
+                         const SparseMatrix& vertex_edge);
 
 /** @brief Use power iterations to find the maximum eigenpair of A
     @param comm MPI Communicator
@@ -241,33 +251,6 @@ double PowerIterate(MPI_Comm comm, const linalgcpp::Operator& A, VectorView resu
     @param mat matrix to broadcast
 */
 void BroadCast(MPI_Comm comm, SparseMatrix& mat);
-
-/** @brief Extract a dense submatrix from a sparse matrix
-    @param A matrix from which to extract
-    @param row row indices to extract
-    @param col column indices to extract
-    @param colMapper map of global to local indices
-    @param A_sub holds the extracted submatrix
-*/
-void ExtractSubMatrix(const SparseMatrix& A, const std::vector<int>& rows,
-                      const std::vector<int>& cols, const std::vector<int>& colMapper,
-                      DenseMatrix& A_sub);
-
-/** @brief Compute the (scaled) outer product \f$ a v v^T \f$.
-
-    @param a scalar multiple
-    @param v the vector to outer product.
-    @param aVVt the returned dense matrix.
-*/
-void MultScalarVVt(double a, const VectorView& v, DenseMatrix& aVVt);
-
-/** @brief Assemble element matrices
-
-    @param elem_dof element to dof relationship
-    @param elems set of elements to assemble
-    @returns assembled matrix
-*/
-SparseMatrix AssembleElemMat(const SparseMatrix& elem_dof, const std::vector<DenseMatrix>& elems);
 
 /** @brief Adds two sparse matrices C = alpha * A + beta * B
 
@@ -312,6 +295,16 @@ struct MpiSession
 */
 std::vector<int> PartitionAAT(const SparseMatrix& A, double coarsening_factor,
                               double ubal = 2.0, bool contig = true);
+
+/** @brief Isolate critical vertices from partition and fix the now possibly disconnected components
+
+    @param A matrix from which the partition came from
+    @param partition partition vector to modify
+    @param isolated_vertices vertices which to each place into their own their own partition
+    @retval partition vector with now isolated vertices
+*/
+std::vector<int> PartitionPostIsolate(const SparseMatrix& A, std::vector<int> partition,
+                                      const std::vector<int>& isolated_vertices);
 
 
 /** @brief Read serial vector from file and extract local portion
@@ -392,6 +385,42 @@ T GetSubVector(const T& global_vect, const std::vector<int>& map)
 
     return local_vect;
 }
+
+/// Check if sparse matrix is diagonal
+bool IsDiag(const SparseMatrix& mat);
+
+/// Extract dense submatrix
+void GetSubMatrix(const SparseMatrix& mat, const std::vector<int>& rows,
+                  const std::vector<int>& cols, std::vector<int>& col_map,
+                  DenseMatrix& dense_mat);
+
+void OffsetMult(const linalgcpp::Operator& A, const DenseMatrix& input, DenseMatrix& output,
+                int offset);
+void OffsetMultAT(const linalgcpp::Operator& A, const DenseMatrix& input, DenseMatrix& output,
+                  int offset);
+
+DenseMatrix OuterProduct(const VectorView& lhs, const VectorView& rhs);
+void OuterProduct(const VectorView& lhs, const VectorView& rhs, DenseMatrix& product);
+
+/// SparseMatrix triple product
+inline
+SparseMatrix Mult(const SparseMatrix& R, const SparseMatrix& A, const SparseMatrix& P)
+{
+    return R.Mult(A).Mult(P);
+}
+
+/// ParMatrix triple product
+inline
+ParMatrix Mult(const ParMatrix& R, const ParMatrix& A, const ParMatrix& P)
+{
+    return R.Mult(A).Mult(P);
+}
+
+/// Rescale edge weights such that e_ij = floor(log_2(e_ij / e_ij_min)) + 1
+SparseMatrix RescaleLog(SparseMatrix A);
+
+/// Shifts partition such that indices are in [0, num_parts]
+void ShiftPartition(std::vector<int>& partition);
 
 } //namespace smoothg
 

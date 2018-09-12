@@ -23,27 +23,57 @@
 namespace smoothg
 {
 
-GraphEdgeSolver::GraphEdgeSolver(const SparseMatrix& M, const SparseMatrix& D)
-    : GraphEdgeSolver(M.GetData(), D)
+GraphEdgeSolver::GraphEdgeSolver(SparseMatrix M, SparseMatrix D)
+    : is_diag_(IsDiag(M))
 {
-}
+    assert(M.Rows() > 0);
+    assert(D.Rows() > 0);
 
-GraphEdgeSolver::GraphEdgeSolver(const std::vector<double>& M_data,
-                                 const SparseMatrix& D)
-    : MinvDT_(D.Transpose()), vect_sol_(D.Rows(), 0.0)
-{
-    MinvDT_.InverseScaleRows(M_data);
+    if (is_diag_)
+    {
+        rhs_ = BlockVector({0, 0, D.Rows()});
+        sol_ = BlockVector({0, 0, D.Rows()});
 
-    SparseMatrix A = D.Mult(MinvDT_);
-    A.EliminateRowCol(0);
+        MinvDT_ = D.Transpose();
+        MinvDT_.InverseScaleRows(M.GetData());
 
-    Ainv_ = SparseSolver(std::move(A));
+        SparseMatrix A = D.Mult(MinvDT_);
+        A.EliminateRowCol(0);
+
+        block_Ainv_ = SparseSolver(std::move(A));
+    }
+    else
+    {
+        rhs_ = BlockVector({0, M.Rows(), M.Rows() + D.Rows()});
+        sol_ = BlockVector({0, M.Rows(), M.Rows() + D.Rows()});
+
+        linalgcpp::BlockMatrix<double> block({0, M.Rows(), M.Rows() + D.Rows()});
+
+        int elim_dof = 0;
+
+        CooMatrix W_coo(D.Rows(), D.Rows());
+        W_coo.Add(elim_dof, elim_dof, 1);
+
+        SparseMatrix W = W_coo.ToSparse();
+
+        D.EliminateRow(elim_dof);
+        SparseMatrix DT = D.Transpose();
+
+        block.SetBlock(0, 0, std::move(M));
+        block.SetBlock(0, 1, std::move(DT));
+        block.SetBlock(1, 0, std::move(D));
+        block.SetBlock(1, 1, std::move(W));
+
+        block_Ainv_ = SparseSolver(block.Combine());
+    }
+
+    rhs_ = 0.0;
 }
 
 GraphEdgeSolver::GraphEdgeSolver(const GraphEdgeSolver& other) noexcept
-    : MinvDT_(other.MinvDT_),
-      Ainv_(other.Ainv_),
-      vect_sol_(other.vect_sol_)
+    : block_Ainv_(other.block_Ainv_),
+      rhs_(other.rhs_),
+      sol_(other.sol_)
 {
 
 }
@@ -62,14 +92,16 @@ GraphEdgeSolver& GraphEdgeSolver::operator=(GraphEdgeSolver other) noexcept
 
 void swap(GraphEdgeSolver& lhs, GraphEdgeSolver& rhs) noexcept
 {
-    swap(lhs.MinvDT_, rhs.MinvDT_);
-    swap(lhs.Ainv_, rhs.Ainv_);
-    swap(lhs.vect_sol_, rhs.vect_sol_);
+    swap(lhs.block_Ainv_, rhs.block_Ainv_);
+    swap(lhs.rhs_, rhs.rhs_);
+    swap(lhs.sol_, rhs.sol_);
 }
 
 Vector GraphEdgeSolver::Mult(const VectorView& input) const
 {
-    Vector vect(MinvDT_.Rows());
+    int size = is_diag_ ? MinvDT_.Rows() : rhs_.GetBlock(0).size();
+
+    Vector vect(size);
 
     Mult(input, vect);
 
@@ -78,24 +110,41 @@ Vector GraphEdgeSolver::Mult(const VectorView& input) const
 
 void GraphEdgeSolver::Mult(const VectorView& input, VectorView output) const
 {
-    Vector elim_input(input);
-    elim_input[0] = 0.0;
+    rhs_.GetBlock(0) = 0.0;
+    rhs_.GetBlock(1) = input;
+    rhs_.GetBlock(1)[0] = 0.0;
 
-    Ainv_.Mult(elim_input, vect_sol_);
-    SubAvg(vect_sol_);
-    MinvDT_.Mult(vect_sol_, output);
+    block_Ainv_.Mult(rhs_, sol_);
+
+    if (is_diag_)
+    {
+        MinvDT_.Mult(sol_.GetBlock(1), output);
+    }
+    else
+    {
+        output = sol_.GetBlock(0);
+    }
 }
 
 void GraphEdgeSolver::Mult(const VectorView& input, VectorView sigma_sol, VectorView u_sol) const
 {
-    assert(u_sol.size() == Ainv_.Rows());
+    rhs_.GetBlock(0) = 0.0;
+    rhs_.GetBlock(1) = input;
+    rhs_.GetBlock(1)[0] = 0.0;
 
-    Vector elim_input(input);
-    elim_input[0] = 0.0;
+    block_Ainv_.Mult(rhs_, sol_);
 
-    Ainv_.Mult(elim_input, u_sol);
-    SubAvg(u_sol);
-    MinvDT_.Mult(u_sol, sigma_sol);
+    if (is_diag_)
+    {
+        MinvDT_.Mult(sol_.GetBlock(1), sigma_sol);
+    }
+    else
+    {
+        sol_.GetBlock(1) *= -1.0;
+        sigma_sol = sol_.GetBlock(0);
+    }
+
+    u_sol = sol_.GetBlock(1);
 }
 
 DenseMatrix GraphEdgeSolver::Mult(const DenseMatrix& input) const
@@ -108,7 +157,7 @@ DenseMatrix GraphEdgeSolver::Mult(const DenseMatrix& input) const
 
 void GraphEdgeSolver::Mult(const DenseMatrix& input, DenseMatrix& output) const
 {
-    int rows = MinvDT_.Rows();
+    int rows = is_diag_ ? MinvDT_.Rows() : rhs_.GetBlock(0).size();
     int cols = input.Cols();
 
     output.SetSize(rows, cols);
@@ -125,11 +174,11 @@ void GraphEdgeSolver::Mult(const DenseMatrix& input, DenseMatrix& output) const
 void GraphEdgeSolver::Mult(const DenseMatrix& input, DenseMatrix& sigma_sol,
                            DenseMatrix& u_sol) const
 {
-    int rows = MinvDT_.Rows();
+    int rows = is_diag_ ? MinvDT_.Rows() : rhs_.GetBlock(0).size();
     int cols = input.Cols();
 
     sigma_sol.SetSize(rows, cols);
-    u_sol.SetSize(MinvDT_.Cols(), cols);
+    u_sol.SetSize(rhs_.GetBlock(1).size(), cols);
 
     for (int i = 0; i < cols; ++i)
     {
@@ -139,6 +188,53 @@ void GraphEdgeSolver::Mult(const DenseMatrix& input, DenseMatrix& sigma_sol,
 
         Mult(in_col, sigma_col, u_col);
     }
+}
+
+void GraphEdgeSolver::BlockMult(const VectorView& edge_rhs, const VectorView& vertex_rhs,
+                                VectorView sigma_sol) const
+{
+    if (is_diag_)
+    {
+        rhs_.GetBlock(0) = 0.0;
+    }
+    else
+    {
+        rhs_.GetBlock(0) = edge_rhs;
+    }
+    rhs_.GetBlock(1) = vertex_rhs;
+    rhs_.GetBlock(1)[0] = 0.0;
+
+    block_Ainv_.Mult(rhs_, sol_);
+
+    if (is_diag_)
+    {
+        MinvDT_.Mult(sol_.GetBlock(1), sigma_sol);
+    }
+    else
+    {
+        sigma_sol = sol_.GetBlock(0);
+    }
+}
+
+void GraphEdgeSolver::BlockMult(const DenseMatrix& edge_rhs, const DenseMatrix& vertex_rhs,
+                                DenseMatrix& sigma_sol) const
+{
+    assert(edge_rhs.Cols() == vertex_rhs.Cols());
+
+    int rows = is_diag_ ? MinvDT_.Rows() : rhs_.GetBlock(0).size();
+    int cols = vertex_rhs.Cols();
+
+    sigma_sol.SetSize(rows, cols);
+
+    for (int i = 0; i < cols; ++i)
+    {
+        const VectorView& e_col = edge_rhs.GetColView(i);
+        const VectorView& v_col = vertex_rhs.GetColView(i);
+        VectorView sigma_col = sigma_sol.GetColView(i);
+
+        BlockMult(e_col, v_col, sigma_col);
+    }
+
 }
 
 void GraphEdgeSolver::OffsetMult(int offset, const DenseMatrix& input, DenseMatrix& output) const
@@ -158,11 +254,12 @@ void GraphEdgeSolver::OffsetMult(int start, int end, const DenseMatrix& input,
     assert(start >= 0);
     assert(end <= input.Cols());
 
-    int size = end - start;
+    int rows = is_diag_ ? MinvDT_.Rows() : rhs_.GetBlock(0).size();
+    int cols = end - start;
 
-    output.SetSize(MinvDT_.Rows(), size);
+    output.SetSize(rows, cols);
 
-    for (int i = 0; i < size; ++i)
+    for (int i = 0; i < cols; ++i)
     {
         const VectorView& in_col = input.GetColView(i + start);
         VectorView out_col = output.GetColView(i);
@@ -177,12 +274,13 @@ void GraphEdgeSolver::OffsetMult(int start, int end, const DenseMatrix& input,
     assert(start >= 0);
     assert(end <= input.Cols());
 
-    int size = end - start;
+    int edges = is_diag_ ? MinvDT_.Rows() : rhs_.GetBlock(0).size();
+    int cols = end - start;
 
-    sigma_sol.SetSize(MinvDT_.Rows(), size);
-    u_sol.SetSize(MinvDT_.Cols(), size);
+    sigma_sol.SetSize(edges, cols);
+    u_sol.SetSize(rhs_.GetBlock(1).size(), cols);
 
-    for (int i = 0; i < size; ++i)
+    for (int i = 0; i < cols; ++i)
     {
         const VectorView& in_col = input.GetColView(i + start);
         VectorView sigma_col = sigma_sol.GetColView(i);

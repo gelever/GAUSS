@@ -98,8 +98,13 @@ public:
     virtual void SetAbsTol(double atol) override;
     ///@}
 
+    const ParMatrix& A() const { return A_; }
+    const ParMatrix& Minv() const { return Minv_; }
+    const ParMatrix& MinvDT() const { return MinvDT_; }
+
 protected:
     ParMatrix A_;
+    ParMatrix Minv_;
     ParMatrix MinvDT_;
 
 private:

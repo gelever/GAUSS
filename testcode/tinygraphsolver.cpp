@@ -85,7 +85,7 @@ int main(int argc, char* argv[])
             W_coo.Add(i, i, i + 1);
         }
     }
-    
+
     SparseMatrix W_block = W_coo.ToSparse();
 
     std::vector<int> partition {0, 0, 0, 1, 1, 1};
@@ -152,7 +152,7 @@ int main(int argc, char* argv[])
     }
 
     MinresBlockSolver minres(mgl);
-    HybridSolver hb(mgl);
+    HybridSolver hb(mgl, FineGraphSpace(graph));
     SPDSolver spd(mgl);
 
     std::map<MGLSolver*, std::string> solver_to_name;

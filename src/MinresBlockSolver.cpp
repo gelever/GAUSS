@@ -30,12 +30,12 @@ MinresBlockSolver::MinresBlockSolver(const MixedMatrix& mgl)
 }
 
 MinresBlockSolver::MinresBlockSolver(const MixedMatrix& mgl, const std::vector<int>& elim_dofs)
-    : MGLSolver(mgl), M_(mgl.GlobalM()), D_(mgl.GlobalD()), W_(mgl.GlobalW()),
+    : MGLSolver(mgl), M_(mgl.GlobalM()), /*D_(mgl.GlobalD()), DT_(D_.Transpose()),*/ W_(mgl.GlobalW()),
       edge_true_edge_(mgl.EdgeTrueEdge()),
       op_(mgl.TrueOffsets()), prec_(mgl.TrueOffsets()),
       true_rhs_(mgl.TrueOffsets()), true_sol_(mgl.TrueOffsets())
 {
-    std::vector<double> M_diag(M_.GetDiag().GetDiag());
+    SparseMatrix M_elim = mgl.LocalM();
     SparseMatrix D_elim = mgl.LocalD();
 
     if (!use_w_ && myid_ == 0)
@@ -50,15 +50,18 @@ MinresBlockSolver::MinresBlockSolver(const MixedMatrix& mgl, const std::vector<i
         marker[dof] = 1;
     }
 
+    M_elim.EliminateRowCol(marker);
     D_elim.EliminateCol(marker);
 
-    ParMatrix D_elim_g(comm_, D_elim);
+    ParMatrix M_elim_g(comm_, std::move(M_elim));
+    ParMatrix D_elim_g(comm_, std::move(D_elim));
 
+    M_ = parlinalgcpp::RAP(M_elim_g, mgl.EdgeTrueEdge());
     D_ = D_elim_g.Mult(mgl.EdgeTrueEdge());
     DT_ = D_.Transpose();
 
     ParMatrix MinvDT = DT_;
-    MinvDT.InverseScaleRows(M_diag);
+    MinvDT.InverseScaleRows(M_.GetDiag().GetDiag());
     ParMatrix schur_block = D_.Mult(MinvDT);
 
     if (!use_w_)
@@ -142,11 +145,13 @@ void MinresBlockSolver::Solve(const BlockVector& rhs, BlockVector& sol) const
 
     edge_true_edge_.MultAT(rhs.GetBlock(0), true_rhs_.GetBlock(0));
     true_rhs_.GetBlock(1) = rhs.GetBlock(1);
-    true_sol_ = 0.0;
+
+    edge_true_edge_.MultAT(sol.GetBlock(0), true_sol_.GetBlock(0));
+    true_sol_.GetBlock(1) = sol.GetBlock(1);
 
     if (!use_w_ && myid_ == 0)
     {
-        true_rhs_[0] = 0.0;
+        true_rhs_.GetBlock(1)[0] = 0.0;
     }
 
     pminres_.Mult(true_rhs_, true_sol_);

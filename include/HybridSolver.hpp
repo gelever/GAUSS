@@ -82,7 +82,7 @@ public:
 
        @param mgL Mixed matrices for the graph Laplacian
     */
-    HybridSolver(const MixedMatrix& mgL);
+    HybridSolver(const MixedMatrix& mgL, const GraphSpace& graph_space);
 
     virtual ~HybridSolver() = default;
 
@@ -139,7 +139,10 @@ private:
                             std::vector<int>& edge_map,
                             std::vector<bool>& edge_marker) const;
 
+    void CountEdgeDofs();
     void InitSolver(SparseMatrix local_hybrid);
+
+    ParMatrix ComputeScaledSystem(const ParMatrix& hybrid_d);
 
     SparseMatrix agg_vertexdof_;
     SparseMatrix agg_edgedof_;
@@ -156,6 +159,7 @@ private:
     linalgcpp::PCGSolver cg_;
     parlinalgcpp::BoomerAMG prec_;
 
+    std::vector<DenseMatrix> Minv_;
     std::vector<DenseMatrix> MinvDT_;
     std::vector<DenseMatrix> MinvCT_;
     std::vector<DenseMatrix> AinvDMinvCT_;
@@ -163,13 +167,19 @@ private:
     std::vector<DenseMatrix> hybrid_elem_;
 
     mutable std::vector<Vector> Ainv_f_;
+    mutable std::vector<Vector> Minv_g_;
+    mutable std::vector<Vector> AinvDMinv_g_;
 
+    std::vector<int> edgedof_count_;
     std::vector<double> agg_weights_;
 
     mutable Vector trueHrhs_;
     mutable Vector trueMu_;
     mutable Vector Hrhs_;
     mutable Vector Mu_;
+    mutable std::vector<double> diag_scaling_;
+
+    int rescale_iter_;
 };
 
 

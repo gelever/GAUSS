@@ -18,50 +18,88 @@
     @brief GraphCoarsen class
 */
 
+#include <unordered_map>
 #include "GraphCoarsen.hpp"
 
 namespace smoothg
 {
 
 GraphCoarsen::GraphCoarsen(const Graph& graph, const MixedMatrix& mgl,
-                           int max_evects, double spect_tol)
-    : gt_(graph),
-      max_evects_(max_evects), spect_tol_(spect_tol),
-      vertex_targets_(gt_.agg_ext_edge_.Rows()),
-      edge_targets_(gt_.face_edge_.Rows()),
-      agg_ext_sigma_(gt_.agg_ext_edge_.Rows()),
-      B_potential_(gt_.agg_ext_edge_.Rows()),
-      D_trace_sum_(gt_.agg_ext_edge_.Rows()),
-      D_trace_(gt_.agg_ext_edge_.Rows()),
-      F_potential_(gt_.agg_ext_edge_.Rows())
+                           SpectralPair spect_pair)
+    : GraphCoarsen(GraphTopology(graph), FineGraphSpace(graph), mgl,
+                   Vector(graph.vertex_edge_local_.Rows(), 1.0 / std::sqrt(graph.global_vertices_)),
+                   spect_pair)
 {
-    ParMatrix permute_v = MakeExtPermutation(gt_.agg_ext_vertex_);
-    ParMatrix permute_e = MakeExtPermutation(gt_.agg_ext_edge_);
 
-    ParMatrix permute_v_T = permute_v.Transpose();
+}
+
+GraphCoarsen::GraphCoarsen(GraphTopology gt, const Level& level,
+                           SpectralPair spect_pair)
+    : GraphCoarsen(std::move(gt), level.graph_space, level.mixed_matrix, level.constant_rep,
+                   spect_pair)
+{
+
+}
+
+GraphCoarsen::GraphCoarsen(GraphTopology gt, const GraphSpace& graph_space,
+                           const MixedMatrix& mgl, const VectorView& constant_rep,
+                           SpectralPair spect_pair)
+    : gt_(std::move(gt)),
+      max_evects_(spect_pair.second), spect_tol_(spect_pair.first),
+      vertex_targets_(gt_.NumAggs()),
+      edge_targets_(gt_.NumFaces()),
+      agg_ext_sigma_(gt_.NumAggs()),
+      D_trace_sum_(gt_.NumAggs())
+{
+    const ParMatrix& v_vdof = graph_space.vertex_vdof;
+    const ParMatrix& v_bdof = graph_space.vertex_bdof;
+    const ParMatrix& e_edof = graph_space.edge_edof;
+
+    ParMatrix true_edge_edge = gt_.edge_true_edge_.Transpose();
+    ParMatrix no_bub = gt_.agg_ext_edge_.Mult(true_edge_edge).Mult(e_edof).Mult(mgl.EdgeTrueEdge());
+    ParMatrix with_bub = gt_.agg_ext_vertex_.Mult(v_bdof).Mult(mgl.EdgeTrueEdge());
+
+    agg_ext_edof_ = parlinalgcpp::ParAdd(no_bub, with_bub);
+    agg_ext_vdof_ = gt_.agg_ext_vertex_.Mult(v_vdof);
+
+    ParMatrix permute_v = MakeExtPermutation(gt_.agg_ext_vertex_.Mult(v_vdof));
+    ParMatrix permute_e = MakeExtPermutation(agg_ext_edof_);
     ParMatrix permute_e_T = permute_e.Transpose();
 
     ParMatrix M_ext_global = permute_e.Mult(mgl.GlobalM().Mult(permute_e_T));
     ParMatrix D_ext_global = permute_v.Mult(mgl.GlobalD().Mult(permute_e_T));
 
-    ParMatrix face_perm_edge = gt_.face_edge_.Mult(mgl.EdgeTrueEdge().Mult(permute_e_T));
+    ParMatrix face_perm_edge = gt_.face_edge_.Mult(e_edof).Mult(mgl.EdgeTrueEdge()).Mult(permute_e_T);
 
     int marker_size = std::max(permute_v.Rows(), permute_e.Rows());
     col_marker_.resize(marker_size, -1);
 
+    SparseMatrix agg_edgedof = gt_.agg_edge_local_.Mult(e_edof.GetDiag());
+    SparseMatrix agg_bubbledof = gt_.agg_vertex_local_.Mult(v_bdof.GetDiag());
+
+    agg_edgedof_ = Add(1.0, agg_edgedof, 1.0, agg_bubbledof);
+    agg_vertexdof_ = gt_.agg_vertex_local_.Mult(v_vdof.GetDiag());
+    face_edgedof_ = gt_.face_edge_local_.Mult(e_edof.GetDiag());
+
     ComputeVertexTargets(M_ext_global, D_ext_global);
-    ComputeEdgeTargets(mgl, face_perm_edge);
+    ComputeEdgeTargets(mgl, constant_rep, face_perm_edge);
 
     BuildFaceCoarseDof();
     BuildAggBubbleDof();
+
     BuildPvertex();
-    BuildPedge(mgl);
+
+    BuildQedge(mgl, constant_rep);
+    BuildPedge(mgl, constant_rep);
+
+    DebugChecks(mgl);
 }
 
 GraphCoarsen::GraphCoarsen(const GraphCoarsen& other) noexcept
     : gt_(other.gt_),
       max_evects_(other.max_evects_),
       spect_tol_(other.spect_tol_),
+      Q_edge_(other.Q_edge_),
       P_edge_(other.P_edge_),
       P_vertex_(other.P_vertex_),
       face_cdof_(other.face_cdof_),
@@ -69,11 +107,15 @@ GraphCoarsen::GraphCoarsen(const GraphCoarsen& other) noexcept
       vertex_targets_(other.vertex_targets_),
       edge_targets_(other.edge_targets_),
       agg_ext_sigma_(other.agg_ext_sigma_),
+      // Tmp stuff
+      agg_vertexdof_(other.agg_vertexdof_),
+      agg_edgedof_(other.agg_edgedof_),
+      face_edgedof_(other.face_edgedof_),
+      agg_ext_vdof_(other.agg_ext_vdof_),
+      agg_ext_edof_(other.agg_ext_edof_),
+      // End tmp stuff
       col_marker_(other.col_marker_),
-      B_potential_(other.B_potential_),
-      D_trace_sum_(other.D_trace_sum_),
-      D_trace_(other.D_trace_),
-      F_potential_(other.F_potential_)
+      D_trace_sum_(other.D_trace_sum_)
 {
 
 }
@@ -97,6 +139,7 @@ void swap(GraphCoarsen& lhs, GraphCoarsen& rhs) noexcept
     std::swap(lhs.max_evects_, rhs.max_evects_);
     std::swap(lhs.spect_tol_, rhs.spect_tol_);
 
+    swap(lhs.Q_edge_, rhs.Q_edge_);
     swap(lhs.P_edge_, rhs.P_edge_);
     swap(lhs.P_vertex_, rhs.P_vertex_);
     swap(lhs.face_cdof_, rhs.face_cdof_);
@@ -108,10 +151,16 @@ void swap(GraphCoarsen& lhs, GraphCoarsen& rhs) noexcept
 
     swap(lhs.col_marker_, rhs.col_marker_);
 
-    swap(lhs.B_potential_, rhs.B_potential_);
     swap(lhs.D_trace_sum_, rhs.D_trace_sum_);
-    swap(lhs.D_trace_, rhs.D_trace_);
-    swap(lhs.F_potential_, rhs.F_potential_);
+
+    // Temp Stuff
+    swap(lhs.agg_vertexdof_, rhs.agg_vertexdof_);
+    swap(lhs.agg_edgedof_, rhs.agg_edgedof_);
+    swap(lhs.face_edgedof_, rhs.face_edgedof_);
+
+    swap(lhs.agg_ext_vdof_, rhs.agg_ext_vdof_);
+    swap(lhs.agg_ext_edof_, rhs.agg_ext_edof_);
+    // End Temp Stuff
 }
 
 void GraphCoarsen::ComputeVertexTargets(const ParMatrix& M_ext_global,
@@ -120,16 +169,19 @@ void GraphCoarsen::ComputeVertexTargets(const ParMatrix& M_ext_global,
     const SparseMatrix& M_ext = M_ext_global.GetDiag();
     const SparseMatrix& D_ext = D_ext_global.GetDiag();
 
-    int num_aggs = gt_.agg_ext_edge_.Rows();
+    int num_aggs = gt_.NumAggs();
+
+    LocalEigenSolver eigs(max_evects_, spect_tol_);
 
     DenseMatrix evects;
-    LocalEigenSolver eigs(max_evects_, spect_tol_);
+    DenseMatrix DT_evect;
 
     for (int agg = 0; agg < num_aggs; ++agg)
     {
-        std::vector<int> edge_dofs_ext = GetExtDofs(gt_.agg_ext_edge_, agg);
-        std::vector<int> vertex_dofs_ext = GetExtDofs(gt_.agg_ext_vertex_, agg);
-        std::vector<int> vertex_dofs_local = gt_.agg_vertex_local_.GetIndices(agg);
+        std::vector<int> edge_dofs_ext = GetExtDofs(agg_ext_edof_, agg);
+        std::vector<int> vertex_dofs_ext = GetExtDofs(agg_ext_vdof_, agg);
+
+        std::vector<int> vertex_dofs_local = agg_vertexdof_.GetIndices(agg);
 
         if (edge_dofs_ext.size() == 0)
         {
@@ -139,41 +191,34 @@ void GraphCoarsen::ComputeVertexTargets(const ParMatrix& M_ext_global,
 
         SparseMatrix M_sub = M_ext.GetSubMatrix(edge_dofs_ext, edge_dofs_ext, col_marker_);
         SparseMatrix D_sub = D_ext.GetSubMatrix(vertex_dofs_ext, edge_dofs_ext, col_marker_);
-        SparseMatrix D_sub_T = D_sub.Transpose();
 
-        D_sub_T.InverseScaleRows(M_sub);
-
-        SparseMatrix DMinvDT = D_sub.Mult(D_sub_T);
-
-        eigs.Compute(DMinvDT, evects);
+        eigs.BlockCompute(M_sub, D_sub, evects);
 
         if (evects.Cols() > 1)
         {
-            DenseMatrix evects_ortho = evects.GetCol(1, evects.Cols());
-            agg_ext_sigma_[agg] = D_sub_T.Mult(evects_ortho);
-        }
-        else
-        {
-            agg_ext_sigma_[agg].SetSize(D_sub_T.Rows(), 0);
+            SparseSolver M_inv(std::move(M_sub));
+
+            OffsetMultAT(D_sub, evects, DT_evect, 1);
+            OffsetMult(M_inv, DT_evect, agg_ext_sigma_[agg], 0);
         }
 
         DenseMatrix evects_restricted = RestrictLocal(evects, col_marker_,
                                                       vertex_dofs_ext, vertex_dofs_local);
 
         VectorView first_vect = evects_restricted.GetColView(0);
-        vertex_targets_[agg] = smoothg::Orthogonalize(evects_restricted, first_vect, 1, max_evects_);
+        vertex_targets_[agg] = Orthogonalize(evects_restricted, first_vect, 1, max_evects_);
     }
 }
 
-std::vector<std::vector<DenseMatrix>> GraphCoarsen::CollectSigma(const SparseMatrix& face_edge)
+std::vector<std::vector<DenseMatrix>> GraphCoarsen::CollectSigma(const SparseMatrix& face_edgedof)
 {
     SharedEntityComm<DenseMatrix> sec_sigma(gt_.face_true_face_);
 
-    int num_faces = gt_.face_edge_local_.Rows();
+    int num_faces = gt_.NumFaces();
 
     for (int face = 0; face < num_faces; ++face)
     {
-        std::vector<int> face_dofs = face_edge.GetIndices(face);
+        std::vector<int> face_dofs = face_edgedof.GetIndices(face);
         std::vector<int> neighbors = gt_.face_agg_local_.GetIndices(face);
 
         int total_vects = 0;
@@ -190,7 +235,7 @@ std::vector<std::vector<DenseMatrix>> GraphCoarsen::CollectSigma(const SparseMat
         {
             if (agg_ext_sigma_[agg].Cols() > 0)
             {
-                std::vector<int> edge_dofs_ext = GetExtDofs(gt_.agg_ext_edge_, agg);
+                std::vector<int> edge_dofs_ext = GetExtDofs(agg_ext_edof_, agg);
 
                 DenseMatrix face_restrict = RestrictLocal(agg_ext_sigma_[agg], col_marker_,
                                                           edge_dofs_ext, face_dofs);
@@ -208,25 +253,53 @@ std::vector<std::vector<DenseMatrix>> GraphCoarsen::CollectSigma(const SparseMat
     return sec_sigma.Collect();
 }
 
-std::vector<std::vector<SparseMatrix>> GraphCoarsen::CollectD(const SparseMatrix& D_local)
+std::vector<std::vector<Vector>> GraphCoarsen::CollectConstant(const VectorView& constant_vect)
 {
+    SharedEntityComm<Vector> sec_constant(gt_.face_true_face_);
+
+    int num_faces = gt_.NumFaces();
+
+    for (int face = 0; face < num_faces; ++face)
+    {
+        std::vector<int> neighbors = gt_.face_agg_local_.GetIndices(face);
+        std::vector<double> constant_data;
+
+        for (auto agg : neighbors)
+        {
+            std::vector<int> agg_vertices = agg_vertexdof_.GetIndices(agg);
+            auto sub_vect = constant_vect.GetSubVector(agg_vertices);
+
+            constant_data.insert(std::end(constant_data), std::begin(sub_vect),
+                                 std::end(sub_vect));
+        }
+
+        sec_constant.ReduceSend(face, Vector(std::move(constant_data)));
+    }
+
+    return sec_constant.Collect();
+}
+
+std::vector<std::vector<SparseMatrix>> GraphCoarsen::CollectD(const MixedMatrix& mgl)
+{
+    const auto& D_local = mgl.LocalD();
+
     SharedEntityComm<SparseMatrix> sec_D(gt_.face_true_face_);
 
-    int num_faces = gt_.face_edge_local_.Rows();
+    int num_faces = gt_.NumFaces();
 
     for (int face = 0; face < num_faces; ++face)
     {
         std::vector<int> vertex_ext_dofs;
-        std::vector<int> edge_ext_dofs = gt_.face_edge_local_.GetIndices(face);
+        std::vector<int> edge_ext_dofs = face_edgedof_.GetIndices(face);
         std::vector<int> neighbors = gt_.face_agg_local_.GetIndices(face);
 
         for (auto agg : neighbors)
         {
-            std::vector<int> agg_edges = gt_.agg_edge_local_.GetIndices(agg);
+            std::vector<int> agg_edges = agg_edgedof_.GetIndices(agg);
             edge_ext_dofs.insert(std::end(edge_ext_dofs), std::begin(agg_edges),
                                  std::end(agg_edges));
 
-            std::vector<int> agg_vertices = gt_.agg_vertex_local_.GetIndices(agg);
+            std::vector<int> agg_vertices = agg_vertexdof_.GetIndices(agg);
             vertex_ext_dofs.insert(std::end(vertex_ext_dofs), std::begin(agg_vertices),
                                    std::end(agg_vertices));
         }
@@ -239,48 +312,48 @@ std::vector<std::vector<SparseMatrix>> GraphCoarsen::CollectD(const SparseMatrix
     return sec_D.Collect();
 }
 
-std::vector<std::vector<std::vector<double>>> GraphCoarsen::CollectM(const SparseMatrix& M_local)
+std::vector<std::vector<SparseMatrix>> GraphCoarsen::CollectM(const SparseMatrix& M_local)
 {
-    SharedEntityComm<std::vector<double>> sec_M(gt_.face_true_face_);
+    SharedEntityComm<SparseMatrix> sec_M(gt_.face_true_face_);
 
-    int num_faces = gt_.face_edge_local_.Rows();
+    int num_faces = gt_.NumFaces();
 
     for (int face = 0; face < num_faces; ++face)
     {
-        std::vector<int> edge_ext_dofs = gt_.face_edge_local_.GetIndices(face);
+        std::vector<int> edge_ext_dofs = face_edgedof_.GetIndices(face);
         std::vector<int> neighbors = gt_.face_agg_local_.GetIndices(face);
 
         for (auto agg : neighbors)
         {
-            std::vector<int> agg_edges = gt_.agg_edge_local_.GetIndices(agg);
+            std::vector<int> agg_edges = agg_edgedof_.GetIndices(agg);
             edge_ext_dofs.insert(std::end(edge_ext_dofs), std::begin(agg_edges),
                                  std::end(agg_edges));
         }
 
         SparseMatrix M_face = M_local.GetSubMatrix(edge_ext_dofs, edge_ext_dofs, col_marker_);
-        std::vector<double> M_diag = M_face.GetData();
 
-        sec_M.ReduceSend(face, std::move(M_diag));
+        sec_M.ReduceSend(face, std::move(M_face));
     }
 
     return sec_M.Collect();
 }
 
-void GraphCoarsen::ComputeEdgeTargets(const MixedMatrix& mgl,
+void GraphCoarsen::ComputeEdgeTargets(const MixedMatrix& mgl, const VectorView& constant_vect,
                                       const ParMatrix& face_perm_edge)
 {
     const SparseMatrix& face_edge = face_perm_edge.GetDiag();
 
     auto shared_sigma = CollectSigma(face_edge);
+    auto shared_constant = CollectConstant(constant_vect);
     auto shared_M = CollectM(mgl.LocalM());
-    auto shared_D = CollectD(mgl.LocalD());
+    auto shared_D = CollectD(mgl);
 
     const SparseMatrix& face_shared = gt_.face_face_.GetOffd();
 
     SharedEntityComm<DenseMatrix> sec_face(gt_.face_true_face_);
     DenseMatrix collected_sigma;
 
-    int num_faces = gt_.face_edge_local_.Rows();
+    int num_faces = gt_.NumFaces();
 
     for (int face = 0; face < num_faces; ++face)
     {
@@ -288,7 +361,6 @@ void GraphCoarsen::ComputeEdgeTargets(const MixedMatrix& mgl,
 
         if (!sec_face.IsOwnedByMe(face))
         {
-            edge_targets_[face].SetSize(num_face_edges, 0);
             continue;
         }
 
@@ -298,22 +370,28 @@ void GraphCoarsen::ComputeEdgeTargets(const MixedMatrix& mgl,
             continue;
         }
 
-        const auto& face_M = shared_M[face];
-        const auto& face_D = shared_D[face];
-        const auto& face_sigma = shared_sigma[face];
+        auto& face_M = shared_M[face];
+        auto& face_D = shared_D[face];
+        auto& face_sigma = shared_sigma[face];
+        auto& face_constant = shared_constant[face];
 
         linalgcpp::HStack(face_sigma, collected_sigma);
 
         bool shared = face_shared.RowSize(face) > 0;
 
-        // TODO(gelever1): resolve this copy.  (Types must match so face_? gets copied and promoted
-        // to rvalue).
-        const auto& M_local = shared ? Combine(face_M, num_face_edges) : face_M[0];
-        const auto& D_local = shared ? Combine(face_D, num_face_edges) : face_D[0];
-        const int split = shared ? face_D[0].Rows() : GetSplit(face);
+        int split = shared ? face_D[0].Rows() : GetSplit(face);
+        SparseMatrix M_local = shared ? CombineM(face_M, num_face_edges) : std::move(face_M[0]);
+        SparseMatrix D_local = shared ? CombineD(face_D, num_face_edges) : std::move(face_D[0]);
+        Vector constant_local = shared ? CombineConstant(face_constant) : std::move(face_constant[0]);
 
-        GraphEdgeSolver solver(M_local, D_local);
-        Vector one_neg_one = MakeOneNegOne(D_local.Rows(), split);
+
+        GraphEdgeSolver solver(std::move(M_local), std::move(D_local));
+        Vector one_neg_one = MakeOneNegOne(constant_local, split);
+
+        if (std::fabs(constant_local.Mult(one_neg_one)) > 1e-12)
+        {
+            printf("%d constnat * one neg one : %.8e\n", MyId(), constant_local.Mult(one_neg_one) );
+        }
 
         Vector pv_sol = solver.Mult(one_neg_one);
         VectorView pv_sigma(pv_sol.begin(), num_face_edges);
@@ -323,30 +401,36 @@ void GraphCoarsen::ComputeEdgeTargets(const MixedMatrix& mgl,
 
     sec_face.Broadcast(edge_targets_);
 
-    ScaleEdgeTargets(mgl.LocalD());
+    ScaleEdgeTargets(mgl, constant_vect);
 }
 
-void GraphCoarsen::ScaleEdgeTargets(const SparseMatrix& D_local)
+void GraphCoarsen::ScaleEdgeTargets(const MixedMatrix& mgl, const VectorView& constant_vect)
 {
-    int num_faces = gt_.face_edge_.Rows();
+    const auto& D_local = mgl.LocalD();
+    int num_faces = gt_.NumFaces();
+
+    Vector one;
+    Vector oneD;
+
+    DenseMatrix sigma_face;
 
     for (int face = 0; face < num_faces; ++face)
     {
         DenseMatrix& edge_traces(edge_targets_[face]);
-        if (edge_traces.Cols() < 1)
-        {
-            continue;
-        }
+
+        assert(edge_traces.Cols() >= 1);
 
         int agg = gt_.face_agg_local_.GetIndices(face)[0];
 
-        std::vector<int> vertices = gt_.agg_vertex_local_.GetIndices(agg);
-        std::vector<int> face_dofs = gt_.face_edge_local_.GetIndices(face);
+        std::vector<int> vertices = agg_vertexdof_.GetIndices(agg);
+        std::vector<int> face_dofs = face_edgedof_.GetIndices(face);
 
         SparseMatrix D_transfer = D_local.GetSubMatrix(vertices, face_dofs, col_marker_);
 
-        Vector one(D_transfer.Rows(), 1.0);
-        Vector oneD = D_transfer.MultAT(one);
+        constant_vect.GetSubVector(vertices, one);
+
+        D_transfer.MultAT(one, oneD);
+
         VectorView pv_trace = edge_traces.GetColView(0);
 
         double oneDpv = oneD.Mult(pv_trace);
@@ -364,36 +448,67 @@ void GraphCoarsen::ScaleEdgeTargets(const SparseMatrix& D_local)
 
             trace.Sub(alpha * beta, pv_trace);
         }
+
+        if (num_traces > 1)
+        {
+            edge_traces.GetCol(1, num_traces, sigma_face);
+            sigma_face.SVD();
+            edge_traces.SetCol(1, sigma_face);
+        }
     }
 }
 
-std::vector<double> GraphCoarsen::Combine(const std::vector<std::vector<double>>& face_M,
-                                          int num_face_edges) const
+SparseMatrix GraphCoarsen::CombineM(const std::vector<SparseMatrix>& face_M,
+                                    int num_face_edges) const
 {
     assert(face_M.size() == 2);
 
-    int size = face_M[0].size() + face_M[1].size() - num_face_edges;
+    int size = face_M[0].Rows() + face_M[1].Rows() - num_face_edges;
+    int offset = face_M[0].Rows() - num_face_edges;
 
-    std::vector<double> combined(size);
+    CooMatrix M_coo(size, size);
+    M_coo.Reserve(face_M[0].nnz() + face_M[1].nnz());
 
-    for (int i = 0; i < num_face_edges; ++i)
+    const auto& M_0_indptr = face_M[0].GetIndptr();
+    const auto& M_0_indices = face_M[0].GetIndices();
+    const auto& M_0_data = face_M[0].GetData();
+    const auto& M_0_rows = face_M[0].Rows();
+
+    for (int i = 0; i < M_0_rows; ++i)
     {
-        combined[i] = face_M[0][i] + face_M[1][i];
+        for (int j = M_0_indptr[i]; j < M_0_indptr[i + 1]; ++j)
+        {
+            M_coo.Add(i, M_0_indices[j], M_0_data[j]);
+        }
     }
 
-    std::copy(std::begin(face_M[0]) + num_face_edges,
-              std::end(face_M[0]),
-              std::begin(combined) + num_face_edges);
+    const auto& M_1_indptr = face_M[1].GetIndptr();
+    const auto& M_1_indices = face_M[1].GetIndices();
+    const auto& M_1_data = face_M[1].GetData();
+    const auto& M_1_rows = face_M[1].Rows();
 
-    std::copy(std::begin(face_M[1]) + num_face_edges,
-              std::end(face_M[1]),
-              std::begin(combined) + face_M[0].size());
+    for (int i = 0; i < M_1_rows; ++i)
+    {
+        for (int j = M_1_indptr[i]; j < M_1_indptr[i + 1]; ++j)
+        {
+            int col = M_1_indices[j];
 
-    return combined;
+            if (i < num_face_edges && col < num_face_edges)
+            {
+                M_coo.Add(i, M_1_indices[j], M_1_data[j]);
+            }
+            else
+            {
+                M_coo.Add(i + offset, M_1_indices[j] + offset, M_1_data[j]);
+            }
+        }
+    }
+
+    return M_coo.ToSparse();
 }
 
-SparseMatrix GraphCoarsen::Combine(const std::vector<SparseMatrix>& face_D,
-                                   int num_face_edges) const
+SparseMatrix GraphCoarsen::CombineD(const std::vector<SparseMatrix>& face_D,
+                                    int num_face_edges) const
 {
     assert(face_D.size() == 2);
 
@@ -436,6 +551,21 @@ SparseMatrix GraphCoarsen::Combine(const std::vector<SparseMatrix>& face_D,
                         rows, cols);
 }
 
+Vector GraphCoarsen::CombineConstant(const std::vector<Vector>& face_constant) const
+{
+    assert(face_constant.size() == 2);
+
+    int split = face_constant[0].size();
+    int size = face_constant[0].size() + face_constant[1].size();
+
+    Vector vect(size);
+
+    std::copy(std::begin(face_constant[0]), std::end(face_constant[0]), std::begin(vect));
+    std::copy(std::begin(face_constant[1]), std::end(face_constant[1]), std::begin(vect) + split);
+
+    return vect;
+}
+
 Vector GraphCoarsen::MakeOneNegOne(int size, int split) const
 {
     assert(size >= 0);
@@ -456,6 +586,42 @@ Vector GraphCoarsen::MakeOneNegOne(int size, int split) const
     return vect;
 }
 
+Vector GraphCoarsen::MakeOneNegOne(const Vector& constant, int split) const
+{
+    assert(split >= 0);
+
+    int size = constant.size();
+
+    Vector vect(size);
+
+    double v1_sum = 0.0;
+    double v2_sum = 0.0;
+
+    for (int i = 0; i < split; ++i)
+    {
+        v1_sum += constant[i] * constant[i];
+    }
+
+    for (int i = split; i < size; ++i)
+    {
+        v2_sum += constant[i] * constant[i];
+    }
+
+    double c2 = -1.0 * (v1_sum / v2_sum);
+
+    for (int i = 0; i < split; ++i)
+    {
+        vect[i] = constant[i];
+    }
+
+    for (int i = split; i < size; ++i)
+    {
+        vect[i] = c2 * constant[i];
+    }
+
+    return vect;
+}
+
 int GraphCoarsen::GetSplit(int face) const
 {
     std::vector<int> neighbors = gt_.face_agg_local_.GetIndices(face);
@@ -467,7 +633,7 @@ int GraphCoarsen::GetSplit(int face) const
 
 void GraphCoarsen::BuildFaceCoarseDof()
 {
-    int num_faces = gt_.face_edge_.Rows();
+    int num_faces = gt_.NumFaces();
 
     std::vector<int> indptr(num_faces + 1);
     indptr[0] = 0;
@@ -516,11 +682,11 @@ void GraphCoarsen::BuildAggBubbleDof()
 
 void GraphCoarsen::BuildPvertex()
 {
-    const SparseMatrix& agg_vertex = gt_.agg_vertex_local_;
-    int num_aggs = vertex_targets_.size();
-    int num_vertices = agg_vertex.Cols();
+    const SparseMatrix& agg_vertex = agg_vertexdof_;
+    int num_aggs = gt_.NumAggs();
+    int num_vertexdofs = agg_vertex.Cols();
 
-    std::vector<int> indptr(num_vertices + 1);
+    std::vector<int> indptr(num_vertexdofs + 1);
     indptr[0] = 0;
 
     for (int i = 0; i < num_aggs; ++i)
@@ -534,7 +700,7 @@ void GraphCoarsen::BuildPvertex()
         }
     }
 
-    for (int i = 0; i < num_vertices; ++i)
+    for (int i = 0; i < num_vertexdofs; ++i)
     {
         indptr[i + 1] += indptr[i];
     }
@@ -570,30 +736,29 @@ void GraphCoarsen::BuildPvertex()
     }
 
     P_vertex_ = SparseMatrix(std::move(indptr), std::move(indices), std::move(data),
-                             num_vertices, coarse_dof_counter);
+                             num_vertexdofs, coarse_dof_counter);
 }
 
-int ComputeNNZ(const GraphTopology& gt, const SparseMatrix& agg_bubble_dof,
-               const SparseMatrix& face_cdof)
+int GraphCoarsen::ComputeEdgeNNZ() const
 {
-    const SparseMatrix& agg_face = gt.agg_face_local_;
-    const SparseMatrix& agg_edge = gt.agg_edge_local_;
-    const SparseMatrix& face_edge = gt.face_edge_local_;
+    const SparseMatrix& agg_face = gt_.agg_face_local_;
+    const SparseMatrix& agg_edge = agg_edgedof_;
+    const SparseMatrix& face_edge = face_edgedof_;
 
-    int num_aggs = agg_edge.Rows();
-    int num_faces = face_edge.Rows();
+    int num_aggs = gt_.NumAggs();
+    int num_faces = gt_.NumFaces();
 
     int nnz = 0;
     for (int agg = 0; agg < num_aggs; ++agg)
     {
         int edge_dofs = agg_edge.RowSize(agg);
-        int bubble_dofs = agg_bubble_dof.RowSize(agg);
+        int bubble_dofs = agg_bubble_dof_.RowSize(agg);
 
         std::vector<int> faces = agg_face.GetIndices(agg);
 
         for (auto face : faces)
         {
-            int face_coarse_dofs = face_cdof.RowSize(face);
+            int face_coarse_dofs = face_cdof_.RowSize(face);
             nnz += edge_dofs * face_coarse_dofs;
         }
 
@@ -603,7 +768,7 @@ int ComputeNNZ(const GraphTopology& gt, const SparseMatrix& agg_bubble_dof,
     for (int face = 0; face < num_faces; ++face)
     {
         int face_fine_dofs = face_edge.RowSize(face);
-        int face_coarse_dofs = face_cdof.RowSize(face);
+        int face_coarse_dofs = face_cdof_.RowSize(face);
 
         nnz += face_fine_dofs * face_coarse_dofs;
     }
@@ -611,23 +776,26 @@ int ComputeNNZ(const GraphTopology& gt, const SparseMatrix& agg_bubble_dof,
     return nnz;
 }
 
-void GraphCoarsen::BuildPedge(const MixedMatrix& mgl)
+void GraphCoarsen::BuildPedge(const MixedMatrix& mgl, const VectorView& constant_vect)
 {
     const SparseMatrix& agg_face = gt_.agg_face_local_;
-    const SparseMatrix& agg_edge = gt_.agg_edge_local_;
-    const SparseMatrix& face_edge = gt_.face_edge_local_;
-    const SparseMatrix& agg_vertex = gt_.agg_vertex_local_;
+    const SparseMatrix& agg_edge = agg_edgedof_;
+    const SparseMatrix& face_edge = face_edgedof_;
+    const SparseMatrix& agg_vertex = agg_vertexdof_;
 
-    int num_aggs = agg_edge.Rows();
-    int num_faces = face_edge.Rows();
-    int num_edges = agg_edge.Cols();
+    int num_aggs = gt_.NumAggs();
+    int num_faces = gt_.NumFaces();
+    int num_edgedofs = face_edge.Cols();
     int num_coarse_dofs = agg_bubble_dof_.Cols();
 
-    CooMatrix P_edge(num_edges, num_coarse_dofs);
-    P_edge.Reserve(ComputeNNZ(gt_, agg_bubble_dof_, face_cdof_));
+    CooMatrix P_edge(num_edgedofs, num_coarse_dofs);
+    P_edge.Reserve(ComputeEdgeNNZ());
 
     DenseMatrix bubbles;
     DenseMatrix trace_ext;
+    DenseMatrix D_trace;
+    DenseMatrix M_trace;
+    Vector one;
 
     for (int agg = 0; agg < num_aggs; ++agg)
     {
@@ -639,29 +807,33 @@ void GraphCoarsen::BuildPedge(const MixedMatrix& mgl)
         SparseMatrix M = mgl.LocalM().GetSubMatrix(edge_dofs, edge_dofs, col_marker_);
         SparseMatrix D = mgl.LocalD().GetSubMatrix(vertex_dofs, edge_dofs, col_marker_);
 
-        GraphEdgeSolver solver(M, D);
+        constant_vect.GetSubVector(vertex_dofs, one);
+
+        // TODO(gelever1): We may still be able to continue w/ jsut one vertex dof
+        assert (edge_dofs.size() > 0);
+
+        GraphEdgeSolver solver(std::move(M), std::move(D));
 
         for (auto face : faces)
         {
             std::vector<int> face_coarse_dofs = face_cdof_.GetIndices(face);
             std::vector<int> face_fine_dofs = face_edge.GetIndices(face);
 
+            SparseMatrix M_transfer = mgl.LocalM().GetSubMatrix(edge_dofs, face_fine_dofs, col_marker_);
             SparseMatrix D_transfer = mgl.LocalD().GetSubMatrix(vertex_dofs, face_fine_dofs, col_marker_);
-            DenseMatrix D_trace = D_transfer.Mult(edge_targets_[face]);
-            D_trace_sum_[agg].push_back(D_trace.GetColView(0).Sum());
 
-            OrthoConstant(D_trace);
+            M_transfer.Mult(edge_targets_[face], M_trace);
+            D_transfer.Mult(edge_targets_[face], D_trace);
 
-            DenseMatrix F_potential;
-            solver.Mult(D_trace, trace_ext, F_potential);
+            D_trace_sum_[agg].push_back(D_trace.GetColView(0).Mult(vertex_targets_[agg].GetColView(0)));
 
-            D_trace_[agg].push_back(std::move(D_trace));
-            F_potential_[agg].push_back(std::move(F_potential));
+            OrthoConstant(D_trace, one);
 
+            solver.BlockMult(M_trace, D_trace, trace_ext);
             P_edge.Add(edge_dofs, face_coarse_dofs, trace_ext);
         }
 
-        solver.OffsetMult(1, vertex_targets_[agg], bubbles, B_potential_[agg]);
+        solver.OffsetMult(1, vertex_targets_[agg], bubbles);
         P_edge.Add(edge_dofs, bubble_dofs, bubbles);
     }
 
@@ -677,10 +849,111 @@ void GraphCoarsen::BuildPedge(const MixedMatrix& mgl)
     P_edge_ = P_edge.ToSparse();
 }
 
+void GraphCoarsen::BuildQedge(const MixedMatrix& mgl, const VectorView& constant_vect)
+{
+    const SparseMatrix& agg_vertex = agg_vertexdof_;
+    const SparseMatrix& agg_edge = agg_edgedof_;
+    const SparseMatrix& agg_face = gt_.agg_face_local_;
+    const SparseMatrix& face_edge = face_edgedof_;
+    const SparseMatrix& face_agg = gt_.face_agg_local_;
+
+    int num_aggs = gt_.NumAggs();
+    int num_faces = gt_.NumFaces();
+    int num_edgedofs = face_edge.Cols();
+    int num_coarse_dofs = agg_bubble_dof_.Cols();
+
+    CooMatrix Q_edge(num_edgedofs, num_coarse_dofs);
+    Q_edge.Reserve(ComputeEdgeNNZ());
+
+    DenseMatrix Q_i;
+
+    DenseMatrix sigma_f;
+    DenseMatrix DT_one_sigma_f_PV;
+
+    Vector sigma_f_PV;
+    Vector one_rep;
+    Vector one_D;
+
+    for (int agg = 0; agg < num_aggs; ++agg)
+    {
+        if (vertex_targets_[agg].Cols() <= 1)
+        {
+            continue;
+        }
+
+        std::vector<int> edge_dofs = agg_edge.GetIndices(agg);
+        std::vector<int> vertex_dofs = agg_vertex.GetIndices(agg);
+        std::vector<int> faces = agg_face.GetIndices(agg);
+
+        for (auto&& face : faces)
+        {
+            auto face_dofs = face_edge.GetIndices(face);
+            edge_dofs.insert(std::end(edge_dofs), std::begin(face_dofs), std::end(face_dofs));
+        }
+
+        SparseMatrix D_transfer = mgl.LocalD().GetSubMatrix(vertex_dofs, edge_dofs, col_marker_);
+        OffsetMultAT(D_transfer, vertex_targets_[agg], Q_i, 1);
+
+        std::vector<int> cdofs = agg_bubble_dof_.GetIndices(agg);
+        Q_edge.Add(edge_dofs, cdofs, Q_i);
+    }
+
+    for (int face = 0; face < num_faces; ++face)
+    {
+        int agg = face_agg.GetIndices(face)[0];
+
+        std::vector<int> face_fine_dofs = face_edge.GetIndices(face);
+        std::vector<int> face_coarse_dofs = face_cdof_.GetIndices(face);
+        std::vector<int> vertex_dofs = agg_vertex.GetIndices(agg);
+
+        const auto& trace = edge_targets_[face];
+        Vector PV_trace = trace.GetCol(0);
+
+        constant_vect.GetSubVector(vertex_dofs, one_rep);
+
+        SparseMatrix D_transfer = mgl.LocalD().GetSubMatrix(vertex_dofs, face_fine_dofs, col_marker_);
+        D_transfer.MultAT(one_rep, one_D);
+
+        double one_D_PV = one_D.Mult(PV_trace);
+        if (std::fabs(one_D_PV) - 1.0 > 1e-8)
+        {
+            PV_trace /= one_D_PV;
+        }
+
+        Q_i.SetSize(trace.Rows(), trace.Cols());
+
+        if (trace.Cols() > 1)
+        {
+            trace.GetCol(1, trace.Cols(), sigma_f);
+
+            sigma_f.MultAT(PV_trace, sigma_f_PV);
+            OuterProduct(one_D, sigma_f_PV, DT_one_sigma_f_PV);
+            DT_one_sigma_f_PV /= one_D_PV;
+
+            sigma_f -= DT_one_sigma_f_PV;
+
+            Q_i.SetCol(1, sigma_f);
+        }
+
+        if (one_D_PV < 0)
+        {
+            one_D *= -1.0;
+        }
+
+        Q_i.SetCol(0, one_D);
+
+        Q_edge.Add(face_fine_dofs, face_coarse_dofs, -1.0, Q_i);
+    }
+
+    //Q_edge.EliminateZeros(1e-10);
+    Q_edge_ = Q_edge.ToSparse();
+}
+
 SparseMatrix GraphCoarsen::BuildAggCDofVertex() const
 {
     //TODO(gelever1): do this proper
-    SparseMatrix agg_cdof_vertex = gt_.agg_vertex_local_.Mult(P_vertex_);
+    SparseMatrix agg_cdof_vertex = agg_vertexdof_.Mult(P_vertex_);
+    agg_cdof_vertex = 1.0;
     agg_cdof_vertex.SortIndices();
 
     return agg_cdof_vertex;
@@ -688,7 +961,7 @@ SparseMatrix GraphCoarsen::BuildAggCDofVertex() const
 
 SparseMatrix GraphCoarsen::BuildAggCDofEdge() const
 {
-    int num_aggs = gt_.agg_ext_edge_.Rows();
+    int num_aggs = gt_.NumAggs();
     int num_traces = face_cdof_.Cols();
     int num_cdofs = P_edge_.Cols();
 
@@ -730,23 +1003,10 @@ SparseMatrix GraphCoarsen::BuildAggCDofEdge() const
                         num_aggs, num_cdofs);
 }
 
-ParMatrix GraphCoarsen::BuildEdgeTrueEdge() const
+ParMatrix GraphCoarsen::BuildDofTrueDof() const
 {
-    int num_faces = face_cdof_.Rows();
-    int num_traces = face_cdof_.Cols();
+    int num_faces = gt_.NumFaces();
     int num_coarse_dofs = P_edge_.Cols();
-
-    const auto& ftf_diag = gt_.face_true_face_.GetDiag();
-
-    int num_true_dofs = num_coarse_dofs - num_traces;
-
-    for (int i = 0; i < num_faces; ++i)
-    {
-        if (ftf_diag.RowSize(i) > 0)
-        {
-            num_true_dofs += face_cdof_.RowSize(i);
-        }
-    }
 
     MPI_Comm comm = gt_.face_true_face_.GetComm();
     auto cface_starts = parlinalgcpp::GenerateOffsets(comm, num_coarse_dofs);
@@ -816,7 +1076,7 @@ ParMatrix GraphCoarsen::BuildEdgeTrueEdge() const
 
 SparseMatrix GraphCoarsen::BuildCoarseD() const
 {
-    int num_aggs = gt_.agg_ext_edge_.Rows();
+    int num_aggs = gt_.NumAggs();
     int total_traces = face_cdof_.Cols();
 
     int counter = 0;
@@ -825,14 +1085,12 @@ SparseMatrix GraphCoarsen::BuildCoarseD() const
 
     for (int agg = 0; agg < num_aggs; ++agg)
     {
-        double scale = vertex_targets_[agg](0, 0);
-
         std::vector<int> faces = gt_.agg_face_local_.GetIndices(agg);
         int num_faces = faces.size();
 
         for (int j = 0; j < num_faces; ++j)
         {
-            double val = -1.0 * D_trace_sum_[agg][j] * scale;
+            double val = -1.0 * D_trace_sum_[agg][j];
             std::vector<int> face_coarse_dofs = face_cdof_.GetIndices(faces[j]);
 
             D_coarse.Add(counter + agg, face_coarse_dofs[0], val);
@@ -851,125 +1109,74 @@ SparseMatrix GraphCoarsen::BuildCoarseD() const
     return D_coarse.ToSparse();
 }
 
-/// Helper function to build fine-level aggregate sub-M
-/// corresponding to dofs on a face
-void BuildAggregateFaceM(const MixedMatrix& mgl, int agg,
-                         const std::vector<int>& edge_dofs_on_face,
-                         const SparseMatrix& vertex_agg,
-                         const SparseMatrix& edge_vertex,
-                         std::vector<int>& col_marker,
-                         Vector& M_local)
-{
-    const auto& M_fine_elem = mgl.GetElemM();
-    const auto& partition = vertex_agg.GetIndices();
-
-    int fine_size = edge_dofs_on_face.size();
-    M_local.SetSize(fine_size);
-
-    for (int i = 0; i < fine_size; ++i)
-    {
-        int edge_dof = edge_dofs_on_face[i];
-        auto verts = edge_vertex.GetIndices(edge_dof);
-        int vert = (partition[verts[0]] == agg ) ? verts[0] : verts[1];
-
-        std::vector<int> fine_edges = mgl.GetElemDof().GetIndices(vert);
-        SetMarker(col_marker, fine_edges);
-
-        int index = col_marker[edge_dof];
-        assert(index >= 0);
-
-        M_local[i] = M_fine_elem[vert](index, index);
-
-        ClearMarker(col_marker, fine_edges);
-    }
-}
-
 std::vector<DenseMatrix> GraphCoarsen::BuildElemM(const MixedMatrix& mgl,
                                                   const SparseMatrix& agg_cdof_edge) const
 {
-    int num_aggs = gt_.agg_ext_edge_.Rows();
-    int num_faces = gt_.face_edge_local_.Rows();
+    SparseMatrix agg_elem = agg_edgedof_.Mult(mgl.GetElemDof().Transpose());
+    int num_aggs = gt_.NumAggs();
 
-    std::vector<DenseMatrix> M_el(num_aggs);
+    std::vector<DenseMatrix> M_elem(num_aggs);
 
-    DenseMatrix h_F_potential;
-    DenseMatrix h_D_trace;
-    DenseMatrix bub_block;
-    DenseMatrix ortho_vects;
-    DenseMatrix DTT_F;
-    DenseMatrix DTT_B;
+    DenseMatrix M_loc;
+    DenseMatrix M_sub;
+    DenseMatrix P_sub;
+    DenseMatrix M_tmp;
 
-    for (int agg = 0; agg < num_aggs; ++agg)
+    for (int i = 0; i < num_aggs; ++i)
     {
-        linalgcpp::HStack(F_potential_[agg], h_F_potential);
-        linalgcpp::HStack(D_trace_[agg], h_D_trace);
+        auto agg_dofs = agg_edgedof_.GetIndices(i);
+        auto elems = agg_elem.GetIndices(i);
+        auto faces = gt_.agg_face_local_.GetIndices(i);
 
-        int num_bubbles = vertex_targets_[agg].Cols() - 1;
-        int num_traces = h_F_potential.Cols();
-
-        M_el[agg].SetSize(num_bubbles + num_traces);
-        M_el[agg] = 0.0;
-
-        if (num_bubbles > 0)
+        for (auto&& face : faces)
         {
-            int total_cols = vertex_targets_[agg].Cols();
-            vertex_targets_[agg].GetCol(1, total_cols, ortho_vects);
-
-            ortho_vects.MultAT(B_potential_[agg], bub_block);
-            M_el[agg].SetSubMatrix(0, 0, bub_block);
+            auto face_dofs = face_edgedof_.GetIndices(face);
+            agg_dofs.insert(std::end(agg_dofs), std::begin(face_dofs), std::end(face_dofs));
         }
 
-        h_D_trace.MultAT(h_F_potential, DTT_F);
-        h_D_trace.MultAT(B_potential_[agg], DTT_B);
+        int num_elem = elems.size();
+        int num_dofs = agg_dofs.size();
 
-        M_el[agg].SetSubMatrix(num_bubbles, num_bubbles, DTT_F);
-        M_el[agg].SetSubMatrix(num_bubbles, 0, DTT_B);
-        M_el[agg].SetSubMatrixTranspose(0, num_bubbles, DTT_B);
-    }
+        M_loc.SetSize(num_dofs, num_dofs);
+        M_loc = 0.0;
 
-    Vector M_local;
-    DenseMatrix edge_target_T_M;
-    DenseMatrix trace_across;
-
-    std::vector<int> agg_indices;
-
-    SparseMatrix edge_vertex = mgl.LocalD().Transpose();
-    SparseMatrix vertex_agg = gt_.agg_vertex_local_.Transpose();
-
-    for (int face = 0; face < num_faces; ++face)
-    {
-        std::vector<int> fine_dofs = gt_.face_edge_local_.GetIndices(face);
-        std::vector<int> coarse_dofs = face_cdof_.GetIndices(face);
-        std::vector<int> aggs = gt_.face_agg_local_.GetIndices(face);
-        agg_indices.resize(coarse_dofs.size());
-
-        for (auto agg : aggs)
+        for (int j = 0; j < num_elem; ++j)
         {
-            BuildAggregateFaceM(mgl, agg, fine_dofs, vertex_agg,
-                                edge_vertex, col_marker_, M_local);
+            const auto& M_fine_elem = mgl.GetElemM();
+            auto elem = elems[j];
+            auto fine_dofs = mgl.GetElemDof().GetIndices(elem);
 
-            edge_targets_[face].Transpose(edge_target_T_M);
-            edge_target_T_M.ScaleCols(M_local);
+            SetMarker(col_marker_, fine_dofs);
 
-            edge_target_T_M.Mult(edge_targets_[face], trace_across);
+            std::vector<int> loc_dofs;
+            std::vector<int> M_sub_dofs;
 
-            std::vector<int> edges = agg_cdof_edge.GetIndices(agg);
-            SetMarker(col_marker_, edges);
-
-            int size = coarse_dofs.size();
-            for (int i = 0; i < size; ++i)
+            for (int k = 0; k < num_dofs; ++k)
             {
-                agg_indices[i] = col_marker_[coarse_dofs[i]];
-                assert(agg_indices[i] > -1);
+                auto dof = agg_dofs[k];
+                auto index = col_marker_[dof];
+                if (index >= 0)
+                {
+                    loc_dofs.push_back(k);
+                    M_sub_dofs.push_back(index);
+                }
             }
 
-            M_el[agg].AddSubMatrix(agg_indices, agg_indices, trace_across);
+            M_fine_elem[elem].GetSubMatrix(M_sub_dofs, M_sub_dofs, M_sub);
+            M_loc.AddSubMatrix(loc_dofs, loc_dofs, M_sub);
 
-            ClearMarker(col_marker_, edges);
+            ClearMarker(col_marker_, fine_dofs);
         }
+
+        auto cdofs = agg_cdof_edge.GetIndices(i);
+
+        GetSubMatrix(P_edge_, agg_dofs, cdofs, col_marker_, P_sub);
+
+        M_loc.Mult(P_sub, M_tmp);
+        P_sub.MultAT(M_tmp, M_elem[i]);
     }
 
-    return M_el;
+    return M_elem;
 }
 
 DenseMatrix GraphCoarsen::RestrictLocal(const DenseMatrix& ext_mat,
@@ -1033,6 +1240,48 @@ ParMatrix GraphCoarsen::MakeExtPermutation(const ParMatrix& parmat) const
     return ParMatrix(comm, ext_starts, mat_starts, std::move(perm_diag), std::move(perm_offd), colmap);
 }
 
+GraphSpace GraphCoarsen::BuildGraphSpace() const
+{
+    using parlinalgcpp::GenerateOffsets;
+
+    auto comm = gt_.edge_true_edge_.GetComm();
+
+    SparseMatrix vertex_vdof = agg_vertexdof_.Mult(P_vertex_);
+    SparseMatrix vertex_edof = agg_edgedof_.Mult(P_edge_);
+    SparseMatrix vertex_bdof = agg_bubble_dof_;
+    SparseMatrix edge_edof = face_edgedof_.Mult(P_edge_);
+    SparseMatrix agg_vertexdof = BuildAggCDofVertex();
+    SparseMatrix face_facedof = face_cdof_;
+
+    vertex_vdof = 1.0;
+    vertex_edof = 1.0;
+    vertex_bdof = 1.0;
+    edge_edof = 1.0;
+
+    int num_vertices = vertex_vdof.Rows();
+    int num_vertex_dof = vertex_vdof.Cols();
+
+    int num_edges = edge_edof.Rows();
+    int num_edge_dof = edge_edof.Cols();
+
+    int num_aggs = agg_vertexdof.Rows();
+    int num_face_dofs = face_cdof_.Cols();
+
+    auto starts = GenerateOffsets(comm, {num_vertices, num_vertex_dof,
+                                         num_edges, num_edge_dof,
+                                         num_aggs, num_face_dofs
+                                        });
+    return
+    {
+        {comm, starts[0], starts[1], std::move(vertex_vdof)},
+        {comm, starts[0], starts[3], std::move(vertex_edof)},
+        {comm, starts[0], starts[3], std::move(vertex_bdof)},
+        {comm, starts[2], starts[3], std::move(edge_edof)},
+        {comm, starts[4], starts[1], std::move(agg_vertexdof)},
+        {comm, starts[2], starts[5], std::move(face_facedof)},
+    };
+}
+
 MixedMatrix GraphCoarsen::Coarsen(const MixedMatrix& mgl) const
 {
     SparseMatrix agg_cdof_edge = BuildAggCDofEdge();
@@ -1047,13 +1296,93 @@ MixedMatrix GraphCoarsen::Coarsen(const MixedMatrix& mgl) const
         W_c = P_vertex_T.Mult(mgl.LocalW().Mult(P_vertex_));
     }
 
-    ParMatrix edge_true_edge = BuildEdgeTrueEdge();
+    ParMatrix edge_true_edge = BuildDofTrueDof();
 
-    return MixedMatrix(std::move(M_elem), std::move(agg_cdof_edge),
-                       std::move(D_c), std::move(W_c),
-                       std::move(edge_true_edge),
-                       BuildAggCDofVertex(),
-                       face_cdof_);
+    return MixedMatrix(std::move(M_elem),
+                       std::move(agg_cdof_edge),
+                       std::move(D_c),
+                       std::move(W_c),
+                       std::move(edge_true_edge));
+}
+
+Level GraphCoarsen::Coarsen(const Level& level) const
+{
+    return { Coarsen(level.mixed_matrix), BuildGraphSpace(), Restrict(level.constant_rep)};
+}
+
+void GraphCoarsen::DebugChecks(const MixedMatrix& mgl) const
+{
+    /*
+    double test_tol = 1e-10;
+
+    // PTP should be identity
+    {
+        Vector vertex_test_vect(P_vertex_.Cols());
+        vertex_test_vect.Randomize();
+
+        Vector identity_diff = P_vertex_.MultAT(P_vertex_.Mult(vertex_test_vect));
+        identity_diff -= vertex_test_vect;
+
+        double norm = identity_diff.L2Norm() / vertex_test_vect.L2Norm();
+
+        if (std::fabs(norm) > test_tol)
+        {
+            printf("%d Warning: PTP difference %.8e\n", MyId(), norm);
+        }
+    }
+
+    // PU PU^T D sigma = D P sigma
+    {
+        Vector edge_test_vect(P_edge_.Cols());
+        edge_test_vect.Randomize();
+
+        Vector D_P_sigma = mgl.LocalD().Mult(P_edge_.Mult(edge_test_vect));
+        Vector PU_D_P_sigma = P_vertex_.Mult(P_vertex_.MultAT(D_P_sigma));
+
+        Vector edge_diff = PU_D_P_sigma - D_P_sigma;
+
+        double norm = edge_diff.L2Norm() / D_P_sigma.L2Norm();
+
+        if (std::fabs(norm) > test_tol)
+        {
+            printf("%d Warning: Pu Pu^T D P sigma = D P sigma difference %.8e\n", MyId(), norm);
+        }
+    }
+
+    // Q^T P = I
+    {
+        Vector test(P_edge_.Cols());
+        test.Randomize();
+
+        Vector diff = Q_edge_.MultAT(P_edge_.Mult(test));
+        diff -= test;
+
+        double norm = diff.L2Norm();
+
+        if (std::fabs(norm) > test_tol)
+        {
+            printf("%d Warning: Q^T Psigma = I difference %.8e\n", MyId(), norm);
+        }
+    }
+
+    // D (P Q^T)_edge  = (P PT)_vertex D
+    {
+        Vector test(P_edge_.Rows());
+        test.Randomize();
+
+        Vector sigma_proj = mgl.LocalD().Mult(P_edge_.Mult(Q_edge_.MultAT(test)));
+        Vector u_proj = P_vertex_.Mult(P_vertex_.MultAT(mgl.LocalD().Mult(test)));
+
+        Vector diff = sigma_proj - u_proj;
+
+        double norm = diff.L2Norm();
+
+        if (std::fabs(norm) > test_tol)
+        {
+            printf("%d Warning: D PQT = PPT D difference %.8e\n", MyId(), norm);
+        }
+    }
+    */
 }
 
 Vector GraphCoarsen::Interpolate(const VectorView& coarse_vect) const
@@ -1105,6 +1434,22 @@ BlockVector GraphCoarsen::Restrict(const BlockVector& fine_vect) const
 void GraphCoarsen::Restrict(const BlockVector& fine_vect, BlockVector& coarse_vect) const
 {
     P_edge_.MultAT(fine_vect.GetBlock(0), coarse_vect.GetBlock(0));
+    P_vertex_.MultAT(fine_vect.GetBlock(1), coarse_vect.GetBlock(1));
+}
+
+BlockVector GraphCoarsen::Project(const BlockVector& fine_vect) const
+{
+    std::vector<int> coarse_offsets = {0, Q_edge_.Cols(), Q_edge_.Cols() + P_vertex_.Cols()};
+    BlockVector coarse_vect(coarse_offsets);
+
+    Project(fine_vect, coarse_vect);
+
+    return coarse_vect;
+}
+
+void GraphCoarsen::Project(const BlockVector& fine_vect, BlockVector& coarse_vect) const
+{
+    Q_edge_.MultAT(fine_vect.GetBlock(0), coarse_vect.GetBlock(0));
     P_vertex_.MultAT(fine_vect.GetBlock(1), coarse_vect.GetBlock(1));
 }
 

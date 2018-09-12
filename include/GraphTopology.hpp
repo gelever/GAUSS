@@ -65,7 +65,7 @@ public:
     */
     GraphTopology(const SparseMatrix& vertex_edge,
                   const std::vector<int>& partition,
-                  const ParMatrix& edge_true_edge);
+                  ParMatrix edge_true_edge);
 
     /** @brief Default Destructor */
     ~GraphTopology() noexcept = default;
@@ -82,6 +82,16 @@ public:
     /** @brief Swap two topologies */
     friend void swap(GraphTopology& lhs, GraphTopology& rhs) noexcept;
 
+    int NumAggs() const { return agg_vertex_local_.Rows(); }
+    int NumVertices() const { return agg_vertex_local_.Cols(); }
+    int NumEdges() const { return agg_edge_local_.Cols(); }
+    int NumFaces() const { return agg_face_local_.Cols(); }
+
+    int GlobalNumAggs() const { return agg_ext_vertex_.GlobalRows(); }
+    int GlobalNumVertices() const { return agg_ext_vertex_.GlobalCols(); }
+    int GlobalNumEdges() const { return face_edge_.GlobalCols(); }
+    int GlobalNumFaces() const { return face_edge_.GlobalRows(); }
+
     // Local topology
     SparseMatrix agg_vertex_local_; // Aggregate to vertex, not exteneded
     SparseMatrix agg_edge_local_;   // Aggregate to edge, not extended
@@ -95,22 +105,23 @@ public:
     ParMatrix face_edge_;      // Face to false edge
     ParMatrix agg_ext_vertex_; // Aggregate to extended vertex
     ParMatrix agg_ext_edge_;   // Aggregate to extended edge
+    ParMatrix edge_true_edge_;   // Edge to true edge
 
 private:
     void Init(const SparseMatrix& vertex_edge,
               const std::vector<int>& partition,
               const ParMatrix& edge_edge,
-              const ParMatrix& edge_true_edge);
+              ParMatrix edge_true_edge);
 
-    SparseMatrix MakeFaceAggInt(const ParMatrix& agg_agg);
+    SparseMatrix MakeFaceIntAgg(const ParMatrix& agg_agg);
 
     SparseMatrix MakeFaceEdge(const ParMatrix& agg_agg,
                               const ParMatrix& edge_edge,
                               const SparseMatrix& agg_edge_ext,
-                              const SparseMatrix& face_edge_ext);
+                              const SparseMatrix& face_int_agg_edge);
 
     SparseMatrix ExtendFaceAgg(const ParMatrix& agg_agg,
-                               const SparseMatrix& face_agg_int);
+                               const SparseMatrix& face_int_agg);
 
 };
 

@@ -20,9 +20,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED YES)
 set(CMAKE_CXX_EXTENSIONS NO)
 
 # add executables
-#add_executable(lineargraph lineargraph.cpp)
-#target_link_libraries(lineargraph smoothg ${TPL_LIBRARIES})
-
 add_executable(tinygraphsolver tinygraphsolver.cpp)
 target_link_libraries(tinygraphsolver smoothG)
 
@@ -40,6 +37,12 @@ target_link_libraries(wattsstrogatz smoothG)
 
 add_executable(test_Graph test_Graph.cpp)
 target_link_libraries(test_Graph smoothG)
+
+add_executable(test_projection test_projection.cpp)
+target_link_libraries(test_projection smoothG)
+
+#add_executable(test_Solvers test_Solvers.cpp)
+#target_link_libraries(test_Solvers smoothG)
 
 # add tests
 # add_test(lineargraph lineargraph)
@@ -64,6 +67,9 @@ add_test(test_MetisGraphPartitioner test_MetisGraphPartitioner)
 add_test(test_Graph test_Graph)
 add_test(parttest_Graph mpirun -np 2 ./test_Graph)
 
+add_test(test_projection test_projection)
+add_test(parttest_projection mpirun -np 2 ./test_projection)
+
 # add_test(test_IsolatePartitioner test_IsolatePartitioner)
 # add_valgrind_test(vtest_IsolatePartitioner test_IsolatePartitioner)
 
@@ -80,9 +86,9 @@ if (NOT APPLE)
     add_valgrind_test(vwattsstrogatz wattsstrogatz)
 endif()
 
-# add_test(NAME style
-#   COMMAND ${ASTYLE_COMMAND} --options=smoothg.astylerc --dry-run src/*.?pp examples/*.?pp testcode/*.?pp
-#   WORKING_DIRECTORY ${PROJECT_SOURCE_DIR})
-# set_tests_properties(style
-#   PROPERTIES FAIL_REGULAR_EXPRESSION
-#   "Formatted")
+add_test(NAME style
+  COMMAND ${ASTYLE_COMMAND} --options=smoothg.astylerc --dry-run src/*.?pp include/*.?pp examples/*.?pp testcode/*.?pp
+  WORKING_DIRECTORY ${smoothG_SOURCE_DIR})
+set_tests_properties(style
+  PROPERTIES FAIL_REGULAR_EXPRESSION
+  "Formatted")

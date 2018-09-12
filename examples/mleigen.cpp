@@ -40,42 +40,42 @@ std::vector<int> MetisPart(const SparseMatrix& vertex_edge, int num_parts);
 /// @brief Computes DMinvDt + shift * I
 class ShiftedDMinvDt : public ParOperator
 {
-    public:
-        /** @brief Construtor
-            @param M M matrix
-            @param D D matrix
-            @param shift shift to apply
-        */
-        ShiftedDMinvDt(const ParMatrix& M, const ParMatrix& D, double shift = 1.0)
-            : ParOperator(D.GetComm(), D.GetRowStarts()),
-              M_prec_(M, false, false, true, 0.0, 0.1, 0.10),
-              M_solver_(M, M_prec_, 5000 /* max_iter */ , 1e-12 /* rel tol */,
-                        1e-16 /* abs tol */, false /* verbose */, parlinalgcpp::ParMult),
-              D_(D), DTx_(D_.Cols()), MinvDTx_(D_.Cols()),
-              shift_(shift) { }
+public:
+    /** @brief Construtor
+        @param M M matrix
+        @param D D matrix
+        @param shift shift to apply
+    */
+    ShiftedDMinvDt(const ParMatrix& M, const ParMatrix& D, double shift = 1.0)
+        : ParOperator(D.GetComm(), D.GetRowStarts()),
+          M_prec_(M, false, false, true, 0.0, 0.1, 0.10),
+          M_solver_(M, M_prec_, 5000 /* max_iter */, 1e-12 /* rel tol */,
+                    1e-16 /* abs tol */, false /* verbose */, parlinalgcpp::ParMult),
+          D_(D), DTx_(D_.Cols()), MinvDTx_(D_.Cols()),
+          shift_(shift) { }
 
-        /** @brief Compute y = (DMinvD^T + shift * I)x
-            @param input input vector x
-            @param output output vector y
-        */
-        void Mult(const VectorView& input, VectorView output) const
-        {
-            D_.MultAT(input, DTx_);
-            M_solver_.Mult(DTx_, MinvDTx_);
-            D_.Mult(MinvDTx_, output);
+    /** @brief Compute y = (DMinvD^T + shift * I)x
+        @param input input vector x
+        @param output output vector y
+    */
+    void Mult(const VectorView& input, VectorView output) const
+    {
+        D_.MultAT(input, DTx_);
+        M_solver_.Mult(DTx_, MinvDTx_);
+        D_.Mult(MinvDTx_, output);
 
-            output.Add(shift_, input);
-        }
+        output.Add(shift_, input);
+    }
 
-    private:
-        ParaSails M_prec_;
-        PCGSolver M_solver_;
-        ParMatrix D_;
+private:
+    ParaSails M_prec_;
+    PCGSolver M_solver_;
+    ParMatrix D_;
 
-        mutable Vector DTx_;
-        mutable Vector MinvDTx_;
+    mutable Vector DTx_;
+    mutable Vector MinvDTx_;
 
-        double shift_;
+    double shift_;
 };
 
 int main(int argc, char* argv[])
@@ -131,7 +131,7 @@ int main(int argc, char* argv[])
     ParPrint(myid, std::cout << "\nUpscaling:" << std::endl);
 
     Graph graph(comm, vertex_edge, part);
-    GraphUpscale upscale(graph, spect_tol, max_evects, hybridization);
+    GraphUpscale upscale(graph, {spect_tol, max_evects, hybridization});
 
     upscale.PrintInfo();
     upscale.ShowSetupTime();
@@ -154,7 +154,7 @@ int main(int argc, char* argv[])
     }
     else
     {
-        MixedMatrix mm(upscale.GetCoarseMatrix());
+        MixedMatrix mm(upscale.GetMatrix(1));
         mm.AssembleM();
 
         ShiftedDMinvDt A_c(mm.GlobalM(), mm.GlobalD(), shift);
@@ -167,7 +167,7 @@ int main(int argc, char* argv[])
             evect.Normalize();
         }
 
-        UpscaleCoarseSolve upscale_coarse(upscale);
+        UpscaleSolveLevel upscale_coarse(upscale, 1);
         auto evals = LOBPCG(A_c, evects_c, &upscale_coarse, verbose);
 
         for (auto eval : evals)
@@ -181,7 +181,7 @@ int main(int argc, char* argv[])
         }
     }
 
-    ParMatrix A = upscale.GetFineMatrix().ToPrimal();
+    ParMatrix A = upscale.ToPrimal();
     A.AddDiag(shift);
 
     BoomerAMG boomer(A);

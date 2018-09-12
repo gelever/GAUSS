@@ -42,7 +42,7 @@ ParMatrix MakeEdgeTrueEdge(MPI_Comm comm, const SparseMatrix& proc_edge,
     MPI_Comm_size(comm, &num_procs);
     MPI_Comm_rank(comm, &myid);
 
-    auto edge_proc = proc_edge.Transpose();
+    SparseMatrix edge_proc = proc_edge.Transpose();
 
     int num_edges_local = proc_edge.RowSize(myid);
     int num_tedges_global = proc_edge.Cols();
@@ -141,7 +141,7 @@ ParMatrix MakeEdgeTrueEdge(MPI_Comm comm, const SparseMatrix& proc_edge,
                      std::move(col_map));
 }
 
-SparseMatrix RestrictInterior(const SparseMatrix& mat)
+SparseMatrix RemoveLargeEntries(const SparseMatrix& mat, double tol)
 {
     int rows = mat.Rows();
     int cols = mat.Cols();
@@ -161,7 +161,7 @@ SparseMatrix RestrictInterior(const SparseMatrix& mat)
 
         for (int j = mat_indptr[i]; j < mat_indptr[i + 1]; ++j)
         {
-            if (mat_data[j] > 1)
+            if (std::fabs(mat_data[j]) > tol)
             {
                 indices.push_back(mat_indices[j]);
             }
@@ -175,7 +175,7 @@ SparseMatrix RestrictInterior(const SparseMatrix& mat)
     return SparseMatrix(std::move(indptr), std::move(indices), std::move(data), rows, cols);
 }
 
-ParMatrix RestrictInterior(const ParMatrix& mat)
+ParMatrix RemoveLargeEntries(const ParMatrix& mat, double tol)
 {
     int num_rows = mat.Rows();
 
@@ -199,7 +199,7 @@ ParMatrix RestrictInterior(const ParMatrix& mat)
 
         for (int j = offd_indptr[i]; j < offd_indptr[i + 1]; ++j)
         {
-            if (offd_data[j] > 1)
+            if (std::fabs(offd_data[j]) > tol)
             {
                 offd_marker[offd_indices[j]] = 1;
                 offd_nnz++;
@@ -246,7 +246,7 @@ ParMatrix RestrictInterior(const ParMatrix& mat)
 
     assert(count == offd_nnz);
 
-    SparseMatrix diag = RestrictInterior(diag_ext);
+    SparseMatrix diag = RemoveLargeEntries(diag_ext);
     SparseMatrix offd(std::move(indptr), std::move(indices), std::move(data),
                       num_rows, offd_num_cols);
 
@@ -410,6 +410,20 @@ void OrthoConstant(DenseMatrix& mat)
     }
 }
 
+void OrthoConstant(DenseMatrix& mat, const VectorView& constant)
+{
+    int cols = mat.Cols();
+
+    Vector vect(constant);
+    Normalize(vect);
+
+    for (int i = 0; i < cols; ++i)
+    {
+        VectorView col = mat.GetColView(i);
+        col.Sub(col.Mult(vect), vect);
+    }
+}
+
 void OrthoConstant(VectorView vect)
 {
     SubAvg(vect);
@@ -466,7 +480,6 @@ double DivError(MPI_Comm comm, const SparseMatrix& D, const VectorView& numer,
 
     const double error = parlinalgcpp::ParL2Norm(comm, Ddiff) /
                          parlinalgcpp::ParL2Norm(comm, Dfine);
-
     return error;
 }
 
@@ -557,29 +570,68 @@ void PrintJSON(const std::map<std::string, double>& values, std::ostream& out,
     out << "}" << new_line;
 }
 
-SparseMatrix MakeProcAgg(int num_procs, int num_aggs_global)
+double Density(const SparseMatrix& A)
 {
-    int num_aggs_local = num_aggs_global / num_procs;
-    int num_left = num_aggs_global % num_procs;
 
-    std::vector<int> indptr(num_procs + 1);
-    std::vector<int> indices(num_aggs_global);
-    std::vector<double> data(num_aggs_global, 1.0);
+    double denom = A.Rows() * (double) A.Cols();
+    return A.nnz() / denom;
+}
 
-    std::iota(std::begin(indices), std::end(indices), 0);
+SparseMatrix MakeProcAgg(MPI_Comm comm, const SparseMatrix& agg_vertex,
+                         const SparseMatrix& vertex_edge)
+{
+    int num_procs;
+    int num_aggs = agg_vertex.Rows();
 
-    for (int i = 0; i <= num_left; ++i)
+    MPI_Comm_size(comm, &num_procs);
+
+    if (num_procs == 0)
     {
-        indptr[i] = i * (num_aggs_local + 1);
+        std::vector<int> trivial_partition(num_aggs, 0);
+        return MakeAggVertex(std::move(trivial_partition));
     }
 
-    for (int i = num_left + 1; i <= num_procs; ++i)
+    SparseMatrix agg_edge = agg_vertex.Mult(vertex_edge);
+    SparseMatrix agg_agg = agg_edge.Mult(agg_edge.Transpose());
+
+    // Metis doesn't behave well w/ very dense sparse partition
+    // so we partition by hand if aggregates are densely connected
+    const double density = Density(agg_agg);
+    const double density_tol = 0.7;
+
+    std::vector<int> partition;
+
+    if (density < density_tol)
     {
-        indptr[i] = indptr[i - 1] + num_aggs_local;
+        double ubal = 1.0;
+        partition = Partition(agg_agg, num_procs, ubal);
+    }
+    else
+    {
+        partition.reserve(num_aggs);
+
+        int num_each = num_aggs / num_procs;
+        int num_left = num_aggs % num_procs;
+
+        for (int proc = 0; proc < num_procs; ++proc)
+        {
+            int local_num = num_each + (proc < num_left ? 1 : 0);
+
+            for (int i = 0; i < local_num; ++i)
+            {
+                partition.push_back(proc);
+            }
+        }
+
+        assert(static_cast<int>(partition.size()) == num_aggs);
     }
 
-    return SparseMatrix(std::move(indptr), std::move(indices), std::move(data),
-                        num_procs, num_aggs_global);
+    SparseMatrix proc_agg = MakeAggVertex(std::move(partition));
+
+    assert(proc_agg.Cols() == num_aggs);
+    assert(proc_agg.Rows() == num_procs);
+
+    return proc_agg;
 }
 
 SparseMatrix MakeAggVertex(const std::vector<int>& partition)
@@ -678,73 +730,6 @@ void BroadCast(MPI_Comm comm, SparseMatrix& mat)
     }
 }
 
-void ExtractSubMatrix(const SparseMatrix& A, const std::vector<int>& rows,
-                      const std::vector<int>& cols, const std::vector<int>& colMapper,
-                      DenseMatrix& A_sub)
-{
-    const int num_row = rows.size();
-    const int num_col = cols.size();
-
-    const auto& A_i = A.GetIndptr();
-    const auto& A_j = A.GetIndices();
-    const auto& A_data = A.GetData();
-
-    A_sub.SetSize(num_row, num_col, 0.0);
-
-    for (int i = 0; i < num_row; ++i)
-    {
-        const int row = rows[i];
-
-        for (int j = A_i[row]; j < A_i[row + 1]; ++j)
-        {
-            const int col = colMapper[A_j[j]];
-
-            if (col >= 0)
-            {
-                A_sub(i, col) = A_data[j];
-            }
-        }
-    }
-}
-
-void MultScalarVVt(double a, const VectorView& v, DenseMatrix& aVVt)
-{
-    int n = v.size();
-    aVVt.SetSize(n, n);
-
-    for (int i = 0; i < n; i++)
-    {
-        double avi = a * v[i];
-
-        for (int j = 0; j < i; j++)
-        {
-            double avivj = avi * v[j];
-
-            aVVt(i, j) = avivj;
-            aVVt(j, i) = avivj;
-        }
-
-        aVVt(i, i) = avi * v[i];
-    }
-}
-
-SparseMatrix AssembleElemMat(const SparseMatrix& elem_dof, const std::vector<DenseMatrix>& elems)
-{
-    int num_elem = elem_dof.Rows();
-    int num_dof = elem_dof.Cols();
-
-    CooMatrix coo(num_dof);
-
-    for (int i = 0; i < num_elem; ++i)
-    {
-        std::vector<int> dofs = elem_dof.GetIndices(i);
-
-        coo.Add(dofs, dofs, elems[i]);
-    }
-
-    return coo.ToSparse();
-}
-
 //TODO(gelever1): Define this inplace in linalgcpp
 SparseMatrix Add(double alpha, const SparseMatrix& A, double beta, const SparseMatrix& B)
 {
@@ -784,7 +769,110 @@ std::vector<int> PartitionAAT(const SparseMatrix& A, double coarsening_factor, d
 
     int num_parts = std::max(1.0, (A.Rows() / coarsening_factor) + 0.5);
 
-    return Partition(AA_T, num_parts, ubal, contig);
+    return linalgcpp::Partition(AA_T, num_parts, ubal, contig);
+}
+
+SparseMatrix RescaleLog(SparseMatrix A)
+{
+    std::vector<int>& indptr = A.GetIndptr();
+    std::vector<int>& indices = A.GetIndices();
+    std::vector<double>& data = A.GetData();
+
+    int num_rows = A.Rows();
+
+    double weight_min = *std::min_element(std::begin(data), std::end(data));
+    assert(weight_min != 0);
+
+    for (int i = 0; i < num_rows; ++i)
+    {
+        for (int j = indptr[i]; j < indptr[i + 1]; ++j)
+        {
+            if (i != indices[j])
+            {
+                data[j] = std::floor(std::log2(data[j] / weight_min)) + 1;
+            }
+        }
+    }
+
+    return A;
+}
+
+std::vector<int> PartitionPostIsolate(const SparseMatrix& A, std::vector<int> partition,
+                                      const std::vector<int>& isolated_vertices)
+{
+    if (isolated_vertices.empty())
+    {
+        return partition;
+    }
+
+    int num_vertices = A.Rows();
+    int num_parts = *std::max_element(std::begin(partition), std::end(partition)) + 1;
+
+    for (auto&& vertex : isolated_vertices)
+    {
+        //partition.at(vertex) = num_parts++;
+        partition.at(vertex) = num_parts;
+    }
+
+    num_parts++;
+
+    std::vector<int> component(num_vertices, -1);
+    std::vector<int> offset_comp(num_parts + 1, 0);
+    linalgcpp::VectorView<int> num_comp(offset_comp.data() + 1, num_parts);
+
+    const auto& indptr = A.GetIndptr();
+    const auto& indices = A.GetIndices();
+
+    std::vector<int> vertex_stack(num_vertices);
+    int stack_p = 0;
+    int stack_top_p = 0;
+
+    for (int node = 0; node < num_vertices; ++node)
+    {
+        if (partition[node] < 0 || component[node] >= 0)
+        {
+            continue;
+        }
+
+        component[node] = num_comp[partition[node]]++;
+        vertex_stack[stack_top_p++] = node;
+
+        for ( ; stack_p < stack_top_p; ++stack_p)
+        {
+            int i = vertex_stack[stack_p];
+
+            if (partition[i] < 0)
+            {
+                continue;
+            }
+
+            for (int j = indptr[i]; j < indptr[i + 1]; ++j)
+            {
+                int k = indices[j];
+
+                if (partition[k] == partition[i])
+                {
+                    if (component[k] < 0)
+                    {
+                        component[k] = component[i];
+                        vertex_stack[stack_top_p++] = k;
+                    }
+
+                    assert(component[k] == component[i]);
+                }
+            }
+
+        }
+    }
+
+    std::partial_sum(std::begin(offset_comp), std::end(offset_comp), std::begin(offset_comp));
+
+    for (int i = 0; i < num_vertices; ++i)
+    {
+        partition[i] = offset_comp[partition[i]] + component[i];
+    }
+
+    return partition;
 }
 
 Vector ReadVector(const std::string& filename,
@@ -886,5 +974,138 @@ std::vector<int> GetElementColoring(const SparseMatrix& el_el)
 
     return colors;
 }
+
+bool IsDiag(const SparseMatrix& mat)
+{
+    if (mat.Rows() != mat.Cols() || mat.nnz() != mat.Rows())
+    {
+        return false;
+    }
+
+    const auto& indptr = mat.GetIndptr();
+    const auto& indices = mat.GetIndices();
+
+    int rows = mat.Rows();
+
+    for (int i = 0; i < rows; ++i)
+    {
+        for (int j = indptr[i]; j < indptr[i + 1]; ++j)
+        {
+            if (indices[j] != i)
+            {
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
+
+void GetSubMatrix(const SparseMatrix& mat, const std::vector<int>& rows,
+                  const std::vector<int>& cols, std::vector<int>& col_map,
+                  DenseMatrix& dense_mat)
+{
+    SetMarker(col_map, cols);
+
+    int num_rows = rows.size();
+    int num_cols = cols.size();
+
+    dense_mat.SetSize(num_rows, num_cols);
+    dense_mat = 0.0;
+
+    const auto& indptr = mat.GetIndptr();
+    const auto& indices = mat.GetIndices();
+    const auto& data = mat.GetData();
+
+    for (int i = 0; i < num_rows; ++i)
+    {
+        int row = rows[i];
+
+        for (int j = indptr[row]; j < indptr[row + 1]; ++j)
+        {
+            int col = col_map[indices[j]];
+
+            if (col > -1)
+            {
+                dense_mat(i, col) = data[j];
+            }
+        }
+    }
+
+    ClearMarker(col_map, cols);
+}
+
+void OffsetMult(const linalgcpp::Operator& A, const DenseMatrix& input, DenseMatrix& output,
+                int offset)
+{
+    assert(offset >= 0);
+    assert(offset < input.Cols());
+
+    int cols = input.Cols();
+    int off_cols = cols - offset;
+
+    output.SetSize(A.Rows(), off_cols);
+
+    for (int i = 0; i < off_cols; ++i)
+    {
+        A.Mult(input.GetColView(i + offset), output.GetColView(i));
+    }
+}
+
+void OffsetMultAT(const linalgcpp::Operator& A, const DenseMatrix& input, DenseMatrix& output,
+                  int offset)
+{
+    assert(offset >= 0);
+    assert(offset < input.Cols());
+
+    int cols = input.Cols();
+    int off_cols = cols - offset;
+
+    output.SetSize(A.Cols(), off_cols);
+
+    for (int i = 0; i < off_cols; ++i)
+    {
+        A.MultAT(input.GetColView(i + offset), output.GetColView(i));
+    }
+}
+
+DenseMatrix OuterProduct(const VectorView& lhs, const VectorView& rhs)
+{
+    DenseMatrix out;
+
+    OuterProduct(lhs, rhs, out);
+
+    return out;
+}
+
+void OuterProduct(const VectorView& lhs, const VectorView& rhs, DenseMatrix& product)
+{
+    int rows = lhs.size();
+    int cols = rhs.size();
+
+    product.SetSize(rows, cols);
+
+    for (int j = 0; j < cols; ++j)
+    {
+        for (int i = 0; i < rows; ++i)
+        {
+            product(i, j) = lhs[i] * rhs[j];
+        }
+    }
+}
+
+void ShiftPartition(std::vector<int>& partition)
+{
+    int min_part = *std::min_element(std::begin(partition), std::end(partition));
+
+    for (auto& i : partition)
+    {
+        i -= min_part;
+    }
+
+    linalgcpp::RemoveEmpty(partition);
+}
+
+
 
 } // namespace smoothg

@@ -52,29 +52,14 @@ int main(int argc, char* argv[])
                      global_graph.edge_true_edge_,
                      global_graph.part_local_);
 
-    const auto& global_map = global_graph.edge_map_;
-    const auto& dist_map = dist_graph.edge_map_;
-    int num_edges = dist_map.size();
-
-    assert(global_map.size() == dist_map.size());
-
     bool failed = false;
 
-    for (int i = 0; i < num_edges; ++i)
-    {
-        if (global_map[i] != dist_map[i])
-        {
-            failed = true;
-        }
-    }
+    // TODO(gelever1): Add some test here
 
     if (myid == 0)
     {
         std::cout << "Global Vertex Map: " << global_graph.vertex_map_;
-        std::cout << "Global Edge Map:   " << global_graph.edge_map_;
-
         std::cout << "Dist.  Vertex Map: " << dist_graph.vertex_map_;
-        std::cout << "Dist.  Edge Map:   " << dist_graph.edge_map_;
     }
 
     return failed;

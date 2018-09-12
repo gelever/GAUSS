@@ -127,7 +127,7 @@ private:
     parlinalgcpp::ParCommPkg comm_pkg_;
 
     MPI_Comm comm_;
-    MPI_Comm myid_;
+    int myid_;
 
     int num_entities_;
     int size_specifier_;
