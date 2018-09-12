@@ -113,11 +113,8 @@ def main(mat_filename, pos_filename, vis_data=[], node_size=40, cols=1, dark=Tru
     num_vert = len(pos)
 
     G = nx.Graph()
-    G.add_nodes_from([i for i in range(num_vert)])
+    G.add_nodes_from(np.arange(num_vert))
     G.add_edges_from(edges)
-
-    cols = min(num_data + 1, cols)
-    rows = int((num_data / cols) + 0.5)
 
     node_alpha = 1.0
     edge_alpha = 1.0
@@ -125,6 +122,9 @@ def main(mat_filename, pos_filename, vis_data=[], node_size=40, cols=1, dark=Tru
     edge_color = "white" if dark else "silver"
 
     if num_data > 0:
+        cols = max(1, min(num_data, cols))
+        rows = int((num_data / float(cols)) + 0.5)
+
         f, ax = plt.subplots(rows, cols)
         plt.set_cmap(color_map)
 
@@ -152,6 +152,25 @@ def main(mat_filename, pos_filename, vis_data=[], node_size=40, cols=1, dark=Tru
         plt.show()
 
 
+def parse_flag_val(argv, flag, dtype=str):
+    """ Parse command line flag value
+
+    Args:
+        argv:           Command line arguments
+        flag:           Flag to parse
+        dtype:          Data type to return
+    Returns:
+        dtype           Flag value
+
+    """
+    flag_index = argv.index(flag)
+    flag_val = argv[flag_index + 1]
+
+    del argv[flag_index + 1]
+    del argv[flag_index]
+
+    return dtype(flag_val)
+
 if __name__ == "__main__":
     node_size = 40.0
     cols = 2
@@ -160,12 +179,6 @@ if __name__ == "__main__":
     log = False
     color_map = "jet"
     vis_data = []
-
-    if "-ns" in sys.argv:
-        node_size = sys.argv[sys.argv.index("-ns") + 1]
-        sys.argv.remove("-ns")
-        sys.argv.remove(node_size)
-        node_size = float(node_size)
 
     if "-l" in sys.argv:
         dark = False
@@ -179,16 +192,14 @@ if __name__ == "__main__":
         log = True
         sys.argv.remove("-log")
 
+    if "-ns" in sys.argv:
+        node_size = parse_flag_val(sys.argv, "-ns", float)
+
     if "-nc" in sys.argv:
-        cols = sys.argv[sys.argv.index("-nc") + 1]
-        sys.argv.remove("-nc")
-        sys.argv.remove(cols)
-        cols = int(cols)
+        cols = parse_flag_val(sys.argv, "-nc", int)
 
     if "-cm" in sys.argv:
-        color_map = sys.argv[sys.argv.index("-cm") + 1]
-        sys.argv.remove("-cm")
-        sys.argv.remove(color_map)
+        color_map = parse_flag_val(sys.argv, "-cm", str)
 
     if (len(sys.argv) > 3):
         vis_data = sys.argv[3:]
