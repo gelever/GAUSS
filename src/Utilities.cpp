@@ -793,7 +793,7 @@ SparseMatrix RescaleLog(SparseMatrix A)
         }
     }
 
-    return std::move(A);
+    return A;
 }
 
 std::vector<int> PartitionPostIsolate(const SparseMatrix& A, std::vector<int> partition,
@@ -801,7 +801,7 @@ std::vector<int> PartitionPostIsolate(const SparseMatrix& A, std::vector<int> pa
 {
     if (isolated_vertices.empty())
     {
-        return std::move(partition);
+        return partition;
     }
 
     int num_vertices = A.Rows();
@@ -871,7 +871,7 @@ std::vector<int> PartitionPostIsolate(const SparseMatrix& A, std::vector<int> pa
         partition[i] = offset_comp[partition[i]] + component[i];
     }
 
-    return std::move(partition);
+    return partition;
 }
 
 Vector ReadVector(const std::string& filename,

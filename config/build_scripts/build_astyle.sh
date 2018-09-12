@@ -22,9 +22,8 @@ TMP_DIR=/tmp/astyle
 mkdir -p $TMP_DIR && cd $TMP_DIR
 
 svn checkout https://svn.code.sf.net/p/astyle/code/trunk@638 astyle-code
-pushd astyle-code/AStyle/build/gcc
+cd astyle-code/AStyle/build/gcc
 make
 make install prefix=$INSTALL_DIR/astyle
-popd
 
 rm -r $TMP_DIR
