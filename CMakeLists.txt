@@ -104,7 +104,7 @@ target_include_directories(smoothG
 # Astyle
 find_program(ASTYLE_COMMAND astyle HINTS ${ASTYLE_DIR})
 add_custom_target(style
-    ${ASTYLE_COMMAND} --options=smoothg.astylerc src/*.cpp include/*.hpp examples/*.?pp # testcode/*.?pp
+    ${ASTYLE_COMMAND} --options=smoothg.astylerc src/*.cpp include/*.hpp examples/*.?pp testcode/*.?pp
     WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
     COMMENT "Formating source code" VERBATIM
     )
