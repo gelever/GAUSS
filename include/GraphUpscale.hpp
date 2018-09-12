@@ -69,8 +69,8 @@ struct UpscaleParams
         : hybridization(hybridization_in),
           max_levels(max_levels_in), coarsen_factor(coarsen_factor_in),
           spectral_pair(max_levels_in - 1, {spect_tol_in, max_evects_in}),
-          elim_edge_dofs(elim_edge_dofs_in)
-          { }
+    elim_edge_dofs(elim_edge_dofs_in)
+    { }
 
     bool hybridization;
     int max_levels;
@@ -114,7 +114,7 @@ public:
     /// Rescale solver w/ weights per aggregate
     void RescaleSolver(int level, const std::vector<double>& agg_weights);
     void RescaleSolver(int level, const std::vector<double>& agg_weights,
-                    MixedMatrix& mm);
+                       MixedMatrix& mm);
 
     /// Wrapper for applying the upscaling, in linalgcpp terminology
     void Mult(const VectorView& x, VectorView y) const override;

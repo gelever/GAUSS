@@ -232,7 +232,8 @@ SparseMatrix MakeAggVertex(const std::vector<int>& partition);
     @param vertex_edge global vertex to edge relationship
     @returns proc_agg processor to aggregate relationship
 */
-SparseMatrix MakeProcAgg(MPI_Comm comm, const SparseMatrix& agg_vertex, const SparseMatrix& vertex_edge);
+SparseMatrix MakeProcAgg(MPI_Comm comm, const SparseMatrix& agg_vertex,
+                         const SparseMatrix& vertex_edge);
 
 /** @brief Use power iterations to find the maximum eigenpair of A
     @param comm MPI Communicator
@@ -303,7 +304,7 @@ std::vector<int> PartitionAAT(const SparseMatrix& A, double coarsening_factor,
     @retval partition vector with now isolated vertices
 */
 std::vector<int> PartitionPostIsolate(const SparseMatrix& A, std::vector<int> partition,
-                          const std::vector<int>& isolated_vertices);
+                                      const std::vector<int>& isolated_vertices);
 
 
 /** @brief Read serial vector from file and extract local portion
@@ -393,8 +394,10 @@ void GetSubMatrix(const SparseMatrix& mat, const std::vector<int>& rows,
                   const std::vector<int>& cols, std::vector<int>& col_map,
                   DenseMatrix& dense_mat);
 
-void OffsetMult(const linalgcpp::Operator& A, const DenseMatrix& input, DenseMatrix& output, int offset);
-void OffsetMultAT(const linalgcpp::Operator& A, const DenseMatrix& input, DenseMatrix& output, int offset);
+void OffsetMult(const linalgcpp::Operator& A, const DenseMatrix& input, DenseMatrix& output,
+                int offset);
+void OffsetMultAT(const linalgcpp::Operator& A, const DenseMatrix& input, DenseMatrix& output,
+                  int offset);
 
 DenseMatrix OuterProduct(const VectorView& lhs, const VectorView& rhs);
 void OuterProduct(const VectorView& lhs, const VectorView& rhs, DenseMatrix& product);

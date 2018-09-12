@@ -103,7 +103,8 @@ struct Graph
     int global_edges_;
 
 private:
-    void MakeLocalWeight(const std::vector<int>& edge_map = {}, const std::vector<double>& global_weight = {});
+    void MakeLocalWeight(const std::vector<int>& edge_map = {}, const std::vector<double>& global_weight
+                         = {});
 
     void MakeLocalW(const SparseMatrix& W_global);
 };

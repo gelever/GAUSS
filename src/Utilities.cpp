@@ -577,7 +577,8 @@ double Density(const SparseMatrix& A)
     return A.nnz() / denom;
 }
 
-SparseMatrix MakeProcAgg(MPI_Comm comm, const SparseMatrix& agg_vertex, const SparseMatrix& vertex_edge)
+SparseMatrix MakeProcAgg(MPI_Comm comm, const SparseMatrix& agg_vertex,
+                         const SparseMatrix& vertex_edge)
 {
     int num_procs;
     int num_aggs = agg_vertex.Rows();
@@ -793,15 +794,15 @@ SparseMatrix RescaleLog(SparseMatrix A)
         }
     }
 
-    return std::move(A);
+    return A;
 }
 
 std::vector<int> PartitionPostIsolate(const SparseMatrix& A, std::vector<int> partition,
-                          const std::vector<int>& isolated_vertices)
+                                      const std::vector<int>& isolated_vertices)
 {
     if (isolated_vertices.empty())
     {
-        return std::move(partition);
+        return partition;
     }
 
     int num_vertices = A.Rows();
@@ -871,7 +872,7 @@ std::vector<int> PartitionPostIsolate(const SparseMatrix& A, std::vector<int> pa
         partition[i] = offset_comp[partition[i]] + component[i];
     }
 
-    return std::move(partition);
+    return partition;
 }
 
 Vector ReadVector(const std::string& filename,
@@ -1034,7 +1035,8 @@ void GetSubMatrix(const SparseMatrix& mat, const std::vector<int>& rows,
     ClearMarker(col_map, cols);
 }
 
-void OffsetMult(const linalgcpp::Operator& A, const DenseMatrix& input, DenseMatrix& output, int offset)
+void OffsetMult(const linalgcpp::Operator& A, const DenseMatrix& input, DenseMatrix& output,
+                int offset)
 {
     assert(offset >= 0);
     assert(offset < input.Cols());
@@ -1050,7 +1052,8 @@ void OffsetMult(const linalgcpp::Operator& A, const DenseMatrix& input, DenseMat
     }
 }
 
-void OffsetMultAT(const linalgcpp::Operator& A, const DenseMatrix& input, DenseMatrix& output, int offset)
+void OffsetMultAT(const linalgcpp::Operator& A, const DenseMatrix& input, DenseMatrix& output,
+                  int offset)
 {
     assert(offset >= 0);
     assert(offset < input.Cols());

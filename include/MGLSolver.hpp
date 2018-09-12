@@ -76,6 +76,8 @@ public:
     virtual void Mult(const VectorView& rhs, VectorView sol) const;
     virtual Vector Mult(const VectorView& rhs) const;
 
+    using linalgcpp::Operator::Mult;
+
     ///@name Set solver parameters
     ///@{
     virtual void SetPrintLevel(int print_level) { print_level_ = print_level; }

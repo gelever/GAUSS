@@ -238,7 +238,7 @@ int test_fe_dense()
     bool failed = (error > 1e-6);
 
     std::cout << "Basic FD test of dense Eigensolver " << (failed ? "FAILS!" : "passes.") << "\n";
-    
+
     return failed;
 }
 

@@ -40,42 +40,42 @@ std::vector<int> MetisPart(const SparseMatrix& vertex_edge, int num_parts);
 /// @brief Computes DMinvDt + shift * I
 class ShiftedDMinvDt : public ParOperator
 {
-    public:
-        /** @brief Construtor
-            @param M M matrix
-            @param D D matrix
-            @param shift shift to apply
-        */
-        ShiftedDMinvDt(const ParMatrix& M, const ParMatrix& D, double shift = 1.0)
-            : ParOperator(D.GetComm(), D.GetRowStarts()),
-              M_prec_(M, false, false, true, 0.0, 0.1, 0.10),
-              M_solver_(M, M_prec_, 5000 /* max_iter */ , 1e-12 /* rel tol */,
-                        1e-16 /* abs tol */, false /* verbose */, parlinalgcpp::ParMult),
-              D_(D), DTx_(D_.Cols()), MinvDTx_(D_.Cols()),
-              shift_(shift) { }
+public:
+    /** @brief Construtor
+        @param M M matrix
+        @param D D matrix
+        @param shift shift to apply
+    */
+    ShiftedDMinvDt(const ParMatrix& M, const ParMatrix& D, double shift = 1.0)
+        : ParOperator(D.GetComm(), D.GetRowStarts()),
+          M_prec_(M, false, false, true, 0.0, 0.1, 0.10),
+          M_solver_(M, M_prec_, 5000 /* max_iter */, 1e-12 /* rel tol */,
+                    1e-16 /* abs tol */, false /* verbose */, parlinalgcpp::ParMult),
+          D_(D), DTx_(D_.Cols()), MinvDTx_(D_.Cols()),
+          shift_(shift) { }
 
-        /** @brief Compute y = (DMinvD^T + shift * I)x
-            @param input input vector x
-            @param output output vector y
-        */
-        void Mult(const VectorView& input, VectorView output) const
-        {
-            D_.MultAT(input, DTx_);
-            M_solver_.Mult(DTx_, MinvDTx_);
-            D_.Mult(MinvDTx_, output);
+    /** @brief Compute y = (DMinvD^T + shift * I)x
+        @param input input vector x
+        @param output output vector y
+    */
+    void Mult(const VectorView& input, VectorView output) const
+    {
+        D_.MultAT(input, DTx_);
+        M_solver_.Mult(DTx_, MinvDTx_);
+        D_.Mult(MinvDTx_, output);
 
-            output.Add(shift_, input);
-        }
+        output.Add(shift_, input);
+    }
 
-    private:
-        ParaSails M_prec_;
-        PCGSolver M_solver_;
-        ParMatrix D_;
+private:
+    ParaSails M_prec_;
+    PCGSolver M_solver_;
+    ParMatrix D_;
 
-        mutable Vector DTx_;
-        mutable Vector MinvDTx_;
+    mutable Vector DTx_;
+    mutable Vector MinvDTx_;
 
-        double shift_;
+    double shift_;
 };
 
 int main(int argc, char* argv[])

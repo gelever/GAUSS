@@ -315,7 +315,7 @@ def make_tests():
           "operator-complexity": 1.3000000000000000}]
 
     tests["timestep"] = \
-        [["./timestep",
+        [["./graph_timestep",
           "--time", "100.0"]]
 
     tests["pareigenvector1"] = \
@@ -482,7 +482,7 @@ def make_tests():
           "fine-eval": 0.1754552537017609}]
 
     tests["partimestep"] = \
-        [["mpirun", "-n", num_procs, "./timestep",
+        [["mpirun", "-n", num_procs, "./graph_timestep",
           "--time", "100.0"]]
 
     # tests["isolate-coarsen"] = \

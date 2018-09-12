@@ -113,7 +113,7 @@ int main(int argc, char* argv[])
 
         std::cout << "The generated graph does not have "
                   << "the expected number of edges\n";
-        std::cout << "Expect: " << nvertices * mean_degree / 2 << "\n";
+        std::cout << "Expect: " << nvertices* mean_degree / 2 << "\n";
         std::cout << "Actual: " << vertex_edge.Cols() << "\n";
     }
 

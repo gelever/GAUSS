@@ -122,8 +122,10 @@ private:
     int Compute(int n, double* a, std::vector<double>& evals, DenseMatrix& evects);
 
 
-    void SparseBlockCompute(SparseMatrix M, SparseMatrix D, std::vector<double>& evals, DenseMatrix& evects);
-    void DenseBlockCompute(const SparseMatrix& M, const SparseMatrix& D, std::vector<double>& evals, DenseMatrix& evects);
+    void SparseBlockCompute(SparseMatrix M, SparseMatrix D, std::vector<double>& evals,
+                            DenseMatrix& evects);
+    void DenseBlockCompute(const SparseMatrix& M, const SparseMatrix& D, std::vector<double>& evals,
+                           DenseMatrix& evects);
 
     int max_num_evects_;
     double rel_tol_;
