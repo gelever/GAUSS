@@ -86,9 +86,9 @@ if (NOT APPLE)
     add_valgrind_test(vwattsstrogatz wattsstrogatz)
 endif()
 
-# add_test(NAME style
-#   COMMAND ${ASTYLE_COMMAND} --options=smoothg.astylerc --dry-run src/*.?pp examples/*.?pp testcode/*.?pp
-#   WORKING_DIRECTORY ${PROJECT_SOURCE_DIR})
-# set_tests_properties(style
-#   PROPERTIES FAIL_REGULAR_EXPRESSION
-#   "Formatted")
+add_test(NAME style
+  COMMAND ${ASTYLE_COMMAND} --options=smoothg.astylerc --dry-run src/*.?pp include/*.?pp examples/*.?pp testcode/*.?pp
+  WORKING_DIRECTORY ${smoothG_SOURCE_DIR})
+set_tests_properties(style
+  PROPERTIES FAIL_REGULAR_EXPRESSION
+  "Formatted")

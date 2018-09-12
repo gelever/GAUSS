@@ -30,9 +30,9 @@ if (NOT APPLE)
     add_valgrind_test(vrescaling rescaling)
 endif()
 
-#add_test(NAME style
-#  COMMAND ${ASTYLE_COMMAND} --options=rs2001.astylerc --dry-run include/*.?pp src/*.?pp examples/*.?pp testcode/*.?pp
-#  WORKING_DIRECTORY ${PROJECT_SOURCE_DIR})
-#set_tests_properties(style
-#  PROPERTIES FAIL_REGULAR_EXPRESSION
-#  "Formatted")
+add_test(NAME rs2001_style
+  COMMAND ${ASTYLE_COMMAND} --options=rs2001.astylerc --dry-run include/*.?pp src/*.?pp examples/*.?pp testcode/*.?pp
+  WORKING_DIRECTORY ${ReservoirSimulator2000_SOURCE_DIR})
+set_tests_properties(rs2001_style
+  PROPERTIES FAIL_REGULAR_EXPRESSION
+  "Formatted")
