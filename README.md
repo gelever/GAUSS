@@ -67,7 +67,7 @@ For more detailed walkthroughs, see [EXAMPLE.md](doc/EXAMPLE.md) or the examples
 
 # Installation
 There are several dependencies required:
-### Linear algebra is provided by:
+### Linear Algebra:
 * [linalgcpp](https://github.com/gelever/linalgcpp)  - Serial linear algebra and solvers
 * [parlinalgcpp](https://github.com/gelever/parlinalgcpp) - Wrapper for hypre
    * [hypre](https://github.com/LLNL/hypre) - Distrubuted linear algebra and solvers
@@ -75,8 +75,11 @@ There are several dependencies required:
    * [SuiteSparse/UMFPACK](http://faculty.cse.tamu.edu/davis/suitesparse.html)
 * [partition](https://github.com/gelever/partition) - Wrapper for METIS
    * [METIS](http://glaros.dtc.umn.edu/gkhome/metis/metis/overview) - Graph partitioner
-   
+
 These modules may be collapsed into one project in the future.
+   
+### Other:
+* [CMake](https://cmake.org/)  - Build generator
 
 For more detailed installation instructions, see [INSTALL.md](INSTALL.md).
 
