@@ -32,7 +32,7 @@ This project was originally a fork of [LLNL/smoothG](https://github.com/llnl/smo
 However, it has been rewritten completely to remove dependence on the finite element library [mfem](https://github.com/llnl/mfem).
 Apart from now being completely algebraic, there are some additional extensions.
 This includes multilevel upscaling, refactored code base, additional build scripts,
-more robust continious integration environment, and so on and so on.
+more robust continuous integration environment, and so on and so on.
 
 This code is based largely on the following paper:
 
@@ -69,12 +69,15 @@ For more detailed walkthroughs, see [EXAMPLE.md](doc/EXAMPLE.md) or the examples
 There are several dependencies required:
 ### Linear Algebra:
 * [linalgcpp](https://github.com/gelever/linalgcpp)  - Serial linear algebra and solvers
+   * [blas](http://www.netlib.org/blas/) - Dense matrix operations
+   * [lapack](http://www.netlib.org/lapack/) - Dense matrix solvers
 * [parlinalgcpp](https://github.com/gelever/parlinalgcpp) - Wrapper for hypre
    * [hypre](https://github.com/LLNL/hypre) - Distrubuted linear algebra and solvers
 * [sparsesolver](https://github.com/gelever/sparsesolver) - Wrapper for SuiteSparse
    * [SuiteSparse/UMFPACK](http://faculty.cse.tamu.edu/davis/suitesparse.html)
 * [partition](https://github.com/gelever/partition) - Wrapper for METIS
    * [METIS](http://glaros.dtc.umn.edu/gkhome/metis/metis/overview) - Graph partitioner
+* [ARPACK](https://www.caam.rice.edu/software/ARPACK/) - Sparse EigenSolver (optional)
 
 These modules may be collapsed into one project in the future.
    
