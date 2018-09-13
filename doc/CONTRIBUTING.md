@@ -20,8 +20,7 @@
 * Member variable names all have trailing underscores.
 * Classes are capitalized.
 * Words in classes are differentiated by capitalizing each word. E.g. "MyClass"
-* Functions and variables are not capitalized.
-* Words in functions and variables are separated by an underscore. E.g. "my_member_var_"
+* Functions use Pascal case and and variables use snake case.
 
 ## Language feature conventions
 
