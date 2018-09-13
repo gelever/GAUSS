@@ -21,12 +21,16 @@ dependencies.
 
 # Dependencies:
 
-* blas
-* lapack
-* [metis-5.1.0](http://glaros.dtc.umn.edu/gkhome/metis/metis/overview)
-* [hypre-2.10.0b](https://computation.llnl.gov/projects/hypre-scalable-linear-solvers-multigrid-methods/software)
-* [SuiteSparse-4.5.4](http://faculty.cse.tamu.edu/davis/suitesparse.html)
-* [mfem-3.3](http://mfem.org/)
+* [linalgcpp](https://github.com/gelever/linalgcpp)  - Serial linear algebra and solvers
+   * [blas](http://www.netlib.org/blas/) - Dense matrix operations
+   * [lapack](http://www.netlib.org/lapack/) - Dense matrix solvers
+* [parlinalgcpp](https://github.com/gelever/parlinalgcpp) - Wrapper for hypre
+   * [hypre](https://github.com/LLNL/hypre) - Distrubuted linear algebra and solvers
+* [sparsesolver](https://github.com/gelever/sparsesolver) - Wrapper for SuiteSparse
+   * [SuiteSparse/UMFPACK](http://faculty.cse.tamu.edu/davis/suitesparse.html)
+* [partition](https://github.com/gelever/partition) - Wrapper for METIS
+   * [METIS](http://glaros.dtc.umn.edu/gkhome/metis/metis/overview) - Graph partitioner
+* [ARPACK](https://www.caam.rice.edu/software/ARPACK/) - Sparse EigenSolver (optional)
 
 # Build Dependencies:
 
@@ -75,42 +79,54 @@ For example the final `LIBRARY_PATH` will look like:
 
     #(Replace blas and lapack library locations appropriately)
 
-## mfem-3.3
+## linalgcpp
+    
+    git clone -b develop https://github.com/gelever/linalgcpp.git linalgcpp
+    cd linalgcpp
 
-    tar -xvzf mfem-3.3.tar.gz
-    cd mfem-3.3
+    mkdir -p build && cd build
+    cmake .. -DCMAKE_INSTALL_PREFIX=${HOME}/linalgcpp
+    make -j3 install
 
-    make config
+## parlinalgcpp
 
-Choose one of the following:
+    git clone https://github.com/gelever/parlinalgcpp.git parlinalgcpp
+    cd parlinalgcpp
 
-    edit config/config.mk with the correct parameters
+    mkdir -p build && cd build
+    CC=mpicc CXX=mpic++ cmake .. \
+        -DHypre_INC_DIR=${HOME}/hypre/include \
+        -DHypre_LIB_DIR=${HOME}/hypre/lib \
+        -DCMAKE_INSTALL_PREFIX=${HOME}/parlinalgcpp
+    make -j3 install
 
-    make parallel
-    make install
+## partition
 
---or--
+    git clone https://github.com/gelever/partition.git partition
+    cd partition
 
-    make parallel \
-        PREFIX=${HOME}/mfem \
-        MFEM_USE_METIS_5=YES \
-        MFEM_USE_LAPACK=YES \
-        MFEM_USE_SUITESPARSE=YES \
-        HYPRE_DIR=${HOME}/hypre \
-        SUITESPARSE_DIR=${HOME}/SuiteSparse  \
-        METIS_DIR=${HOME}/metis \
-        LAPACKLIB="/usr/lib64/liblapack.so.3 /usr/lib64/libblas.so.3"
-    make install
+    mkdir -p build && cd build
+    cmake .. \
+        -DMETIS_DIR=${HOME}/metis \
+        -DCMAKE_INSTALL_PREFIX=${HOME}/partition
+    make -j3 install
 
+## sparsesolve
+
+    git clone https://github.com/gelever/sparsesolver.git sparsesolve
+    cd sparsesolve
+
+    mkdir -p build && cd build
+    cmake .. \
+        -DSUITESPARSE_INCLUDE_DIR_HINTS=${HOME}/SuiteSparse/include \
+        -DSUITESPARSE_LIBRARY_DIR_HINTS=${HOME}/SuiteSparse/lib \
+        -DCMAKE_INSTALL_PREFIX=${HOME}/sparsesolve
+    make -j3 install
 
 # Optional Dependencies:
 
-* [SPE10 dataset](http://www.spe.org/web/csp/datasets/set02.htm)
 * [Valgrind](http://valgrind.org/)
-
-## spe10 dataset
-
-    unzip por_perm_case2a.zip -d ${HOME}/spe10
+* [ARPACK](https://www.caam.rice.edu/software/ARPACK/)
 
 ## Valgrind
 
@@ -131,16 +147,14 @@ or pass the parameters directly to cmake:
     mkdir -p build
     cd build
 
-    cmake \
-        -DMFEM_DIR=${HOME}/mfem \
+    CC=mpicc CXX=mpic++ cmake \
         -DMETIS_DIR=${HOME}/metis \
-        -DHYPRE_DIR=${HOME}/hypre \
-        -DSuiteSparse_DIR=${HOME}/SuiteSparse \
-        -DCMAKE_BUILD_TYPE=DEBUG \
-        -DBLAS_LIBRARIES=/usr/lib64/libblas.so.3 \
-        -DLAPACK_LIBRARIES=/usr/lib64/liblapack.so.3 \
-        -DSPE10_DIR=${HOME}/spe10 \
-        ..
+        -DHypre_INC_DIR=${HOME}/hypre/include \
+        -DHypre_LIB_DIR=${HOME}/hypre/lib \
+        -DSUITESPARSE_INCLUDE_DIR_HINTS=${HOME}/SuiteSparse/include \
+        -DSUITESPARSE_LIBRARY_DIR_HINTS=${HOME}/SuiteSparse/lib \
+        ${BASE_DIR} \
+        ${EXTRA_ARGS}
 
     make
     make test

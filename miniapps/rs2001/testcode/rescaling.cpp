@@ -147,7 +147,7 @@ int main(int argc, char* argv[])
     int num_procs = mpi_info.num_procs_;
 
     // Create a mesh graph, an edge fespace and a partition of the graph
-    mfem::Mesh mesh(3, 3, 3, mfem::Element::HEXAHEDRON, 1);
+    mfem::Mesh mesh(4, 4, 4, mfem::Element::HEXAHEDRON, 1);
     mfem::ParMesh pmesh(comm, mesh);
 
     for (int i = 0; i < pmesh.GetNE(); i++)

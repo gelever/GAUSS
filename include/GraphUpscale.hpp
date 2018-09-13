@@ -118,6 +118,7 @@ public:
 
     /// Wrapper for applying the upscaling, in linalgcpp terminology
     void Mult(const VectorView& x, VectorView y) const override;
+    using linalgcpp::Operator::Mult;
 
     void MultMultiLevel(const BlockVector& x, std::vector<BlockVector>& sols) const;
     std::vector<BlockVector> MultMultiLevel(const BlockVector& x) const;
