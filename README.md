@@ -18,17 +18,19 @@ smoothG [![Build Status](https://travis-ci.org/gelever/smoothG.svg?branch=master
 
 !["smoothG logo](doc/smoothg_logo.png)
 
-Mixed graph-Laplacian upscaling and solvers.
-
-For installation instructions, see [INSTALL.md](INSTALL.md).
-
-For a tutorial walkthrough of the example code, see [EXAMPLE.md](doc/EXAMPLE.md).
+# Overview
 
 This project is intended to take a graph and build a smaller (upscaled)
 graph that is representative of the original in some way. We represent
 the graph Laplacian in a mixed form, solve some local eigenvalue problems
 to uncover near-nullspace modes, and use those modes as coarse degrees
 of freedom.
+
+Mixed graph-Laplacian upscaling and solvers.
+
+For installation instructions, see [INSTALL.md](INSTALL.md).
+
+For a tutorial walkthrough of the example code, see [EXAMPLE.md](doc/EXAMPLE.md).
 
 This code is based largely on the following paper:
 
