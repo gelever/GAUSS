@@ -16,7 +16,7 @@ smoothG [![Build Status](https://travis-ci.org/gelever/smoothG.svg?branch=master
  +
  +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ EHEADER -->
 
-!["smoothG logo](doc/smoothg_logo.png)
+<!-- !["smoothG logo](doc/smoothg_logo.png) -->
 
 Mixed graph-Laplacian upscaling and solvers.
 
@@ -29,9 +29,9 @@ to uncover near-nullspace modes, and use those modes as coarse degrees
 of freedom.
 
 This project was originally a fork of [LLNL/smoothG](https://github.com/llnl/smoothG).
-However, it has been rewritten completely to remove the dependence on the [LLNL/mfem](https://github.com/llnl/mfem) library.
-Apart from now being completely algebraic, there are some additional extensions.  This includes
-multilevel upscaling, refactored code base, additional build scripts,
+However, it has been rewritten completely to remove dependence on the finite element library [mfem](https://github.com/llnl/mfem).
+Apart from now being completely algebraic, there are some additional extensions.
+This includes multilevel upscaling, refactored code base, additional build scripts,
 more robust continious integration environment, and so on and so on.
 
 This code is based largely on the following paper:
@@ -44,24 +44,41 @@ This code is based largely on the following paper:
 There are some simple setup steps required to start obtaining upscaled solutions:
 ```c++
 {
-    ...
+    // Input data
+    SparseMatrix vertex_edge = ReadCSR(graph_filename);
+    std::vector<int> partition = ReadText<int>(part_filename);
+    
+    // Perform coarsening setup
     Graph graph(comm, vertex_edge, partition);
     GraphUpscale upscale(graph, {spect_tol, max_evects});
 
+    // Apply upscaling operation
     Vector rhs = ReadVertexVector(graph, rhs_filename);
     Vector sol = upscale.Solve(rhs);
 }
 ```
 The `Graph` object handles the fine level input graph information.  Both serial and distributed graph inputs are supported.
-In this case, the SparseMatrix `vertex_edge` and vector `partition` have been read in from file.
+In this case, `vertex_edge` and `partition` have been read in from file.
 
 The `GraphUpscale` object handles the coarsening procedure and the application of upscaling.
 There are several user specified parameters that can control the coarsening process.
 
-For more detailed walkthroughs, see [EXAMPLE.md](doc/EXAMPLE.md).
+For more detailed walkthroughs, see [EXAMPLE.md](doc/EXAMPLE.md) or the examples directory [README.md](examples/README.md).
 
 # Installation
-For installation instructions, see [INSTALL.md](INSTALL.md).
+There are several dependencies required:
+### Linear algebra is provided by:
+* [linalgcpp](https://github.com/gelever/linalgcpp)  - Serial linear algebra and solvers
+* [parlinalgcpp](https://github.com/gelever/parlinalgcpp) - Wrapper for hypre
+   * [hypre](https://github.com/LLNL/hypre) - Distrubuted linear algebra and solvers
+* [sparsesolver](https://github.com/gelever/sparsesolver) - Wrapper for SuiteSparse
+   * [SuiteSparse/UMFPACK](http://faculty.cse.tamu.edu/davis/suitesparse.html)
+* [partition](https://github.com/gelever/partition) - Wrapper for METIS
+   * [METIS](http://glaros.dtc.umn.edu/gkhome/metis/metis/overview) - Graph partitioner
+   
+These modules may be collapsed into one project in the future.
+
+For more detailed installation instructions, see [INSTALL.md](INSTALL.md).
 
 # Project Structure
 ```sh
