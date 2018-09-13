@@ -63,7 +63,7 @@ In this case, `vertex_edge` and `partition` have been read in from file.
 The `GraphUpscale` object handles the coarsening procedure and the application of upscaling.
 There are several user specified parameters that can control the coarsening process.
 
-For more detailed walkthroughs, see [EXAMPLE.md](doc/EXAMPLE.md) or the examples directory [README.md](examples/README.md).
+For more detailed walkthroughs, see [EXAMPLE.md](doc/EXAMPLE.md) or the [examples directory](examples/).
 
 # Installation
 There are several dependencies required:
@@ -84,6 +84,7 @@ These modules may be collapsed into one project in the future.
 ### Other:
 * [CMake](https://cmake.org/)  - Build generator
 
+Build scripts for dependencies are available at [config/build_scripts](config/build_scripts).
 For more detailed installation instructions, see [INSTALL.md](INSTALL.md).
 
 # Project Structure
@@ -104,6 +105,8 @@ This code has contributions from:
 - Stephan Gelever (gelever1@llnl.gov)
 - Chak Shing Lee (cslee@llnl.gov)
 - Colin Ponce (ponce11@llnl.gov)
+
+See [doc/CONTRIBUTING.md](doc/CONTRIBUTING.md) for detailed contribution guidelines.
 
 
 # Copyright
