@@ -92,7 +92,7 @@ mysmoothg
 ├── config    - Configuration and build scripts
 ├── examples  - Graph upscaling examples
 ├── graphdata - Example graphs, partitions, and vectors
-├── miniapps  - Application that may have external dependencies (optional)
+├── miniapps  - Applications that may have external dependencies (optional)
 ├── testcode  - Verification of library functions
 ├── src       - Library implementation
 └── include   - Library declarations
