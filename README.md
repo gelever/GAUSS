@@ -64,6 +64,7 @@ The `GraphUpscale` object handles the coarsening procedure and the application o
 There are several user specified parameters that can control the coarsening process.
 
 For more detailed walkthroughs, see [EXAMPLE.md](doc/EXAMPLE.md) or the [examples directory](examples/).
+See the [miniapps](miniapps) directory for more applications of smoothG.
 
 # Installation
 There are several dependencies required:
