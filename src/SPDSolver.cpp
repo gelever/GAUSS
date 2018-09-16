@@ -81,7 +81,7 @@ SPDSolver::SPDSolver(const MixedMatrix& mgl, const std::vector<int>& elim_dofs)
 
     if (use_w_)
     {
-        A_ = parlinalgcpp::ParSub(D.Mult(MinvDT), mgl.GlobalW());
+        A_ = linalgcpp::ParSub(D.Mult(MinvDT), mgl.GlobalW());
     }
     else
     {
@@ -91,9 +91,9 @@ SPDSolver::SPDSolver(const MixedMatrix& mgl, const std::vector<int>& elim_dofs)
     A_.AddDiag(diag);
     MinvDT_ = Minv_.Mult(D_elim_global.Transpose());
 
-    prec_ = parlinalgcpp::BoomerAMG(A_);
+    prec_ = linalgcpp::BoomerAMG(A_);
     pcg_ = linalgcpp::PCGSolver(A_, prec_, max_num_iter_, rtol_,
-                                atol_, 0, parlinalgcpp::ParMult);
+                                atol_, 0, linalgcpp::ParMult);
 
     if (myid_ == 0)
     {

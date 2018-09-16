@@ -114,8 +114,8 @@ private:
     linalgcpp::BlockOperator op_;
     linalgcpp::BlockOperator prec_;
 
-    parlinalgcpp::ParDiagScale M_prec_;
-    parlinalgcpp::BoomerAMG schur_prec_;
+    linalgcpp::ParDiagScale M_prec_;
+    linalgcpp::BoomerAMG schur_prec_;
 
     linalgcpp::PMINRESSolver pminres_;
 

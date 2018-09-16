@@ -128,7 +128,7 @@ ParMatrix MakeEdgeTrueEdge(MPI_Comm comm, const SparseMatrix& proc_edge,
         col_map[i] = offd_map[i].first;
     }
 
-    auto starts = parlinalgcpp::GenerateOffsets(comm, {num_edges_local, num_tedges_local});
+    auto starts = linalgcpp::GenerateOffsets(comm, {num_edges_local, num_tedges_local});
 
     SparseMatrix diag(std::move(diag_indptr), std::move(diag_indices), std::move(diag_data),
                       num_edges_local, num_tedges_local);
@@ -293,7 +293,7 @@ ParMatrix MakeEntityTrueEntity(const ParMatrix& entity_entity)
                         num_entities, num_true_entities);
 
     MPI_Comm comm = entity_entity.GetComm();
-    auto true_starts = parlinalgcpp::GenerateOffsets(comm, num_true_entities);
+    auto true_starts = linalgcpp::GenerateOffsets(comm, num_true_entities);
 
     ParMatrix select_d(comm, entity_entity.GetRowStarts(), true_starts, std::move(select));
 
@@ -478,8 +478,8 @@ double DivError(MPI_Comm comm, const SparseMatrix& D, const VectorView& numer,
     Vector Dfine = D.Mult(denom);
     Vector Ddiff = D.Mult(sigma_diff);
 
-    const double error = parlinalgcpp::ParL2Norm(comm, Ddiff) /
-                         parlinalgcpp::ParL2Norm(comm, Dfine);
+    const double error = linalgcpp::ParL2Norm(comm, Ddiff) /
+                         linalgcpp::ParL2Norm(comm, Dfine);
     return error;
 }
 
@@ -488,8 +488,8 @@ double CompareError(MPI_Comm comm, const VectorView& numer, const VectorView& de
     Vector diff(denom);
     diff -= numer;
 
-    const double error = parlinalgcpp::ParL2Norm(comm, diff) /
-                         parlinalgcpp::ParL2Norm(comm, denom);
+    const double error = linalgcpp::ParL2Norm(comm, diff) /
+                         linalgcpp::ParL2Norm(comm, denom);
 
     return error;
 }
@@ -654,8 +654,8 @@ SparseMatrix MakeAggVertex(const std::vector<int>& partition)
 double PowerIterate(MPI_Comm comm, const linalgcpp::Operator& A, VectorView result,
                     int max_iter, double tol, bool verbose)
 {
-    using parlinalgcpp::ParMult;
-    using parlinalgcpp::ParL2Norm;
+    using linalgcpp::ParMult;
+    using linalgcpp::ParL2Norm;
 
     int myid;
     MPI_Comm_rank(comm, &myid);

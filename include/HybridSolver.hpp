@@ -157,7 +157,7 @@ private:
     ParMatrix pHybridSystem_;
 
     linalgcpp::PCGSolver cg_;
-    parlinalgcpp::BoomerAMG prec_;
+    linalgcpp::BoomerAMG prec_;
 
     std::vector<DenseMatrix> Minv_;
     std::vector<DenseMatrix> MinvDT_;

@@ -108,7 +108,7 @@ protected:
     ParMatrix MinvDT_;
 
 private:
-    parlinalgcpp::BoomerAMG prec_;
+    linalgcpp::BoomerAMG prec_;
     linalgcpp::PCGSolver pcg_;
 };
 

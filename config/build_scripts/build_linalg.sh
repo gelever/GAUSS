@@ -28,46 +28,13 @@ cd $INSTALL_DIR
 git clone -b develop https://github.com/gelever/linalgcpp.git linalgcpp
 cd linalgcpp
 mkdir -p build && cd build
-cmake .. -DCMAKE_INSTALL_PREFIX=$INSTALL_DIR/linalgcpp
-make -j3 install
-
-################
-# ParLinalgcpp #
-################
-
-cd $INSTALL_DIR
-git clone https://github.com/gelever/parlinalgcpp.git parlinalgcpp
-cd parlinalgcpp
-mkdir -p build && cd build
-CC=mpicc CXX=mpic++ cmake .. \
-    -DHypre_INC_DIR=$HYPRE_DIR/include \
-    -DHypre_LIB_DIR=$HYPRE_DIR/lib \
-    -DCMAKE_INSTALL_PREFIX=$INSTALL_DIR/parlinalgcpp
-make -j3 install
-
-#############
-# Partition #
-#############
-
-cd $INSTALL_DIR
-git clone https://github.com/gelever/partition.git partition
-cd partition
-mkdir -p build && cd build
-cmake .. \
-    -DMETIS_DIR=$METIS_DIR \
-    -DCMAKE_INSTALL_PREFIX=$INSTALL_DIR/partition
-make -j3 install
-
-###############
-# SparseSolve #
-###############
-
-cd $INSTALL_DIR
-git clone https://github.com/gelever/sparsesolver.git sparsesolve
-cd sparsesolve
-mkdir -p build && cd build
-cmake .. \
-    -DSUITESPARSE_INCLUDE_DIR_HINTS=$SUITESPARSE_DIR/include \
-    -DSUITESPARSE_LIBRARY_DIR_HINTS=$SUITESPARSE_DIR/lib \
-    -DCMAKE_INSTALL_PREFIX=$INSTALL_DIR/sparsesolve
+CXX=mpic++ CC=mpicc cmake .. \
+    -DLINALGCPP_ENABLE_MPI=Yes \
+    -DLINALGCPP_ENABLE_METIS=Yes \
+    -DLINALGCPP_ENABLE_SUITESPARSE=Yes \
+    -DHypre_DIR=${HYPRE_DIR} \
+    -DMETIS_DIR=${METIS_DIR} \
+    -DSUITESPARSE_INCLUDE_DIR_HINTS=${SUITESPARSE_DIR}/include \
+    -DSUITESPARSE_LIBRARY_DIR_HINTS=${SUITESPARSE_DIR}/lib \
+    -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR}/linalgcpp
 make -j3 install

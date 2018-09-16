@@ -85,7 +85,7 @@ void MixedMatrix::Init()
 {
     MPI_Comm comm = edge_true_edge_.GetComm();
 
-    auto starts = parlinalgcpp::GenerateOffsets(comm, {D_local_.Rows(), D_local_.Cols()});
+    auto starts = linalgcpp::GenerateOffsets(comm, {D_local_.Rows(), D_local_.Cols()});
     std::vector<HYPRE_Int>& vertex_starts = starts[0];
     std::vector<HYPRE_Int>& edge_starts = starts[1];
 
@@ -95,7 +95,7 @@ void MixedMatrix::Init()
     if (M_local_.Rows() == D_local_.Cols())
     {
         ParMatrix M_d(comm, edge_starts, M_local_);
-        M_global_ = parlinalgcpp::RAP(M_d, edge_true_edge_);
+        M_global_ = linalgcpp::RAP(M_d, edge_true_edge_);
     }
 
     if (W_local_.Rows() == D_local_.Rows())
@@ -251,7 +251,7 @@ void MixedMatrix::AssembleM(const std::vector<double>& agg_weight)
     M_coo.EliminateZeros(1e-15);
     M_local_ = M_coo.ToSparse();
     ParMatrix M_d(edge_true_edge_.GetComm(), edge_true_edge_.GetRowStarts(), M_local_);
-    M_global_ = parlinalgcpp::RAP(M_d, edge_true_edge_);
+    M_global_ = linalgcpp::RAP(M_d, edge_true_edge_);
 }
 
 SparseMatrix MixedMatrix::MakeLocalD(const ParMatrix& edge_true_edge,

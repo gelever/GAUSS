@@ -34,21 +34,19 @@ rm -rf CMakeFiles
 
 # Build Options
 MFEM_DIR=~/Code/mfem
-SMOOTHG_DIR=${BUILD_DIR}
 SPE10_PERM=~/spe10/spe_perm.dat
 METIS_DIR=~/metis
 HYPRE_DIR=~/hypre
 SUITESPARSE_DIR=~/SuiteSparse
 ARPACK_DIR=~/arpack
 ARPACKPP_DIR=~/arpackpp/include
-USE_ARPACK=Yes
+USE_ARPACK=No
 BUILD_TYPE=Debug
 TEST_TOL=1e-4
 TEST_PROCS=2
 
 CC=mpicc CXX=mpic++ cmake \
     -DSMOOTHG_ENABLE_MFEM_MINIAPPS=Yes \
-    -Dsmoothg_DIR=${SMOOTHG_DIR} \
     -DMFEM_DIR=${MFEM_DIR} \
     -DSPE10_PERM=${SPE10_PERM} \
     -DMETIS_DIR=${METIS_DIR} \

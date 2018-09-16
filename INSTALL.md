@@ -24,11 +24,8 @@ dependencies.
 * [linalgcpp](https://github.com/gelever/linalgcpp)  - Serial linear algebra and solvers
    * [blas](http://www.netlib.org/blas/) - Dense matrix operations
    * [lapack](http://www.netlib.org/lapack/) - Dense matrix solvers
-* [parlinalgcpp](https://github.com/gelever/parlinalgcpp) - Wrapper for hypre
    * [hypre](https://github.com/LLNL/hypre) - Distrubuted linear algebra and solvers
-* [sparsesolver](https://github.com/gelever/sparsesolver) - Wrapper for SuiteSparse
    * [SuiteSparse/UMFPACK](http://faculty.cse.tamu.edu/davis/suitesparse.html)
-* [partition](https://github.com/gelever/partition) - Wrapper for METIS
    * [METIS](http://glaros.dtc.umn.edu/gkhome/metis/metis/overview) - Graph partitioner
 * [ARPACK](https://www.caam.rice.edu/software/ARPACK/) - Sparse EigenSolver (optional)
 
@@ -83,44 +80,16 @@ For example the final `LIBRARY_PATH` will look like:
     
     git clone -b develop https://github.com/gelever/linalgcpp.git linalgcpp
     cd linalgcpp
-
     mkdir -p build && cd build
-    cmake .. -DCMAKE_INSTALL_PREFIX=${HOME}/linalgcpp
-    make -j3 install
-
-## parlinalgcpp
-
-    git clone https://github.com/gelever/parlinalgcpp.git parlinalgcpp
-    cd parlinalgcpp
-
-    mkdir -p build && cd build
-    CC=mpicc CXX=mpic++ cmake .. \
-        -DHypre_INC_DIR=${HOME}/hypre/include \
-        -DHypre_LIB_DIR=${HOME}/hypre/lib \
-        -DCMAKE_INSTALL_PREFIX=${HOME}/parlinalgcpp
-    make -j3 install
-
-## partition
-
-    git clone https://github.com/gelever/partition.git partition
-    cd partition
-
-    mkdir -p build && cd build
-    cmake .. \
+    CXX=mpic++ CC=mpicc cmake .. \
+        -DLINALGCPP_ENABLE_MPI=Yes \
+        -DLINALGCPP_ENABLE_METIS=Yes \
+        -DLINALGCPP_ENABLE_SUITESPARSE=Yes \
+        -DHypre_DIR=${HOME}/hypre \
         -DMETIS_DIR=${HOME}/metis \
-        -DCMAKE_INSTALL_PREFIX=${HOME}/partition
-    make -j3 install
-
-## sparsesolve
-
-    git clone https://github.com/gelever/sparsesolver.git sparsesolve
-    cd sparsesolve
-
-    mkdir -p build && cd build
-    cmake .. \
         -DSUITESPARSE_INCLUDE_DIR_HINTS=${HOME}/SuiteSparse/include \
         -DSUITESPARSE_LIBRARY_DIR_HINTS=${HOME}/SuiteSparse/lib \
-        -DCMAKE_INSTALL_PREFIX=${HOME}/sparsesolve
+        -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR}/linalgcpp
     make -j3 install
 
 # Optional Dependencies:

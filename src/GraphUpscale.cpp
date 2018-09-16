@@ -773,7 +773,7 @@ ParMatrix GraphUpscale::ToPrimal() const
 
     if (use_w)
     {
-        A = parlinalgcpp::ParSub(D.Mult(MinvDT), mgl.GlobalW());
+        A = linalgcpp::ParSub(D.Mult(MinvDT), mgl.GlobalW());
     }
     else
     {

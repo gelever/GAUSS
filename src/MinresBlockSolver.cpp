@@ -56,7 +56,7 @@ MinresBlockSolver::MinresBlockSolver(const MixedMatrix& mgl, const std::vector<i
     ParMatrix M_elim_g(comm_, std::move(M_elim));
     ParMatrix D_elim_g(comm_, std::move(D_elim));
 
-    M_ = parlinalgcpp::RAP(M_elim_g, mgl.EdgeTrueEdge());
+    M_ = linalgcpp::RAP(M_elim_g, mgl.EdgeTrueEdge());
     D_ = D_elim_g.Mult(mgl.EdgeTrueEdge());
     DT_ = D_.Transpose();
 
@@ -78,11 +78,11 @@ MinresBlockSolver::MinresBlockSolver(const MixedMatrix& mgl, const std::vector<i
     }
     else
     {
-        schur_block = parlinalgcpp::ParSub(schur_block, W_);
+        schur_block = linalgcpp::ParSub(schur_block, W_);
     }
 
-    M_prec_ = parlinalgcpp::ParDiagScale(M_);
-    schur_prec_ = parlinalgcpp::BoomerAMG(std::move(schur_block));
+    M_prec_ = linalgcpp::ParDiagScale(M_);
+    schur_prec_ = linalgcpp::BoomerAMG(std::move(schur_block));
 
     op_.SetBlock(0, 0, M_);
     op_.SetBlock(0, 1, DT_);
@@ -93,7 +93,7 @@ MinresBlockSolver::MinresBlockSolver(const MixedMatrix& mgl, const std::vector<i
     prec_.SetBlock(1, 1, schur_prec_);
 
     pminres_ = linalgcpp::PMINRESSolver(op_, prec_, max_num_iter_, rtol_,
-                                        atol_, 0, parlinalgcpp::ParMult);
+                                        atol_, 0, linalgcpp::ParMult);
 
     if (myid_ == 0)
     {

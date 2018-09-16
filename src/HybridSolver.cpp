@@ -51,7 +51,7 @@ HybridSolver::HybridSolver(const MixedMatrix& mgl, const GraphSpace& graph_space
     ParMatrix edge_td_d = mgl.EdgeTrueEdge().Transpose();
     ParMatrix edge_edge = mgl.EdgeTrueEdge().Mult(edge_td_d);
     ParMatrix edgedof_multiplier_d(comm_, std::move(edgedof_multiplier));
-    ParMatrix multiplier_d_td_d = parlinalgcpp::RAP(edge_edge, edgedof_multiplier_d);
+    ParMatrix multiplier_d_td_d = linalgcpp::RAP(edge_edge, edgedof_multiplier_d);
 
     multiplier_d_td_ = MakeEntityTrueEntity(multiplier_d_td_d);
 
@@ -62,8 +62,8 @@ HybridSolver::HybridSolver(const MixedMatrix& mgl, const GraphSpace& graph_space
 
 ParMatrix HybridSolver::ComputeScaledSystem(const ParMatrix& hybrid_d)
 {
-    ParMatrix tmpH = parlinalgcpp::RAP(hybrid_d, multiplier_d_td_);
-    parlinalgcpp::ParSmoother prec_scale(tmpH);
+    ParMatrix tmpH = linalgcpp::RAP(hybrid_d, multiplier_d_td_);
+    linalgcpp::ParSmoother prec_scale(tmpH);
 
     Vector zeros(tmpH.Rows(), 1e-8);
     diag_scaling_.resize(tmpH.Rows(), 1.0);
@@ -73,13 +73,13 @@ ParMatrix HybridSolver::ComputeScaledSystem(const ParMatrix& hybrid_d)
     bool verbose = false;
 
     linalgcpp::PCGSolver cg_scale(tmpH, prec_scale, rescale_iter_, rtol,
-                                  atol, verbose, parlinalgcpp::ParMult);
+                                  atol, verbose, linalgcpp::ParMult);
     cg_scale.Mult(zeros, VectorView(diag_scaling_));
 
     SparseMatrix scale_mat(diag_scaling_);
     ParMatrix scale_mat_d(tmpH.GetComm(), tmpH.GetColStarts(), std::move(scale_mat));
 
-    return parlinalgcpp::RAP(tmpH, scale_mat_d);
+    return linalgcpp::RAP(tmpH, scale_mat_d);
 }
 
 void HybridSolver::InitSolver(SparseMatrix local_hybrid)
@@ -97,14 +97,14 @@ void HybridSolver::InitSolver(SparseMatrix local_hybrid)
     }
     else
     {
-        pHybridSystem_ = parlinalgcpp::RAP(hybrid_d, multiplier_d_td_);
+        pHybridSystem_ = linalgcpp::RAP(hybrid_d, multiplier_d_td_);
     }
 
 
     nnz_ = pHybridSystem_.nnz();
 
     cg_ = linalgcpp::PCGSolver(pHybridSystem_, max_num_iter_, rtol_,
-                               atol_, 0, parlinalgcpp::ParMult);
+                               atol_, 0, linalgcpp::ParMult);
     if (myid_ == 0)
     {
         SetPrintLevel(print_level_);
@@ -118,7 +118,7 @@ void HybridSolver::InitSolver(SparseMatrix local_hybrid)
     const bool use_prec = min_size > 0;
     if (use_prec)
     {
-        prec_ = parlinalgcpp::BoomerAMG(pHybridSystem_);
+        prec_ = linalgcpp::BoomerAMG(pHybridSystem_);
         cg_.SetPreconditioner(prec_);
     }
     else

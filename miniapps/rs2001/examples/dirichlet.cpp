@@ -297,7 +297,7 @@ int main(int argc, char* argv[])
         sigma_diff -= sols[i].GetBlock(0);
 
         auto info = smoothg::ComputeErrors(comm, M, D_interior, sols[i], sols[0]);
-        info.back() = parlinalgcpp::ParL2Norm(comm, D_interior.Mult(sigma_diff));
+        info.back() = linalgcpp::ParL2Norm(comm, D_interior.Mult(sigma_diff));
 
         ParPrint(myid, smoothg::ShowErrors(info));
     }

@@ -41,8 +41,8 @@ using linalgcpp::ReadText;
 using linalgcpp::WriteText;
 using linalgcpp::ReadCSR;
 
-using parlinalgcpp::LOBPCG;
-using parlinalgcpp::BoomerAMG;
+using linalgcpp::LOBPCG;
+using linalgcpp::BoomerAMG;
 
 std::vector<int> MetisPart(const SparseMatrix& vertex_edge, int num_parts);
 double Mean(const std::vector<double>& vect);

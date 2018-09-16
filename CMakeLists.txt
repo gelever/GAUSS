@@ -50,9 +50,6 @@ enable_testing()
 option(SMOOTHG_USE_ARPACK "Should ARPACK be enabled?" NO)
 
 find_package(linalgcpp REQUIRED)
-find_package(parlinalgcpp REQUIRED)
-find_package(partition REQUIRED)
-find_package(sparsesolve REQUIRED)
 
 if (SMOOTHG_USE_ARPACK)
     list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
@@ -87,9 +84,9 @@ target_compile_options(smoothG PRIVATE $<$<CXX_COMPILER_ID:Clang>:-Wall -Wextra 
 
 target_link_libraries(smoothG
     PUBLIC
-        parlinalgcpp::parlinalgcpp
-        partition::partition
-        sparsesolve::sparsesolve
+        linalgcpp::partition
+        linalgcpp::sparsesolve
+        linalgcpp::parlinalgcpp
         linalgcpp::linalgcpp
         $<$<BOOL:${SMOOTHG_USE_ARPACK}>:Arpack::Arpack>
 )
