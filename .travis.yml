@@ -102,7 +102,7 @@ install:
         echo "Reusing cached mfem";
      fi;
 
-    - if [ ! -d extern/spe10 ]; then
+    - if [ ! -e extern/spe10/spe_perm.dat ]; then
         sh config/build_scripts/build_spe10.sh;
      else
         echo "Reusing cached spe10";
