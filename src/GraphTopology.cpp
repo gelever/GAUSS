@@ -71,7 +71,7 @@ void GraphTopology::Init(const SparseMatrix& vertex_edge,
     int num_edges = vertex_edge.Cols();
     int num_aggs = agg_edge_local_.Rows();
 
-    auto starts = parlinalgcpp::GenerateOffsets(comm, {num_vertices, num_edges, num_aggs});
+    auto starts = linalgcpp::GenerateOffsets(comm, {num_vertices, num_edges, num_aggs});
     const auto& vertex_starts = starts[0];
     const auto& edge_starts = starts[1];
     const auto& agg_starts = starts[2];
@@ -92,7 +92,7 @@ void GraphTopology::Init(const SparseMatrix& vertex_edge,
     face_agg_local_ = ExtendFaceAgg(agg_agg, face_int_agg);
     agg_face_local_ = face_agg_local_.Transpose();
 
-    auto face_starts = parlinalgcpp::GenerateOffsets(comm, face_agg_local_.Rows());
+    auto face_starts = linalgcpp::GenerateOffsets(comm, face_agg_local_.Rows());
 
     face_edge_ = ParMatrix(comm, face_starts, edge_starts, face_edge_local_);
 

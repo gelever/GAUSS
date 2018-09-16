@@ -260,7 +260,7 @@ int main (int argc, char* argv[])
     auto rhs = upscale.GetBlockVector(0);
     rhs.GetBlock(0) = 0.0;
     rhs.GetBlock(1) = VectorToVector(rhs_u_fine);
-    rhs.GetBlock(1) /= parlinalgcpp::ParL2Norm(comm, rhs.GetBlock(1));
+    rhs.GetBlock(1) /= linalgcpp::ParL2Norm(comm, rhs.GetBlock(1));
 
     rs2000::DarcySolver solver(upscale);
     solver.SetRHS(rhs);

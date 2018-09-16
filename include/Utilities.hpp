@@ -54,7 +54,7 @@ using SparseMatrix = linalgcpp::SparseMatrix<double>;
 using DenseMatrix = linalgcpp::DenseMatrix;
 using CooMatrix = linalgcpp::CooMatrix<double>;
 using BlockMatrix = linalgcpp::BlockMatrix<double>;
-using ParMatrix = parlinalgcpp::ParMatrix;
+using ParMatrix = linalgcpp::ParMatrix;
 using Timer = linalgcpp::Timer;
 
 /// Paramaters to determine how many eigenvectors to keep

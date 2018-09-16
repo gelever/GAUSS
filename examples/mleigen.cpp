@@ -29,11 +29,11 @@ using linalgcpp::ReadText;
 using linalgcpp::WriteText;
 using linalgcpp::ReadCSR;
 
-using parlinalgcpp::ParOperator;
-using parlinalgcpp::LOBPCG;
+using linalgcpp::ParOperator;
+using linalgcpp::LOBPCG;
 using linalgcpp::PCGSolver;
-using parlinalgcpp::BoomerAMG;
-using parlinalgcpp::ParaSails;
+using linalgcpp::BoomerAMG;
+using linalgcpp::ParaSails;
 
 std::vector<int> MetisPart(const SparseMatrix& vertex_edge, int num_parts);
 
@@ -50,7 +50,7 @@ public:
         : ParOperator(D.GetComm(), D.GetRowStarts()),
           M_prec_(M, false, false, true, 0.0, 0.1, 0.10),
           M_solver_(M, M_prec_, 5000 /* max_iter */, 1e-12 /* rel tol */,
-                    1e-16 /* abs tol */, false /* verbose */, parlinalgcpp::ParMult),
+                    1e-16 /* abs tol */, false /* verbose */, linalgcpp::ParMult),
           D_(D), DTx_(D_.Cols()), MinvDTx_(D_.Cols()),
           shift_(shift) { }
 

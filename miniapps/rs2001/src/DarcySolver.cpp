@@ -104,7 +104,7 @@ void DarcySolver::SolveFwd(
     //C = upscale_.GetMatrix(ilevel).GlobalRows();
     C = upscale_.Solver(ilevel).GetTiming();
 
-    Q = parlinalgcpp::ParMult(comm, obs_[ilevel], sol_[ilevel]) / size_bndr_;
+    Q = linalgcpp::ParMult(comm, obs_[ilevel], sol_[ilevel]) / size_bndr_;
 }
 
 void DarcySolver::InterpolateCoeff(int level, smoothg::Vector& coeff)

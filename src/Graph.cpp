@@ -129,7 +129,7 @@ Graph::Graph(SparseMatrix vertex_edge_local, ParMatrix edge_true_edge,
 
     MPI_Comm comm = edge_true_edge_.GetComm();
 
-    auto vertex_starts = parlinalgcpp::GenerateOffsets(comm, num_vertices);
+    auto vertex_starts = linalgcpp::GenerateOffsets(comm, num_vertices);
 
     global_vertices_ = vertex_starts.back();
 

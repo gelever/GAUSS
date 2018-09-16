@@ -124,7 +124,7 @@ private:
     SparseMatrix entity_diag_T_;
     SparseMatrix entity_offd_T_;
 
-    parlinalgcpp::ParCommPkg comm_pkg_;
+    linalgcpp::ParCommPkg comm_pkg_;
 
     MPI_Comm comm_;
     int myid_;

@@ -29,7 +29,7 @@ using namespace smoothg;
 using linalgcpp::Operator;
 using linalgcpp::ReadCSR;
 
-using parlinalgcpp::ParL2Norm;
+using linalgcpp::ParL2Norm;
 
 int main(int argc, char* argv[])
 {

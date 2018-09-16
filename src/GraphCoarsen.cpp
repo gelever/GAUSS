@@ -59,7 +59,7 @@ GraphCoarsen::GraphCoarsen(GraphTopology gt, const GraphSpace& graph_space,
     ParMatrix no_bub = gt_.agg_ext_edge_.Mult(true_edge_edge).Mult(e_edof).Mult(mgl.EdgeTrueEdge());
     ParMatrix with_bub = gt_.agg_ext_vertex_.Mult(v_bdof).Mult(mgl.EdgeTrueEdge());
 
-    agg_ext_edof_ = parlinalgcpp::ParAdd(no_bub, with_bub);
+    agg_ext_edof_ = linalgcpp::ParAdd(no_bub, with_bub);
     agg_ext_vdof_ = gt_.agg_ext_vertex_.Mult(v_vdof);
 
     ParMatrix permute_v = MakeExtPermutation(gt_.agg_ext_vertex_.Mult(v_vdof));
@@ -1009,14 +1009,14 @@ ParMatrix GraphCoarsen::BuildDofTrueDof() const
     int num_coarse_dofs = P_edge_.Cols();
 
     MPI_Comm comm = gt_.face_true_face_.GetComm();
-    auto cface_starts = parlinalgcpp::GenerateOffsets(comm, num_coarse_dofs);
+    auto cface_starts = linalgcpp::GenerateOffsets(comm, num_coarse_dofs);
     const auto& face_starts = gt_.face_true_face_.GetRowStarts();
 
     SparseMatrix face_cdof_expand(face_cdof_.GetIndptr(), face_cdof_.GetIndices(),
                                   face_cdof_.GetData(), num_faces, num_coarse_dofs);
     ParMatrix face_cdof_d(comm, face_starts, cface_starts, std::move(face_cdof_expand));
 
-    ParMatrix cface_cface = parlinalgcpp::RAP(gt_.face_face_, face_cdof_d);
+    ParMatrix cface_cface = linalgcpp::RAP(gt_.face_face_, face_cdof_d);
 
     const SparseMatrix& cface_cface_offd = cface_cface.GetOffd();
     const std::vector<int>& cface_cface_colmap = cface_cface.GetColMap();
@@ -1232,7 +1232,7 @@ ParMatrix GraphCoarsen::MakeExtPermutation(const ParMatrix& parmat) const
     int num_ext = num_diag + num_offd;
 
     const auto& mat_starts = parmat.GetColStarts();
-    auto ext_starts = parlinalgcpp::GenerateOffsets(comm, num_ext);
+    auto ext_starts = linalgcpp::GenerateOffsets(comm, num_ext);
 
     SparseMatrix perm_diag = SparseIdentity(num_ext, num_diag);
     SparseMatrix perm_offd = SparseIdentity(num_ext, num_offd, num_diag);
@@ -1242,7 +1242,7 @@ ParMatrix GraphCoarsen::MakeExtPermutation(const ParMatrix& parmat) const
 
 GraphSpace GraphCoarsen::BuildGraphSpace() const
 {
-    using parlinalgcpp::GenerateOffsets;
+    using linalgcpp::GenerateOffsets;
 
     auto comm = gt_.edge_true_edge_.GetComm();
 
