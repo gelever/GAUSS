@@ -26,4 +26,4 @@ make config \
 
 CC=mpicc CXX=mpic++ make -j3 install PREFIX=${INSTALL_DIR}/mfem
 
-rm -r $TMP_DIR
+rm -rf $TMP_DIR

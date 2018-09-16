@@ -12,4 +12,4 @@ wget --user-agent="Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTM
     http://www.spe.org/web/csp/datasets/por_perm_case2a.zip
 unzip -d ${INSTALL_DIR}/spe10 por_perm_case2a.zip
 
-rm -r $TMP_DIR
+rm -rf $TMP_DIR
