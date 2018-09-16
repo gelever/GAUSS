@@ -67,20 +67,15 @@ For more detailed walkthroughs, see [EXAMPLE.md](doc/EXAMPLE.md) or the [example
 See the [miniapps](miniapps) directory for more applications of smoothG.
 
 # Installation
-There are several dependencies required:
+Several dependencies are required:
 ### Linear Algebra:
-* [linalgcpp](https://github.com/gelever/linalgcpp)  - Serial linear algebra and solvers
+* [linalgcpp](https://github.com/gelever/linalgcpp)  - Linear algebra and solvers
    * [blas](http://www.netlib.org/blas/) - Dense matrix operations
    * [lapack](http://www.netlib.org/lapack/) - Dense matrix solvers
-* [parlinalgcpp](https://github.com/gelever/parlinalgcpp) - Wrapper for hypre
    * [hypre](https://github.com/LLNL/hypre) - Distrubuted linear algebra and solvers
-* [sparsesolver](https://github.com/gelever/sparsesolver) - Wrapper for SuiteSparse
-   * [SuiteSparse/UMFPACK](http://faculty.cse.tamu.edu/davis/suitesparse.html)
-* [partition](https://github.com/gelever/partition) - Wrapper for METIS
+   * [SuiteSparse/UMFPACK](http://faculty.cse.tamu.edu/davis/suitesparse.html) - Sparse solvers
    * [METIS](http://glaros.dtc.umn.edu/gkhome/metis/metis/overview) - Graph partitioner
 * [ARPACK](https://www.caam.rice.edu/software/ARPACK/) - Sparse EigenSolver (optional)
-
-These modules may be collapsed into one project in the future.
    
 ### Other:
 * [CMake](https://cmake.org/)  - Build generator
@@ -90,7 +85,7 @@ For more detailed installation instructions, see [INSTALL.md](INSTALL.md).
 
 # Project Structure
 ```sh
-mysmoothg
+smoothG
 ├── config    - Configuration and build scripts
 ├── examples  - Graph upscaling examples
 ├── graphdata - Example graphs, partitions, and vectors
