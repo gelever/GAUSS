@@ -49,7 +49,6 @@ enable_testing()
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
 find_package(MFEM REQUIRED)
-find_package(smoothg REQUIRED)
 
 add_library(ReservoirSimulator2000
     src/spe10.cpp
@@ -57,6 +56,8 @@ add_library(ReservoirSimulator2000
     src/DarcySolver.cpp
     src/Utilities.cpp
 )
+
+add_dependencies(ReservoirSimulator2000 smoothG)
 
 set_target_properties(ReservoirSimulator2000 PROPERTIES
         CXX_STANDARD 11
@@ -70,7 +71,7 @@ target_compile_options(ReservoirSimulator2000 PRIVATE $<$<CXX_COMPILER_ID:Clang>
 target_link_libraries(ReservoirSimulator2000
     PUBLIC
         mfem::mfem
-        smoothg::smoothG
+        smoothG
 )
 
 target_include_directories(ReservoirSimulator2000
