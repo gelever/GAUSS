@@ -19,6 +19,8 @@ matrix:
           - $TRAVIS_BUILD_DIR/extern/SuiteSparse
           - $TRAVIS_BUILD_DIR/extern/mpich
           - $TRAVIS_BUILD_DIR/extern/hypre
+          - $TRAVIS_BUILD_DIR/extern/mfem
+          - $TRAVIS_BUILD_DIR/extern/spe10
     - os: linux
       compiler: clang
       addons:
@@ -34,6 +36,8 @@ matrix:
           - $TRAVIS_BUILD_DIR/extern/SuiteSparse
           - $TRAVIS_BUILD_DIR/extern/mpich
           - $TRAVIS_BUILD_DIR/extern/hypre
+          - $TRAVIS_BUILD_DIR/extern/mfem
+          - $TRAVIS_BUILD_DIR/extern/spe10
     - os: osx
       compiler: gcc
       cache:
@@ -41,6 +45,8 @@ matrix:
           - $TRAVIS_BUILD_DIR/extern/astyle
           - $TRAVIS_BUILD_DIR/extern/mpich
           - $TRAVIS_BUILD_DIR/extern/hypre
+          - $TRAVIS_BUILD_DIR/extern/mfem
+          - $TRAVIS_BUILD_DIR/extern/spe10
     - os: osx
       compiler: clang
       cache:
@@ -48,6 +54,8 @@ matrix:
           - $TRAVIS_BUILD_DIR/extern/astyle
           - $TRAVIS_BUILD_DIR/extern/mpich
           - $TRAVIS_BUILD_DIR/extern/hypre
+          - $TRAVIS_BUILD_DIR/extern/mfem
+          - $TRAVIS_BUILD_DIR/extern/spe10
 
 before_install:
     - export LD_LIBRARY_PATH=$TRAVIS_BUILD_DIR/extern/metis/lib:$LD_LIBRARY_PATH; 
@@ -88,13 +96,25 @@ install:
         echo "Reusing cached hypre-2.10.0b";
      fi;
 
+    - if [ ! -d extern/mfem/lib ]; then
+        sh config/build_scripts/build_mfem.sh;
+     else
+        echo "Reusing cached mfem";
+     fi;
+
+    - if [ ! -d extern/spe10 ]; then
+        sh config/build_scripts/build_spe10.sh;
+     else
+        echo "Reusing cached spe10";
+     fi;
+
     - sh config/build_scripts/build_linalg.sh;
 
 script:
    - cd $TRAVIS_BUILD_DIR;
 
    # Build the library
-   - sh config/extern_build.sh;
+   - sh config/extern_miniapps_build.sh;
 
    # Run tests
    - cd build;

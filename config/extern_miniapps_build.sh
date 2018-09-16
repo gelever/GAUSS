@@ -30,6 +30,8 @@ rm -rf CMakeFiles
 
 # Build Options
 EXTERN_DIR=${PWD}/extern
+MFEM_DIR=$EXTERN_DIR/mfem
+SPE10_PERM=$EXTERN_DIR/spe10/spe_perm.dat
 METIS_DIR=$EXTERN_DIR/metis
 HYPRE_DIR=$EXTERN_DIR/hypre
 SUITESPARSE_DIR=$EXTERN_DIR/SuiteSparse
@@ -43,6 +45,9 @@ mkdir -p $BUILD_DIR
 cd $BUILD_DIR
 
 CC=mpicc CXX=mpic++ cmake \
+    -DSMOOTHG_ENABLE_MFEM_MINIAPPS=Yes \
+    -DMFEM_DIR=${MFEM_DIR} \
+    -DSPE10_PERM=${SPE10_PERM} \
     -DMETIS_DIR=$METIS_DIR \
     -DHypre_INC_DIR=$HYPRE_DIR/include \
     -DHypre_LIB_DIR=$HYPRE_DIR/lib \
