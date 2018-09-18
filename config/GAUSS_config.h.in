@@ -13,9 +13,9 @@
  *
  ***********************************************************************EHEADER*/
 
-#ifndef __SMOOTHG_CONFIG_H
-#define __SMOOTHG_CONFIG_H
+#ifndef GAUSS_CONFIG_H
+#define GAUSS_CONFIG_H
 
-#cmakedefine01 SMOOTHG_USE_ARPACK
+#cmakedefine01 GAUSS_USE_ARPACK
 
-#endif
+#endif // GAUSS_CONFIG_H

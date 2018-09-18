@@ -21,7 +21,7 @@ set(CMAKE_CXX_EXTENSIONS NO)
 
 # add executables
 add_executable(rescaling rescaling.cpp)
-target_link_libraries(rescaling ReservoirSimulator2000)
+target_link_libraries(rescaling ReservoirSimulator2001)
 
 add_test(rescaling rescaling)
 add_test(parrescaling mpirun -np 2 ./rescaling)
@@ -32,7 +32,7 @@ endif()
 
 add_test(NAME rs2001_style
   COMMAND ${ASTYLE_COMMAND} --options=rs2001.astylerc --dry-run include/*.?pp src/*.?pp examples/*.?pp testcode/*.?pp
-  WORKING_DIRECTORY ${ReservoirSimulator2000_SOURCE_DIR})
+  WORKING_DIRECTORY ${ReservoirSimulator2001_SOURCE_DIR})
 set_tests_properties(rs2001_style
   PROPERTIES FAIL_REGULAR_EXPRESSION
   "Formatted")

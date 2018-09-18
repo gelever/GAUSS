@@ -25,11 +25,11 @@
 #ifndef __LocalEigenSolver_HPP
 #define __LocalEigenSolver_HPP
 
-#include "smoothG_config.h"
+#include "GAUSS_config.h"
 
 #include "Utilities.hpp"
 
-namespace smoothg
+namespace gauss
 {
 /**
    @brief Wrapper class for eigen solvers in LAPACK and ARPACK
@@ -76,7 +76,7 @@ public:
        Given a symmetric matrix \f$ A \f$, find the eigenvectors
        corresponding to the smallest few eigenvalues.
 
-       If size of A > size_offset_ and SMOOTHG_USE_ARPACK is on, ARPACK-based
+       If size of A > size_offset_ and GAUSS_USE_ARPACK is on, ARPACK-based
        solver will be used, otherwise LAPACK-based solver is used.
 
        @param A (in) the matrix
@@ -92,7 +92,7 @@ public:
        corresponding to the smallest few eigenvalues of the generalized eigen
        problem \f$ Ax = \lambda Bx \f$. B needs to be positive-definite.
 
-       If size of A > size_offset_ and SMOOTHG_USE_ARPACK is on, ARPACK-based
+       If size of A > size_offset_ and GAUSS_USE_ARPACK is on, ARPACK-based
        solver will be used, otherwise LAPACK-based solver is used.
 
        @param A (in) the matrix on the left
@@ -181,7 +181,7 @@ private:
     ///@}
 };
 
-} // namespace smoothg
+} // namespace gauss
 
 #endif // __LocalEigenSolver_HPP
 

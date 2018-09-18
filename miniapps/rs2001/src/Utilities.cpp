@@ -1,8 +1,8 @@
 #include "Utilities.hpp"
 
-namespace rs2000
+namespace rs2001
 {
-void VectorToField(const smoothg::VectorView& vect, mfem::GridFunction& field)
+void VectorToField(const gauss::VectorView& vect, mfem::GridFunction& field)
 {
     assert(vect.size() == field.Size());
 
@@ -14,16 +14,16 @@ void VectorToField(const smoothg::VectorView& vect, mfem::GridFunction& field)
     }
 }
 
-smoothg::Vector VectorToVector(const mfem::Vector& mfem_vector)
+gauss::Vector VectorToVector(const mfem::Vector& mfem_vector)
 {
-    smoothg::Vector vect(mfem_vector.Size());
+    gauss::Vector vect(mfem_vector.Size());
 
     std::copy_n(mfem_vector.GetData(), mfem_vector.Size(), std::begin(vect));
 
     return vect;
 }
 
-mfem::Vector VectorToVector(const smoothg::VectorView& vector)
+mfem::Vector VectorToVector(const gauss::VectorView& vector)
 {
     mfem::Vector vect(vector.size());
 
@@ -32,7 +32,7 @@ mfem::Vector VectorToVector(const smoothg::VectorView& vector)
     return vect;
 }
 
-smoothg::SparseMatrix SparseToSparse(const mfem::SparseMatrix& sparse)
+gauss::SparseMatrix SparseToSparse(const mfem::SparseMatrix& sparse)
 {
     const int height = sparse.Height();
     const int width = sparse.Width();
@@ -46,10 +46,10 @@ smoothg::SparseMatrix SparseToSparse(const mfem::SparseMatrix& sparse)
     std::copy_n(sparse.GetJ(), nnz, std::begin(indices));
     std::copy_n(sparse.GetData(), nnz, std::begin(data));
 
-    return smoothg::SparseMatrix(std::move(indptr), std::move(indices), std::move(data), height, width);
+    return gauss::SparseMatrix(std::move(indptr), std::move(indices), std::move(data), height, width);
 }
 
-smoothg::SparseMatrix TableToSparse(const mfem::Table& table)
+gauss::SparseMatrix TableToSparse(const mfem::Table& table)
 {
     const int height = table.Size();
     const int width = table.Width();
@@ -63,10 +63,10 @@ smoothg::SparseMatrix TableToSparse(const mfem::Table& table)
     std::copy_n(table.GetI(), height + 1, std::begin(indptr));
     std::copy_n(table.GetJ(), nnz, std::begin(indices));
 
-    return smoothg::SparseMatrix(std::move(indptr), std::move(indices), std::move(data), height, width);
+    return gauss::SparseMatrix(std::move(indptr), std::move(indices), std::move(data), height, width);
 }
 
-smoothg::ParMatrix ParMatrixToParMatrix(const mfem::HypreParMatrix& mat)
+gauss::ParMatrix ParMatrixToParMatrix(const mfem::HypreParMatrix& mat)
 {
     mfem::SparseMatrix mfem_diag;
     mfem::SparseMatrix mfem_offd;
@@ -75,8 +75,8 @@ smoothg::ParMatrix ParMatrixToParMatrix(const mfem::HypreParMatrix& mat)
     mat.GetDiag(mfem_diag);
     mat.GetOffd(mfem_offd, mfem_map);
 
-    smoothg::SparseMatrix diag = SparseToSparse(mfem_diag);
-    smoothg::SparseMatrix offd = SparseToSparse(mfem_offd);
+    gauss::SparseMatrix diag = SparseToSparse(mfem_diag);
+    gauss::SparseMatrix offd = SparseToSparse(mfem_offd);
 
     int col_map_size = offd.Cols();
     std::vector<HYPRE_Int> col_map(mfem_map, mfem_map + col_map_size);
@@ -89,14 +89,14 @@ smoothg::ParMatrix ParMatrixToParMatrix(const mfem::HypreParMatrix& mat)
 
     MPI_Comm comm = mat.GetComm();
 
-    return smoothg::ParMatrix(comm, row_starts, col_starts,
-                              std::move(diag), std::move(offd), std::move(col_map));
+    return gauss::ParMatrix(comm, row_starts, col_starts,
+                            std::move(diag), std::move(offd), std::move(col_map));
 }
 
-std::vector<int> MetisPart(const smoothg::SparseMatrix& vertex_edge, int num_parts)
+std::vector<int> MetisPart(const gauss::SparseMatrix& vertex_edge, int num_parts)
 {
-    smoothg::SparseMatrix edge_vertex = vertex_edge.Transpose();
-    smoothg::SparseMatrix vertex_vertex = vertex_edge.Mult(edge_vertex);
+    gauss::SparseMatrix edge_vertex = vertex_edge.Transpose();
+    gauss::SparseMatrix vertex_vertex = vertex_edge.Mult(edge_vertex);
 
     double ubal_tol = 2.0;
 
@@ -213,7 +213,7 @@ void Visualize(const mfem::Vector& sol, mfem::ParMesh& pmesh, mfem::ParGridFunct
     VisUpdate(comm, vis_v, field, pmesh);
 }
 
-VisRange GetVisRange(MPI_Comm comm, const smoothg::VectorView& vect)
+VisRange GetVisRange(MPI_Comm comm, const gauss::VectorView& vect)
 {
     double local_lo = Min(vect);
     double local_hi = Max(vect);
@@ -247,7 +247,7 @@ VisRange GetVisRange(MPI_Comm comm, const mfem::Vector& vect)
     return std::make_pair<double, double>(std::move(global_lo), std::move(global_hi));
 }
 
-smoothg::SparseMatrix GenerateBoundaryAttributeTable(const mfem::Mesh& mesh)
+gauss::SparseMatrix GenerateBoundaryAttributeTable(const mfem::Mesh& mesh)
 {
     int nedges = mesh.Dimension() == 2 ? mesh.GetNEdges() : mesh.GetNFaces();
     int nbdr = mesh.bdr_attributes.Max();
@@ -278,8 +278,8 @@ smoothg::SparseMatrix GenerateBoundaryAttributeTable(const mfem::Mesh& mesh)
         }
     }
 
-    return smoothg::SparseMatrix(std::move(indptr), std::move(indices), std::move(data),
-                                 nedges, nbdr);
+    return gauss::SparseMatrix(std::move(indptr), std::move(indices), std::move(data),
+                               nedges, nbdr);
 }
 
 std::vector<int> MetisPart(mfem::ParFiniteElementSpace& sigmafespace,
@@ -295,7 +295,7 @@ std::vector<int> MetisPart(mfem::ParFiniteElementSpace& sigmafespace,
     for (const auto factor : coarsening_factor)
         metis_coarsening_factor *= factor;
 
-    return smoothg::PartitionAAT(SparseToSparse(DivOp.SpMat()), metis_coarsening_factor);
+    return gauss::PartitionAAT(SparseToSparse(DivOp.SpMat()), metis_coarsening_factor);
 }
 
 std::vector<int> CartPart(std::vector<int>& num_procs_xyz,
@@ -320,11 +320,11 @@ std::vector<int> CartPart(std::vector<int>& num_procs_xyz,
     return std::vector<int>(cart_part.GetData(), cart_part.GetData() + cart_part.Size());
 }
 
-void EliminateEssentialBC(smoothg::GraphUpscale& upscale,
-                          const smoothg::SparseMatrix& bdr_attr_vertex,
+void EliminateEssentialBC(gauss::GraphUpscale& upscale,
+                          const gauss::SparseMatrix& bdr_attr_vertex,
                           const std::vector<int>& ess_bdr,
-                          const smoothg::BlockVector& x,
-                          smoothg::BlockVector& b)
+                          const gauss::BlockVector& x,
+                          gauss::BlockVector& b)
 {
     const auto& mm_0 = upscale.GetLevel(0).mixed_matrix;
 
@@ -332,8 +332,8 @@ void EliminateEssentialBC(smoothg::GraphUpscale& upscale,
     int num_vertices = bdr_attr_vertex.Cols();
     int num_levels = upscale.NumLevels();
 
-    smoothg::SparseMatrix DT_elim = mm_0.LocalD().Transpose();
-    smoothg::SparseMatrix W_elim;
+    gauss::SparseMatrix DT_elim = mm_0.LocalD().Transpose();
+    gauss::SparseMatrix W_elim;
 
     if (mm_0.CheckW())
     {
@@ -342,7 +342,7 @@ void EliminateEssentialBC(smoothg::GraphUpscale& upscale,
     }
     else
     {
-        W_elim = smoothg::SparseMatrix(std::vector<double>(num_vertices, 0.0));
+        W_elim = gauss::SparseMatrix(std::vector<double>(num_vertices, 0.0));
     }
 
     std::vector<int> marker(num_vertices, 0);
@@ -375,9 +375,9 @@ void EliminateEssentialBC(smoothg::GraphUpscale& upscale,
     }
 
     W_elim *= -1.0;
-    smoothg::SparseMatrix D_elim = DT_elim.Transpose();
+    gauss::SparseMatrix D_elim = DT_elim.Transpose();
 
-    std::vector<smoothg::MixedMatrix> mm_hats;
+    std::vector<gauss::MixedMatrix> mm_hats;
     mm_hats.emplace_back(mm_0.GetElemM(), mm_0.GetElemDof(),
                          std::move(D_elim), std::move(W_elim),
                          mm_0.EdgeTrueEdge());
@@ -407,5 +407,5 @@ void EliminateEssentialBC(smoothg::GraphUpscale& upscale,
     upscale.SetOrthogonalize(false);
 }
 
-} // namespace rs2000
+} // namespace rs2001
 

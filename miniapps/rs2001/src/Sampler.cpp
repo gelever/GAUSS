@@ -20,7 +20,7 @@
 
 #include "Sampler.hpp"
 
-namespace rs2000
+namespace rs2001
 {
 
 double ScalingCoeff(double corlen, double myDim)
@@ -34,7 +34,7 @@ double ScalingCoeff(double corlen, double myDim)
     return std::sqrt(c * gnudim * k / gnu);
 }
 
-PDESampler::PDESampler(const smoothg::Graph& graph, const smoothg::UpscaleParams& params,
+PDESampler::PDESampler(const gauss::Graph& graph, const gauss::UpscaleParams& params,
                        int dimension, double corlen, double cell_volume, bool lognormal)
     : upscale_(graph, params),
       normal_dist_(0.0, 1.0, graph.edge_true_edge_.GetMyId()),
@@ -71,7 +71,7 @@ PDESampler::PDESampler(const smoothg::Graph& graph, const smoothg::UpscaleParams
         upscale_.Coarsener(i).Restrict(constant_rep_[i], constant_rep_[i + 1]);
     }
 
-    smoothg::SparseMatrix W = smoothg::SparseIdentity(constant_rep_[0].size());
+    gauss::SparseMatrix W = gauss::SparseIdentity(constant_rep_[0].size());
     W = cell_volume_;
 
 
@@ -90,7 +90,7 @@ PDESampler::PDESampler(const smoothg::Graph& graph, const smoothg::UpscaleParams
         if (i < upscale_.NumLevels() - 1)
         {
             const auto& P = upscale_.Coarsener(i).Pvertex();
-            smoothg::SparseMatrix PT = P.Transpose();
+            gauss::SparseMatrix PT = P.Transpose();
             W = PT.Mult(W).Mult(P);
         }
     }
@@ -208,7 +208,7 @@ void PDESampler::Eval(const int level, const mfem::Vector& xi, mfem::Vector& s,
 double PDESampler::ComputeL2Error(int level, const mfem::Vector& coeff, double exact) const
 {
     assert(fespace_);
-    mfem::Vector coeff_fine = rs2000::VectorToVector(Interpolate(level, coeff));
+    mfem::Vector coeff_fine = rs2001::VectorToVector(Interpolate(level, coeff));
 
     mfem::GridFunction x;
     x.MakeRef(fespace_, coeff_fine, 0);
@@ -219,10 +219,10 @@ double PDESampler::ComputeL2Error(int level, const mfem::Vector& coeff, double e
     return err * err;
 }
 
-smoothg::Vector PDESampler::Interpolate(int level, const mfem::Vector& coeff) const
+gauss::Vector PDESampler::Interpolate(int level, const mfem::Vector& coeff) const
 {
     ///*
-    smoothg::Vector vect(rhs_[level].size(), 0.0);
+    gauss::Vector vect(rhs_[level].size(), 0.0);
 
     int size = coeff.Size();
 
@@ -234,7 +234,7 @@ smoothg::Vector PDESampler::Interpolate(int level, const mfem::Vector& coeff) co
     }
     //*/
 
-    //smoothg::Vector vect = VectorToVector(coeff);
+    //gauss::Vector vect = VectorToVector(coeff);
     vect *= constant_rep_[level];
 
     auto vect_fine = upscale_.Interpolate(vect, 0);
@@ -245,8 +245,8 @@ smoothg::Vector PDESampler::Interpolate(int level, const mfem::Vector& coeff) co
 
 mfem::Vector PDESampler::Restrict(int level, const mfem::Vector& coeff) const
 {
-    smoothg::Vector fine_vect = rs2000::VectorToVector(coeff);
-    smoothg::Vector coarse_vect = upscale_.Restrict(fine_vect, level);
+    gauss::Vector fine_vect = rs2001::VectorToVector(coeff);
+    gauss::Vector coarse_vect = upscale_.Restrict(fine_vect, level);
 
     int size = constant_map_[level].size();
     mfem::Vector vect(size);
@@ -263,4 +263,4 @@ mfem::Vector PDESampler::Restrict(int level, const mfem::Vector& coeff) const
 }
 
 
-} // namespace rs2000
+} // namespace rs2001

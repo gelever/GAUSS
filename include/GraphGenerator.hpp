@@ -27,7 +27,7 @@
 
 #include "Utilities.hpp"
 
-namespace smoothg
+namespace gauss
 {
 
 /**
@@ -96,6 +96,6 @@ private:
 SparseMatrix GenerateGraph(MPI_Comm comm, int nvertices, int mean_degree, double beta,
                            int seed);
 
-} // namespace smoothg
+} // namespace gauss
 
 #endif /* __GRAPHGENERATOR_HPP__ */

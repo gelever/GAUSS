@@ -16,7 +16,7 @@
 #include "Sampler.hpp"
 #include "DarcySolver.hpp"
 
-using namespace rs2000;
+using namespace rs2001;
 using namespace mfem;
 
 // Computes various statistics and realizations of the SPDE sampler
@@ -27,7 +27,7 @@ using namespace mfem;
 int main (int argc, char* argv[])
 {
     // Initialize MPI
-    smoothg::MpiSession mpi_info(argc, argv);
+    gauss::MpiSession mpi_info(argc, argv);
     MPI_Comm comm = mpi_info.comm_;
     int myid = mpi_info.myid_;
     int num_procs = mpi_info.num_procs_;
@@ -184,7 +184,7 @@ int main (int argc, char* argv[])
     // Construct vertex_edge table in mfem::SparseMatrix format
     auto& vertex_edge_table = nDimensions == 2 ? pmesh->ElementToEdgeTable()
                               : pmesh->ElementToFaceTable();
-    smoothg::SparseMatrix vertex_edge = TableToSparse(vertex_edge_table);
+    gauss::SparseMatrix vertex_edge = TableToSparse(vertex_edge_table);
 
     // Construct agglomerated topology based on METIS or Cartesion aggloemration
     for (auto&& i : coarseningFactor)
@@ -203,9 +203,9 @@ int main (int argc, char* argv[])
         partitioning = CartPart(num_procs_xyz, *pmesh, coarseningFactor);
     }
 
-    smoothg::ParMatrix edge_d_td = ParMatrixToParMatrix(*sigmafespace.Dof_TrueDof_Matrix());
-    smoothg::SparseMatrix edge_boundary_att = GenerateBoundaryAttributeTable(*pmesh);
-    smoothg::SparseMatrix boundary_att_edge = edge_boundary_att.Transpose();
+    gauss::ParMatrix edge_d_td = ParMatrixToParMatrix(*sigmafespace.Dof_TrueDof_Matrix());
+    gauss::SparseMatrix edge_boundary_att = GenerateBoundaryAttributeTable(*pmesh);
+    gauss::SparseMatrix boundary_att_edge = edge_boundary_att.Transpose();
 
     std::vector<int> elim_edges;
     int num_bdr = boundary_att_edge.Rows();
@@ -236,7 +236,7 @@ int main (int argc, char* argv[])
 
     double kappa = 1.0 / corlen;
 
-    smoothg::SparseMatrix W_block = smoothg::SparseIdentity(vertex_edge.Rows());
+    gauss::SparseMatrix W_block = gauss::SparseIdentity(vertex_edge.Rows());
     //double cell_volume = spe10problem.CellVolume(nDimensions) * (num_refine + 1);
     double cell_volume = spe10problem.CellVolume(nDimensions);
     W_block *= cell_volume * kappa * kappa;
@@ -244,15 +244,15 @@ int main (int argc, char* argv[])
     // Set up GraphUpscale
     /// [Upscale]
     double coarsen_factor = 4.0;
-    smoothg::UpscaleParams params(spect_tol, max_evects, hybridization,
-                                  num_levels, coarsen_factor, elim_edges);
+    gauss::UpscaleParams params(spect_tol, max_evects, hybridization,
+                                num_levels, coarsen_factor, elim_edges);
 
-    smoothg::Graph sampler_graph(vertex_edge, edge_d_td, partitioning, one_weight, W_block);
-    smoothg::Graph graph(vertex_edge, edge_d_td, partitioning, weight);
+    gauss::Graph sampler_graph(vertex_edge, edge_d_td, partitioning, one_weight, W_block);
+    gauss::Graph graph(vertex_edge, edge_d_td, partitioning, weight);
 
-    smoothg::GraphUpscale upscale(graph, params);
+    gauss::GraphUpscale upscale(graph, params);
 
-    rs2000::PDESampler sampler(std::move(sampler_graph), params,
+    rs2001::PDESampler sampler(std::move(sampler_graph), params,
                                nDimensions, corlen, cell_volume, lognormal);
 
     sampler.SetFESpace(&ufespace);
@@ -262,11 +262,11 @@ int main (int argc, char* argv[])
     rhs.GetBlock(1) = VectorToVector(rhs_u_fine);
     rhs.GetBlock(1) /= linalgcpp::ParL2Norm(comm, rhs.GetBlock(1));
 
-    rs2000::DarcySolver solver(upscale);
+    rs2001::DarcySolver solver(upscale);
     solver.SetRHS(rhs);
 
     Vector xi, coef;
-    smoothg::Vector upscaled_coeff;
+    gauss::Vector upscaled_coeff;
 
     double Q;
     double C;

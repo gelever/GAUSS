@@ -4,22 +4,22 @@ set(CMAKE_CXX_STANDARD_REQUIRED YES)
 set(CMAKE_CXX_EXTENSIONS NO)
 
 add_executable(finitevolume finitevolume.cpp)
-target_link_libraries(finitevolume ReservoirSimulator2000)
+target_link_libraries(finitevolume ReservoirSimulator2001)
 
 add_executable(timestep timestep.cpp)
-target_link_libraries(timestep ReservoirSimulator2000)
+target_link_libraries(timestep ReservoirSimulator2001)
 
 add_executable(mltopo mltopo.cpp)
-target_link_libraries(mltopo ReservoirSimulator2000)
+target_link_libraries(mltopo ReservoirSimulator2001)
 
 add_executable(PDESamplerTest PDESamplerTest.cpp)
-target_link_libraries(PDESamplerTest ReservoirSimulator2000)
+target_link_libraries(PDESamplerTest ReservoirSimulator2001)
 
 add_executable(MLMC_SPE10 MLMC_SPE10.cpp)
-target_link_libraries(MLMC_SPE10 ReservoirSimulator2000)
+target_link_libraries(MLMC_SPE10 ReservoirSimulator2001)
 
 add_executable(dirichlet dirichlet.cpp)
-target_link_libraries(dirichlet ReservoirSimulator2000)
+target_link_libraries(dirichlet ReservoirSimulator2001)
 
 configure_file(
   "${PROJECT_SOURCE_DIR}/examples/test.py"

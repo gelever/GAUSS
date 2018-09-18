@@ -24,15 +24,15 @@
 
 #include "spe10.hpp"
 
-using namespace rs2000;
-using smoothg::Timer;
+using namespace rs2001;
+using gauss::Timer;
 
-smoothg::Vector InitialCondition(mfem::ParFiniteElementSpace& ufespace, double initial_val);
+gauss::Vector InitialCondition(mfem::ParFiniteElementSpace& ufespace, double initial_val);
 
 int main(int argc, char* argv[])
 {
     // 1. Initialize MPI
-    smoothg::MpiSession mpi_info(argc, argv);
+    gauss::MpiSession mpi_info(argc, argv);
     MPI_Comm comm = mpi_info.comm_;
     int myid = mpi_info.myid_;
     int num_procs = mpi_info.num_procs_;
@@ -185,7 +185,7 @@ int main(int argc, char* argv[])
     // Construct vertex_edge table in mfem::SparseMatrix format
     auto& vertex_edge_table = nDimensions == 2 ? pmesh->ElementToEdgeTable()
                               : pmesh->ElementToFaceTable();
-    smoothg::SparseMatrix vertex_edge = TableToSparse(vertex_edge_table);
+    gauss::SparseMatrix vertex_edge = TableToSparse(vertex_edge_table);
 
     // Construct agglomerated topology based on METIS or Cartesion aggloemration
     for (auto&& i : coarseningFactor)
@@ -204,9 +204,9 @@ int main(int argc, char* argv[])
         partitioning = CartPart(num_procs_xyz, *pmesh, coarseningFactor);
     }
 
-    smoothg::ParMatrix edge_d_td = ParMatrixToParMatrix(*sigmafespace.Dof_TrueDof_Matrix());
-    smoothg::SparseMatrix edge_boundary_att = GenerateBoundaryAttributeTable(*pmesh);
-    smoothg::SparseMatrix boundary_att_edge = edge_boundary_att.Transpose();
+    gauss::ParMatrix edge_d_td = ParMatrixToParMatrix(*sigmafespace.Dof_TrueDof_Matrix());
+    gauss::SparseMatrix edge_boundary_att = GenerateBoundaryAttributeTable(*pmesh);
+    gauss::SparseMatrix boundary_att_edge = edge_boundary_att.Transpose();
 
     std::vector<int> elim_edges;
     int num_bdr = boundary_att_edge.Rows();
@@ -229,30 +229,30 @@ int main(int argc, char* argv[])
         weight[i] = 1.0 / mfem_weight[i];
     }
 
-    smoothg::SparseMatrix W_block = smoothg::SparseIdentity(vertex_edge.Rows());
+    gauss::SparseMatrix W_block = gauss::SparseIdentity(vertex_edge.Rows());
 
     const double cell_volume = spe10problem.CellVolume(nDimensions);
     W_block *= cell_volume / delta_t;     // W_block = Mass matrix / delta_t
 
     // Create Upscaler and Solve
-    smoothg::Graph graph(vertex_edge, edge_d_td, partitioning, weight, W_block);
-    smoothg::GraphUpscale upscale(graph, {spect_tol, max_evects, hybridization, num_levels, ml_factor, elim_edges});
+    gauss::Graph graph(vertex_edge, edge_d_td, partitioning, weight, W_block);
+    gauss::GraphUpscale upscale(graph, {spect_tol, max_evects, hybridization, num_levels, ml_factor, elim_edges});
 
     upscale.PrintInfo();
     upscale.ShowSetupTime();
 
     // Input Vectors
-    smoothg::Vector fine_rhs = upscale.GetVector(0);
+    gauss::Vector fine_rhs = upscale.GetVector(0);
     fine_rhs = 0.0;
-    //smoothg::Vector fine_rhs = VectorToVector(rhs_u_fine);
+    //gauss::Vector fine_rhs = VectorToVector(rhs_u_fine);
     //fine_rhs /= -10.0;
 
-    smoothg::Vector fine_u = InitialCondition(ufespace, initial_val);
-    smoothg::Vector fine_tmp(fine_u.size());
+    gauss::Vector fine_u = InitialCondition(ufespace, initial_val);
+    gauss::Vector fine_tmp(fine_u.size());
 
-    std::vector<smoothg::Vector> ml_tmp = upscale.GetMLVectors();
-    std::vector<smoothg::Vector> ml_work_u = upscale.GetMLVectors();
-    std::vector<smoothg::Vector> ml_work_rhs = upscale.GetMLVectors();
+    std::vector<gauss::Vector> ml_tmp = upscale.GetMLVectors();
+    std::vector<gauss::Vector> ml_work_u = upscale.GetMLVectors();
+    std::vector<gauss::Vector> ml_work_rhs = upscale.GetMLVectors();
 
     for (int i = 0; i < num_levels; ++i)
     {
@@ -329,7 +329,7 @@ int main(int argc, char* argv[])
                 VisUpdate(comm, ml_vis_v[i], field, *pmesh);
                 MPI_Barrier(comm);
 
-                auto error = smoothg::CompareError(comm, fine_u, fine_tmp) * 100; // as percent
+                auto error = gauss::CompareError(comm, fine_u, fine_tmp) * 100; // as percent
                 ParPrint(myid, std::cout << "\t Level " << i << " Pressure Error " << error << "%\n");
                 MPI_Barrier(comm);
             }
@@ -346,7 +346,7 @@ int main(int argc, char* argv[])
     return 0;
 }
 
-smoothg::Vector InitialCondition(mfem::ParFiniteElementSpace& ufespace, double initial_val)
+gauss::Vector InitialCondition(mfem::ParFiniteElementSpace& ufespace, double initial_val)
 {
     HalfCoeffecient half(initial_val);
 
@@ -354,7 +354,7 @@ smoothg::Vector InitialCondition(mfem::ParFiniteElementSpace& ufespace, double i
     init.ProjectCoefficient(half);
 
     int size = init.Size();
-    smoothg::Vector vect(init.Size());
+    gauss::Vector vect(init.Size());
 
     for (int i = 0; i < size; ++i)
     {

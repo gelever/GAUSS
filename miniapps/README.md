@@ -1,4 +1,4 @@
-smoothG/miniapps
+GAUSS/miniapps
 =================
 
 <!-- BHEADER ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -16,7 +16,7 @@ smoothG/miniapps
  +
  +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ EHEADER -->
 
-Miniapps demonstrate smoothG application and other useful utilities.
+Miniapps demonstrate GAUSS application and other useful utilities.
 
 | Name        | Description |
 | ----------- |-------------|

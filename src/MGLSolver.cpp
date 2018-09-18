@@ -20,7 +20,7 @@
 
 #include "MGLSolver.hpp"
 
-namespace smoothg
+namespace gauss
 {
 
 MGLSolver::MGLSolver(const MixedMatrix& mgl)
@@ -101,4 +101,4 @@ Vector MGLSolver::Mult(const VectorView& rhs) const
     return Vector(sol_.GetBlock(1));
 }
 
-} // namespace smoothg
+} // namespace gauss

@@ -23,9 +23,9 @@
 #include <sstream>
 #include <mpi.h>
 
-#include "smoothG.hpp"
+#include "GAUSS.hpp"
 
-using namespace smoothg;
+using namespace gauss;
 using linalgcpp::ReadCSR;
 
 int main(int argc, char* argv[])

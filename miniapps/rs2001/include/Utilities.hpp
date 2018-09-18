@@ -22,28 +22,28 @@
 */
 
 #include "mfem.hpp"
-#include "smoothG.hpp"
+#include "GAUSS.hpp"
 
 using std::unique_ptr;
 
-namespace rs2000
+namespace rs2001
 {
 
-std::vector<int> MetisPart(const smoothg::SparseMatrix& vertex_edge, int num_parts);
+std::vector<int> MetisPart(const gauss::SparseMatrix& vertex_edge, int num_parts);
 
-void VectorToField(const smoothg::VectorView& vect, mfem::GridFunction& field);
-smoothg::Vector VectorToVector(const mfem::Vector& mfem_vector);
-mfem::Vector VectorToVector(const smoothg::VectorView& vector);
-smoothg::SparseMatrix SparseToSparse(const mfem::SparseMatrix& sparse);
-smoothg::SparseMatrix TableToSparse(const mfem::Table& table);
-smoothg::ParMatrix ParMatrixToParMatrix(const mfem::HypreParMatrix& mat);
+void VectorToField(const gauss::VectorView& vect, mfem::GridFunction& field);
+gauss::Vector VectorToVector(const mfem::Vector& mfem_vector);
+mfem::Vector VectorToVector(const gauss::VectorView& vector);
+gauss::SparseMatrix SparseToSparse(const mfem::SparseMatrix& sparse);
+gauss::SparseMatrix TableToSparse(const mfem::Table& table);
+gauss::ParMatrix ParMatrixToParMatrix(const mfem::HypreParMatrix& mat);
 
-smoothg::SparseMatrix GenerateBoundaryAttributeTable(const mfem::Mesh& mesh);
+gauss::SparseMatrix GenerateBoundaryAttributeTable(const mfem::Mesh& mesh);
 
 using VisRange = std::pair<double, double>;
 
 VisRange GetVisRange(MPI_Comm comm, const mfem::Vector& vect);
-VisRange GetVisRange(MPI_Comm comm, const smoothg::VectorView& vect);
+VisRange GetVisRange(MPI_Comm comm, const gauss::VectorView& vect);
 enum class VisType { Angle, Top, Big};
 
 
@@ -73,11 +73,11 @@ std::vector<int> MetisPart(mfem::ParFiniteElementSpace& sigmafespace,
 std::vector<int> CartPart(std::vector<int>& num_procs_xyz,
                           mfem::ParMesh& pmesh, mfem::Array<double>& coarsening_factor);
 
-void EliminateEssentialBC(smoothg::GraphUpscale& upscale,
-                          const smoothg::SparseMatrix& bdr_attr_vertex,
+void EliminateEssentialBC(gauss::GraphUpscale& upscale,
+                          const gauss::SparseMatrix& bdr_attr_vertex,
                           const std::vector<int>& ess_bdr,
-                          const smoothg::BlockVector& x,
-                          smoothg::BlockVector& b);
+                          const gauss::BlockVector& x,
+                          gauss::BlockVector& b);
 
 
 /// Visualization short cuts:
@@ -95,7 +95,7 @@ constexpr auto vis_screenshot = "keys S\n";
 constexpr auto vis_light = "keys l\n";
 constexpr auto vis_perspective = "keys j\n";
 
-} // namespace rs2000
+} // namespace rs2001
 
 #endif /* UTILITES_HPP_ */
 

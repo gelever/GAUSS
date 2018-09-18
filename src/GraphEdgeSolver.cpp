@@ -20,7 +20,7 @@
 
 #include "GraphEdgeSolver.hpp"
 
-namespace smoothg
+namespace gauss
 {
 
 GraphEdgeSolver::GraphEdgeSolver(SparseMatrix M, SparseMatrix D)
@@ -290,4 +290,4 @@ void GraphEdgeSolver::OffsetMult(int start, int end, const DenseMatrix& input,
     }
 }
 
-} // namespace smoothg
+} // namespace gauss

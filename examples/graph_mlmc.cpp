@@ -24,10 +24,10 @@
 #include <mpi.h>
 #include <random>
 
-#include "smoothG.hpp"
+#include "GAUSS.hpp"
 #include "Sampler.hpp"
 
-using namespace smoothg;
+using namespace gauss;
 
 using linalgcpp::ReadText;
 using linalgcpp::WriteText;

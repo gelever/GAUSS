@@ -22,7 +22,7 @@
 
 #include "GraphGenerator.hpp"
 
-namespace smoothg
+namespace gauss
 {
 
 GraphGenerator::GraphGenerator(int nvertices, int mean_degree, double beta, int seed)
@@ -186,4 +186,4 @@ SparseMatrix GenerateGraph(MPI_Comm comm, int nvertices, int mean_degree, double
     return vertex_edge;
 }
 
-} // namespace smoothg
+} // namespace gauss

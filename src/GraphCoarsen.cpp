@@ -21,7 +21,7 @@
 #include <unordered_map>
 #include "GraphCoarsen.hpp"
 
-namespace smoothg
+namespace gauss
 {
 
 GraphCoarsen::GraphCoarsen(const Graph& graph, const MixedMatrix& mgl,
@@ -1454,4 +1454,4 @@ void GraphCoarsen::Project(const BlockVector& fine_vect, BlockVector& coarse_vec
 }
 
 
-} // namespace smoothg
+} // namespace gauss

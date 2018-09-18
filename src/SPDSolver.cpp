@@ -21,7 +21,7 @@
 
 #include "SPDSolver.hpp"
 
-namespace smoothg
+namespace gauss
 {
 
 SPDSolver::SPDSolver(const MixedMatrix& mgl)
@@ -66,7 +66,7 @@ SPDSolver::SPDSolver(const MixedMatrix& mgl, const std::vector<int>& elim_dofs)
     }
 
     ParMatrix Minv_true(comm_, mgl.EdgeTrueEdge().GetColStarts(), std::move(M_inv));
-    Minv_ = smoothg::Mult(ete, Minv_true, ete_T);
+    Minv_ = gauss::Mult(ete, Minv_true, ete_T);
 
     ParMatrix D_elim_global(comm_, mgl.GlobalD().GetRowStarts(),
                             mgl.EdgeTrueEdge().GetRowStarts(), std::move(D_elim));
@@ -198,6 +198,6 @@ void SPDSolver::SetAbsTol(double atol)
     pcg_.SetAbsTol(atol);
 }
 
-} // namespace smoothg
+} // namespace gauss
 
 

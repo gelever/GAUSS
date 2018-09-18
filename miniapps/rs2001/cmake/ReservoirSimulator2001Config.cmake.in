@@ -1,0 +1,15 @@
+get_filename_component(ReservoirSimulator2001_CMAKE_DIR "${CMAKE_CURRENT_LIST_FILE}" PATH)
+include(CMakeFindDependencyMacro)
+
+list(APPEND CMAKE_MODULE_PATH ${ReservoirSimulator200j_CMAKE_DIR})
+
+find_package(GAUSS REQUIRED)
+find_package(MFEM REQUIRED)
+
+LIST(REMOVE_AT CMAKE_MODULE_PATH -1)
+
+if(NOT TARGET ReservoirSimulator2001::ReservoirSimulator2001)
+    include("${ReservoirSimulator2001_CMAKE_DIR}/ReservoirSimulator2001Targets.cmake")
+endif()
+
+set(ReservoirSimulator2001_LIBRARIES ReservoirSimulator2001::ReservoirSimulator2001)

@@ -21,9 +21,9 @@
 #include <sstream>
 #include <mpi.h>
 
-#include "smoothG.hpp"
+#include "GAUSS.hpp"
 
-using namespace smoothg;
+using namespace gauss;
 
 int main(int argc, char* argv[])
 {

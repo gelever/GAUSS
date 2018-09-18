@@ -20,34 +20,34 @@ set(CMAKE_CXX_STANDARD_REQUIRED YES)
 set(CMAKE_CXX_EXTENSIONS NO)
 
 add_executable(generalgraph generalgraph.cpp)
-target_link_libraries(generalgraph smoothG)
+target_link_libraries(generalgraph GAUSS)
 
 add_executable(graph_timestep graph_timestep.cpp)
-target_link_libraries(graph_timestep smoothG)
+target_link_libraries(graph_timestep GAUSS)
 
 add_executable(graphupscale graphupscale.cpp)
-target_link_libraries(graphupscale smoothG)
+target_link_libraries(graphupscale GAUSS)
 
 add_executable(poweriter poweriter.cpp)
-target_link_libraries(poweriter smoothG)
+target_link_libraries(poweriter GAUSS)
 
 add_executable(graph_mltopo graph_mltopo.cpp)
-target_link_libraries(graph_mltopo smoothG)
+target_link_libraries(graph_mltopo GAUSS)
 
 add_executable(graph_mlmc graph_mlmc.cpp)
-target_link_libraries(graph_mlmc smoothG)
+target_link_libraries(graph_mlmc GAUSS)
 
 add_executable(mleigen mleigen.cpp)
-target_link_libraries(mleigen smoothG)
+target_link_libraries(mleigen GAUSS)
 
 add_executable(sampler sampler.cpp)
-target_link_libraries(sampler smoothG)
+target_link_libraries(sampler GAUSS)
 
-if (NOT DEFINED SMOOTHG_TEST_TOL)
-    set(SMOOTHG_TEST_TOL 1e-4)
+if (NOT DEFINED GAUSS_TEST_TOL)
+    set(GAUSS_TEST_TOL 1e-4)
 endif()
-if (NOT DEFINED SMOOTHG_TEST_PROCS)
-    set(SMOOTHG_TEST_PROCS 4)
+if (NOT DEFINED GAUSS_TEST_PROCS)
+    set(GAUSS_TEST_PROCS 4)
 endif()
 
 configure_file(
@@ -78,10 +78,10 @@ add_test(parsamplegraph1 python stest.py parsamplegraph1)
 add_test(parsamplegraph4 python stest.py parsamplegraph4)
 add_test(pargraph-hybridization python stest.py pargraph-hybridization)
 add_test(partimestep python stest.py partimestep)
-add_test(pargraphupscale mpirun -np ${SMOOTHG_TEST_PROCS} ./graphupscale)
-add_test(parmltopo mpirun -np ${SMOOTHG_TEST_PROCS} ./graph_mltopo)
-add_test(parmlmc mpirun -np ${SMOOTHG_TEST_PROCS} ./graph_mlmc)
-add_test(parmleigen mpirun -np ${SMOOTHG_TEST_PROCS} ./mleigen)
+add_test(pargraphupscale mpirun -np ${GAUSS_TEST_PROCS} ./graphupscale)
+add_test(parmltopo mpirun -np ${GAUSS_TEST_PROCS} ./graph_mltopo)
+add_test(parmlmc mpirun -np ${GAUSS_TEST_PROCS} ./graph_mlmc)
+add_test(parmleigen mpirun -np ${GAUSS_TEST_PROCS} ./mleigen)
 
 if (APPLE)
   add_test(graph-metis python stest.py graph-metis-mac)

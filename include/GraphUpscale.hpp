@@ -39,7 +39,7 @@
 #include "HybridSolver.hpp"
 #include "SPDSolver.hpp"
 
-namespace smoothg
+namespace gauss
 {
 
 /**
@@ -279,6 +279,6 @@ private:
     bool do_ortho_;
 };
 
-} // namespace smoothg
+} // namespace gauss
 
 #endif /* __GRAPHUPSCALE_HPP__ */

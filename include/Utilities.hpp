@@ -43,7 +43,7 @@ std::unique_ptr<T> make_unique(Ts&& ... params)
 }
 #endif
 
-namespace smoothg
+namespace gauss
 {
 
 // Aliases to avoid unnecessary type verbosity
@@ -422,6 +422,6 @@ SparseMatrix RescaleLog(SparseMatrix A);
 /// Shifts partition such that indices are in [0, num_parts]
 void ShiftPartition(std::vector<int>& partition);
 
-} //namespace smoothg
+} //namespace gauss
 
 #endif // __UTILITIES_HPP__

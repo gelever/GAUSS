@@ -13,10 +13,10 @@
  *
  ***********************************************************************EHEADER*/
 
-#include "smoothG.hpp"
-#include "smoothG_config.h"
+#include "GAUSS.hpp"
+#include "GAUSS_config.h"
 
-using namespace smoothg;
+using namespace gauss;
 
 // build tridiagonal matrix with constant diagonal, sub- and super-diagonal
 SparseMatrix sparse_tridiag_matrix(int num_dof, double diag, double subd)
@@ -42,7 +42,7 @@ SparseMatrix sparse_tridiag_matrix(int num_dof, double diag, double subd)
 /**
    Test eigenvalues of very simple 1D finite difference stencil.
 */
-#if SMOOTHG_USE_ARPACK
+#if GAUSS_USE_ARPACK
 SparseMatrix build_sparse_fd_matrix(int num_dof)
 {
     return sparse_tridiag_matrix(num_dof, 2.0, -1.0);
@@ -245,10 +245,10 @@ int test_fe_dense()
 int main(int argc, char* argv[])
 {
     int out = 0;
-#if SMOOTHG_USE_ARPACK
+#if GAUSS_USE_ARPACK
     out += test_fd_sparse();
     out += test_fe_sparse();
-#endif
+#endif // GAUSS_USE_ARPACK
     out += test_fd_dense();
     out += test_fe_dense();
     return out;

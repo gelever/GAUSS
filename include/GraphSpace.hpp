@@ -24,7 +24,7 @@
 #include "Utilities.hpp"
 #include "Graph.hpp"
 
-namespace smoothg
+namespace gauss
 {
 
 /**
@@ -61,6 +61,6 @@ GraphSpace FineGraphSpace(const Graph& graph)
 }
 
 
-} // namespace smoothg
+} // namespace gauss
 
 #endif /* GRAPHSPACE_HPP */

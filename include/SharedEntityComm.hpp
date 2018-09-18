@@ -47,7 +47,7 @@
 
 #include "Utilities.hpp"
 
-namespace smoothg
+namespace gauss
 {
 
 /**
@@ -569,7 +569,7 @@ void SharedEntityComm<T>::BroadcastData(std::vector<T>& mats)
 }
 
 
-} // namespace smoothg
+} // namespace gauss
 
 
 #endif // __SHAREDENTITYCOMM_HPP__

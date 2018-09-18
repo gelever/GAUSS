@@ -20,7 +20,7 @@
 
 #include "GraphTopology.hpp"
 
-namespace smoothg
+namespace gauss
 {
 
 GraphTopology::GraphTopology(const Graph& graph)
@@ -96,7 +96,7 @@ void GraphTopology::Init(const SparseMatrix& vertex_edge,
 
     face_edge_ = ParMatrix(comm, face_starts, edge_starts, face_edge_local_);
 
-    face_face_ = smoothg::Mult(face_edge_, edge_edge, face_edge_.Transpose());
+    face_face_ = gauss::Mult(face_edge_, edge_edge, face_edge_.Transpose());
     face_face_ = 1.0;
 
     face_true_face_ = MakeEntityTrueEntity(face_face_);
@@ -313,5 +313,5 @@ SparseMatrix GraphTopology::ExtendFaceAgg(const ParMatrix& agg_agg,
 
 
 
-} // namespace smoothg
+} // namespace gauss
 

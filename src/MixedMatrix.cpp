@@ -20,7 +20,7 @@
 
 #include "MixedMatrix.hpp"
 
-namespace smoothg
+namespace gauss
 {
 
 MixedMatrix::MixedMatrix(const Graph& graph)
@@ -293,4 +293,4 @@ SparseMatrix MixedMatrix::MakeLocalD(const ParMatrix& edge_true_edge,
 }
 
 
-} // namespace smoothg
+} // namespace gauss

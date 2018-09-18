@@ -21,9 +21,9 @@
 #ifndef __SAMPLER_HPP__
 #define __SAMPLER_HPP__
 
-#include "smoothG.hpp"
+#include "GAUSS.hpp"
 
-namespace smoothg
+namespace gauss
 {
 
 /** @brief Saves output vectors to file as ("prefix" + index + ".txt")
@@ -244,6 +244,6 @@ void PDESampler::Sample(bool coarse_sample)
 }
 
 
-} // namespace smoothg
+} // namespace gauss
 
 #endif // __SAMPLER_HPP__

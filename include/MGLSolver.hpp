@@ -25,7 +25,7 @@
 #include "Utilities.hpp"
 #include "MixedMatrix.hpp"
 
-namespace smoothg
+namespace gauss
 {
 
 /**
@@ -112,6 +112,6 @@ protected:
     mutable double timing_ = 0;
 };
 
-} // namespace smoothg
+} // namespace gauss
 
 #endif // __MGLSOLVER_HPP__

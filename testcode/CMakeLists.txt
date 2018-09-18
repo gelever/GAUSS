@@ -21,28 +21,25 @@ set(CMAKE_CXX_EXTENSIONS NO)
 
 # add executables
 add_executable(tinygraphsolver tinygraphsolver.cpp)
-target_link_libraries(tinygraphsolver smoothG)
+target_link_libraries(tinygraphsolver GAUSS)
 
 add_executable(eigen eigen.cpp)
-target_link_libraries(eigen smoothG)
+target_link_libraries(eigen GAUSS)
 
 add_executable(test_MetisGraphPartitioner test_MetisGraphPartitioner.cpp)
-target_link_libraries(test_MetisGraphPartitioner smoothG)
-
-#add_executable(test_IsolatePartitioner test_IsolatePartitioner.cpp)
-#target_link_libraries(test_IsolatePartitioner smoothg ${TPL_LIBRARIES})
+target_link_libraries(test_MetisGraphPartitioner GAUSS)
 
 add_executable(wattsstrogatz wattsstrogatz.cpp)
-target_link_libraries(wattsstrogatz smoothG)
+target_link_libraries(wattsstrogatz GAUSS)
 
 add_executable(test_Graph test_Graph.cpp)
-target_link_libraries(test_Graph smoothG)
+target_link_libraries(test_Graph GAUSS)
 
 add_executable(test_projection test_projection.cpp)
-target_link_libraries(test_projection smoothG)
+target_link_libraries(test_projection GAUSS)
 
 #add_executable(test_Solvers test_Solvers.cpp)
-#target_link_libraries(test_Solvers smoothG)
+#target_link_libraries(test_Solvers GAUSS)
 
 # add tests
 # add_test(lineargraph lineargraph)
@@ -87,8 +84,8 @@ if (NOT APPLE)
 endif()
 
 add_test(NAME style
-  COMMAND ${ASTYLE_COMMAND} --options=smoothg.astylerc --dry-run src/*.?pp include/*.?pp examples/*.?pp testcode/*.?pp
-  WORKING_DIRECTORY ${smoothG_SOURCE_DIR})
+    COMMAND ${ASTYLE_COMMAND} --options=GAUSS.astylerc --dry-run src/*.?pp include/*.?pp examples/*.?pp testcode/*.?pp
+    WORKING_DIRECTORY ${GAUSS_SOURCE_DIR})
 set_tests_properties(style
   PROPERTIES FAIL_REGULAR_EXPRESSION
   "Formatted")

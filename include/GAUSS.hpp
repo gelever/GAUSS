@@ -13,7 +13,7 @@
  *
  ***********************************************************************EHEADER*/
 
-/** @file smoothG.hpp
+/** @file GAUSS.hpp
     @brief Contains all header files for easy include
 */
 

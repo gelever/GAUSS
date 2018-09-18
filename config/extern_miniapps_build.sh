@@ -16,7 +16,7 @@
 
 
 # This is the path to the root of the git repo
-# the BASE_DIR should contain smoothG_config.h.in
+# the BASE_DIR should contain config/GAUSS_config.h.in
 BASE_DIR=${PWD}
 
 # this is where we actually build binaries and so forth
@@ -45,7 +45,7 @@ mkdir -p $BUILD_DIR
 cd $BUILD_DIR
 
 CC=mpicc CXX=mpic++ cmake \
-    -DSMOOTHG_ENABLE_MFEM_MINIAPPS=Yes \
+    -DGAUSS_ENABLE_MFEM_MINIAPPS=Yes \
     -DMFEM_DIR=${MFEM_DIR} \
     -DSPE10_PERM=${SPE10_PERM} \
     -DMETIS_DIR=$METIS_DIR \
@@ -55,9 +55,9 @@ CC=mpicc CXX=mpic++ cmake \
     -DSUITESPARSE_LIBRARY_DIR_HINTS=$SUITESPARSE_DIR/lib \
     -DASTYLE_DIR=$ASTYLE_DIR/bin \
     -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
-    -DSMOOTHG_USE_ARPACK=$USE_ARPACK \
-    -DSMOOTHG_TEST_TOL=$TEST_TOL \
-    -DSMOOTHG_TEST_PROCS=$TEST_PROCS \
+    -DGAUSS_USE_ARPACK=$USE_ARPACK \
+    -DGAUSS_TEST_TOL=$TEST_TOL \
+    -DGAUSS_TEST_PROCS=$TEST_PROCS \
     $BASE_DIR \
     $EXTRA_ARGS
 
