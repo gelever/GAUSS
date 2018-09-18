@@ -1,6 +1,6 @@
 #include "spe10.hpp"
 
-namespace rs2000
+namespace rs2001
 {
 
 GCoefficient::GCoefficient(double Lx, double Ly, double Lz,
@@ -408,4 +408,4 @@ void FiniteVolumeMassIntegrator::AssembleElementMatrix(
     elmat.Diag(mii.GetData(), ndof);
 }
 
-} // namespace rs2000
+} // namespace rs2001

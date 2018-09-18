@@ -24,10 +24,10 @@
 */
 
 #include "mfem.hpp"
-#include "smoothG.hpp"
+#include "GAUSS.hpp"
 #include "Utilities.hpp"
 
-namespace rs2000
+namespace rs2001
 {
 
 /**
@@ -193,7 +193,7 @@ public:
                                         mfem::DenseMatrix& elmat);
 }; // class FiniteVolumeMassIntegrator
 
-} // namespace rs2000
+} // namespace rs2001
 
 #endif /* SPE10_HPP_ */
 

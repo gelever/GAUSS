@@ -44,19 +44,19 @@
 ###############################################################
 
 cmake_minimum_required(VERSION 3.5)
-project(smoothG VERSION 1.0 LANGUAGES CXX)
+project(GAUSS VERSION 1.0 LANGUAGES CXX)
 enable_testing()
 
-option(SMOOTHG_USE_ARPACK "Should ARPACK be enabled?" NO)
+option(GAUSS_USE_ARPACK "Should ARPACK be enabled?" NO)
 
 find_package(linalgcpp REQUIRED)
 
-if (SMOOTHG_USE_ARPACK)
+if (GAUSS_USE_ARPACK)
     list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
     find_package(ARPACK REQUIRED)
 endif()
 
-add_library(smoothG
+add_library(GAUSS
     src/GraphCoarsen.cpp
     src/Graph.cpp
     src/GraphEdgeSolver.cpp
@@ -73,25 +73,25 @@ add_library(smoothG
     src/Utilities.cpp
 )
 
-set_target_properties(smoothG PROPERTIES
+set_target_properties(GAUSS PROPERTIES
         CXX_STANDARD 11
         CXX_STANDARD_REQUIRED YES
         CXX_EXTENSIONS NO
 )
 
-target_compile_options(smoothG PRIVATE $<$<CXX_COMPILER_ID:GNU>:-Wall -Wextra -Wpedantic -O2>)
-target_compile_options(smoothG PRIVATE $<$<CXX_COMPILER_ID:Clang>:-Wall -Wextra -Wpedantic -O2>)
+target_compile_options(GAUSS PRIVATE $<$<CXX_COMPILER_ID:GNU>:-Wall -Wextra -Wpedantic -O2>)
+target_compile_options(GAUSS PRIVATE $<$<CXX_COMPILER_ID:Clang>:-Wall -Wextra -Wpedantic -O2>)
 
-target_link_libraries(smoothG
+target_link_libraries(GAUSS
     PUBLIC
         linalgcpp::partition
         linalgcpp::sparsesolve
         linalgcpp::parlinalgcpp
         linalgcpp::linalgcpp
-        $<$<BOOL:${SMOOTHG_USE_ARPACK}>:Arpack::Arpack>
+        $<$<BOOL:${GAUSS_USE_ARPACK}>:Arpack::Arpack>
 )
 
-target_include_directories(smoothG
+target_include_directories(GAUSS
     PUBLIC
 		$<INSTALL_INTERFACE:include>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -101,8 +101,8 @@ target_include_directories(smoothG
 # Astyle
 find_program(ASTYLE_COMMAND astyle HINTS ${ASTYLE_DIR})
 add_custom_target(style
-    ${ASTYLE_COMMAND} --options=smoothg.astylerc src/*.cpp include/*.hpp examples/*.?pp testcode/*.?pp
-    WORKING_DIRECTORY ${smoothG_SOURCE_DIR}
+    ${ASTYLE_COMMAND} --options=GAUSS.astylerc src/*.cpp include/*.hpp examples/*.?pp testcode/*.?pp
+    WORKING_DIRECTORY ${GAUSS_SOURCE_DIR}
     COMMENT "Formating source code" VERBATIM
     )
 
@@ -117,10 +117,10 @@ endfunction(add_valgrind_test)
 
 # Installation
 include(GNUInstallDirs)
-set(INSTALL_CONFIGDIR ${CMAKE_INSTALL_LIBDIR}/cmake/libsmoothg)
+set(INSTALL_CONFIGDIR ${CMAKE_INSTALL_LIBDIR}/cmake/libGAUSS)
 
-install(TARGETS smoothG
-    EXPORT smoothg-targets
+install(TARGETS GAUSS
+    EXPORT GAUSS-targets
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
@@ -128,45 +128,45 @@ install(TARGETS smoothG
 install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
 # Export targets to a script
-install(EXPORT smoothg-targets
-    FILE smoothgTargets.cmake
-    NAMESPACE smoothg::
+install(EXPORT GAUSS-targets
+    FILE GAUSSTargets.cmake
+    NAMESPACE GAUSS::
     DESTINATION ${INSTALL_CONFIGDIR}
 )
 
 # Create Config files
 include(CMakePackageConfigHelpers)
 write_basic_package_version_file(
-    ${CMAKE_CURRENT_BINARY_DIR}/smoothgConfigVersion.cmake
+    ${CMAKE_CURRENT_BINARY_DIR}/GAUSSConfigVersion.cmake
     VERSION ${PROJECT_VERSION}
     COMPATIBILITY AnyNewerVersion
 )
 
 configure_package_config_file(
-    ${CMAKE_CURRENT_LIST_DIR}/cmake/smoothgConfig.cmake.in
-    ${CMAKE_CURRENT_BINARY_DIR}/smoothgConfig.cmake
+    ${CMAKE_CURRENT_LIST_DIR}/cmake/GAUSSConfig.cmake.in
+    ${CMAKE_CURRENT_BINARY_DIR}/GAUSSConfig.cmake
     INSTALL_DESTINATION ${INSTALL_CONFIGDIR}
 )
 
 configure_file(
-  "${PROJECT_SOURCE_DIR}/config/smoothG_config.h.in"
-  "${PROJECT_BINARY_DIR}/smoothG_config.h"
+    "${PROJECT_SOURCE_DIR}/config/GAUSS_config.h.in"
+    "${PROJECT_BINARY_DIR}/GAUSS_config.h"
   )
 
 # Install Config files
 install(FILES
-    ${CMAKE_CURRENT_BINARY_DIR}/smoothgConfig.cmake
-    ${CMAKE_CURRENT_BINARY_DIR}/smoothgConfigVersion.cmake
+    ${CMAKE_CURRENT_BINARY_DIR}/GAUSSConfig.cmake
+    ${CMAKE_CURRENT_BINARY_DIR}/GAUSSConfigVersion.cmake
     DESTINATION ${INSTALL_CONFIGDIR}
 )
 
 # Export from the build tree
-export(EXPORT smoothg-targets
-       FILE ${CMAKE_CURRENT_BINARY_DIR}/smoothgTargets.cmake
-       NAMESPACE smoothg::
+export(EXPORT GAUSS-targets
+    FILE ${CMAKE_CURRENT_BINARY_DIR}/GAUSSTargets.cmake
+    NAMESPACE GAUSS::
        )
 
-export(PACKAGE smoothG)
+   export(PACKAGE GAUSS)
 
 # Sub Directories
 add_subdirectory(testcode)

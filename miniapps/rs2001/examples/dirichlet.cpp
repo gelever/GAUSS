@@ -24,16 +24,16 @@
 
 #include "spe10.hpp"
 
-using namespace rs2000;
+using namespace rs2001;
 
-smoothg::SparseMatrix ComputeD(const smoothg::GraphUpscale& upscale,
-                               const smoothg::SparseMatrix& boundary_att_vertex,
-                               const std::vector<int>& ess_bdr);
+gauss::SparseMatrix ComputeD(const gauss::GraphUpscale& upscale,
+                             const gauss::SparseMatrix& boundary_att_vertex,
+                             const std::vector<int>& ess_bdr);
 
 int main(int argc, char* argv[])
 {
     // 1. Initialize MPI
-    smoothg::MpiSession mpi_info(argc, argv);
+    gauss::MpiSession mpi_info(argc, argv);
     MPI_Comm comm = mpi_info.comm_;
     int myid = mpi_info.myid_;
     int num_procs = mpi_info.num_procs_;
@@ -183,7 +183,7 @@ int main(int argc, char* argv[])
     // Construct vertex_edge table in mfem::SparseMatrix format
     auto& vertex_edge_table = nDimensions == 2 ? pmesh->ElementToEdgeTable()
                               : pmesh->ElementToFaceTable();
-    smoothg::SparseMatrix vertex_edge = TableToSparse(vertex_edge_table);
+    gauss::SparseMatrix vertex_edge = TableToSparse(vertex_edge_table);
 
     // Construct agglomerated topology based on METIS or Cartesion aggloemration
     for (auto&& i : coarseningFactor)
@@ -202,10 +202,10 @@ int main(int argc, char* argv[])
         partitioning = CartPart(num_procs_xyz, *pmesh, coarseningFactor);
     }
 
-    smoothg::ParMatrix edge_d_td = ParMatrixToParMatrix(*sigmafespace.Dof_TrueDof_Matrix());
-    smoothg::SparseMatrix edge_boundary_att = GenerateBoundaryAttributeTable(*pmesh);
-    smoothg::SparseMatrix boundary_att_edge = edge_boundary_att.Transpose();
-    smoothg::SparseMatrix boundary_att_vertex = vertex_edge.Mult(edge_boundary_att).Transpose();
+    gauss::ParMatrix edge_d_td = ParMatrixToParMatrix(*sigmafespace.Dof_TrueDof_Matrix());
+    gauss::SparseMatrix edge_boundary_att = GenerateBoundaryAttributeTable(*pmesh);
+    gauss::SparseMatrix boundary_att_edge = edge_boundary_att.Transpose();
+    gauss::SparseMatrix boundary_att_vertex = vertex_edge.Mult(edge_boundary_att).Transpose();
 
     std::vector<int> elim_edges;
     int num_bdr = boundary_att_edge.Rows();
@@ -229,14 +229,14 @@ int main(int argc, char* argv[])
     }
 
     // Create Upscaler and Solve
-    smoothg::Graph graph(vertex_edge, edge_d_td, partitioning, weight);
-    smoothg::GraphUpscale upscale(graph, {spect_tol, max_evects, hybridization, num_levels, ml_factor, elim_edges});
+    gauss::Graph graph(vertex_edge, edge_d_td, partitioning, weight);
+    gauss::GraphUpscale upscale(graph, {spect_tol, max_evects, hybridization, num_levels, ml_factor, elim_edges});
 
     upscale.ShowSetupTime();
     upscale.PrintInfo();
 
-    smoothg::BlockVector rhs_fine = upscale.GetBlockVector(0);
-    smoothg::BlockVector ess_conditions = upscale.GetBlockVector(0);
+    gauss::BlockVector rhs_fine = upscale.GetBlockVector(0);
+    gauss::BlockVector ess_conditions = upscale.GetBlockVector(0);
 
     rhs_fine = 0.0;
     ess_conditions = 0.0;
@@ -293,13 +293,13 @@ int main(int argc, char* argv[])
     {
         ParPrint(myid, std::cout << "Solution Level " << i << "\n");
 
-        smoothg::Vector sigma_diff(sols[0].GetBlock(0));
+        gauss::Vector sigma_diff(sols[0].GetBlock(0));
         sigma_diff -= sols[i].GetBlock(0);
 
-        auto info = smoothg::ComputeErrors(comm, M, D_interior, sols[i], sols[0]);
+        auto info = gauss::ComputeErrors(comm, M, D_interior, sols[i], sols[0]);
         info.back() = linalgcpp::ParL2Norm(comm, D_interior.Mult(sigma_diff));
 
-        ParPrint(myid, smoothg::ShowErrors(info));
+        ParPrint(myid, gauss::ShowErrors(info));
     }
 
     if (visualization)
@@ -318,11 +318,11 @@ int main(int argc, char* argv[])
     return EXIT_SUCCESS;
 }
 
-smoothg::SparseMatrix ComputeD(const smoothg::GraphUpscale& upscale,
-                               const smoothg::SparseMatrix& boundary_att_vertex,
-                               const std::vector<int>& ess_bdr)
+gauss::SparseMatrix ComputeD(const gauss::GraphUpscale& upscale,
+                             const gauss::SparseMatrix& boundary_att_vertex,
+                             const std::vector<int>& ess_bdr)
 {
-    smoothg::SparseMatrix D = upscale.GetMatrix(0).LocalD();
+    gauss::SparseMatrix D = upscale.GetMatrix(0).LocalD();
 
     for (int i = 0; i < boundary_att_vertex.Rows(); ++i)
     {

@@ -21,7 +21,7 @@
 
 #include "MinresBlockSolver.hpp"
 
-namespace smoothg
+namespace gauss
 {
 
 MinresBlockSolver::MinresBlockSolver(const MixedMatrix& mgl)
@@ -195,5 +195,5 @@ void MinresBlockSolver::SetAbsTol(double atol)
     pminres_.SetAbsTol(atol);
 }
 
-} // namespace smoothg
+} // namespace gauss
 

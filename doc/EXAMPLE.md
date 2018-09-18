@@ -25,7 +25,7 @@ which can be used to partition a network into communities.
 For a connected graph, the Fiedler vector is the eigenvector corresponding to the second smallest eigenvalue of the graph Laplacian.
 
 To keep things simple, in this example we do not solve an eigenvalue problem but instead a single linear system.
-`smoothG` ships with an example graph and a precomputed Fiedler vector.
+`GAUSS` ships with an example graph and a precomputed Fiedler vector.
 In this example we load that data and compare an upscaled approximation to the fine-scale Fiedler vector.
 
 In mathematical terms, we are given a graph-Laplacian \f$ A \f$ and a Fiedler vector \f$ x \f$ on a fine-scale graph.
@@ -63,8 +63,8 @@ If the user has provided edge weights to use, we load them from file.  Otherwise
 
 \snippet generalgraph.cpp Load the edge weights
 
-The next step is to create an [GraphUpscale](@ref smoothg::GraphUpscale) object.
-Given some user parameters, the [GraphUpscale](@ref smoothg::GraphUpscale) object handles the construction of the coarse space.
+The next step is to create an [GraphUpscale](@ref GAUSS::GraphUpscale) object.
+Given some user parameters, the [GraphUpscale](@ref GAUSS::GraphUpscale) object handles the construction of the coarse space.
 \snippet generalgraph.cpp Upscale
 
 The right hand side can be read from file or computed as the Fielder vector of the fine level graph.
@@ -72,7 +72,7 @@ It is then set into the appropriate mixed form.
 \snippet generalgraph.cpp Right Hand Side
 
 The next major step is to actually solve the system.
-Both the upscaled solution and the fine level solution can be computed by the [Upscale](@ref smoothg::Upscale) object.
+Both the upscaled solution and the fine level solution can be computed by the [Upscale](@ref GAUSS::Upscale) object.
 \snippet generalgraph.cpp Solve
 
 The last few lines of the code compare the solutions on each level, to see how close the upscaled model is to the original fine-scale graph.

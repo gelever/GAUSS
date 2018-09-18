@@ -23,7 +23,7 @@
 
 #include "Utilities.hpp"
 
-namespace smoothg
+namespace gauss
 {
 
 /**
@@ -143,6 +143,6 @@ BlockVector ReadVertexBlockVector(const Graph& graph, const std::string& filenam
 }
 
 
-} // namespace smoothg
+} // namespace gauss
 
 #endif /* __GRAPH_HPP__ */

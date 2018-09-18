@@ -16,7 +16,7 @@
 
 #include "spe10.hpp"
 
-namespace rs2000
+namespace rs2001
 {
 /// \class DarcySolver
 /// \brief Constructs the DeRham sequence to solve Darcy's Equation
@@ -35,10 +35,10 @@ namespace rs2000
 class DarcySolver
 {
 public:
-    DarcySolver(smoothg::GraphUpscale& upscale);
+    DarcySolver(gauss::GraphUpscale& upscale);
 
-    void SetRHS(const smoothg::BlockVector& fine_rhs);
-    void SetObsFunc(const smoothg::BlockVector& fine_obs, double area);
+    void SetRHS(const gauss::BlockVector& fine_rhs);
+    void SetObsFunc(const gauss::BlockVector& fine_obs, double area);
 
     /// Solve and update quantity of interest Q, cost C
     void SolveFwd(
@@ -55,16 +55,16 @@ public:
 
     double GetSolveTime(int ilevel) const {return upscale_.SolveTime(ilevel); }
 
-    const smoothg::BlockVector& Solution(int ilevel) const { return sol_[ilevel]; }
+    const gauss::BlockVector& Solution(int ilevel) const { return sol_[ilevel]; }
 
-    void InterpolateCoeff(int level, smoothg::Vector& coeff);
+    void InterpolateCoeff(int level, gauss::Vector& coeff);
 
 private:
-    smoothg::GraphUpscale& upscale_;
-    std::vector<smoothg::BlockVector> rhs_;
-    std::vector<smoothg::BlockVector> sol_;
-    std::vector<smoothg::Vector> constant_rep_;
-    std::vector<smoothg::BlockVector> obs_;
+    gauss::GraphUpscale& upscale_;
+    std::vector<gauss::BlockVector> rhs_;
+    std::vector<gauss::BlockVector> sol_;
+    std::vector<gauss::Vector> constant_rep_;
+    std::vector<gauss::BlockVector> obs_;
 
 
     std::vector<std::vector<double>> coeff_;
@@ -73,6 +73,6 @@ private:
     double size_bndr_;
 };
 
-} /* namespace rs2000 */
+} /* namespace rs2001 */
 #endif /* DARCYSOLVER_HPP_ */
 

@@ -22,11 +22,11 @@
 
 #include "spe10.hpp"
 
-using namespace rs2000;
+using namespace rs2001;
 
-smoothg::Vector SimpleAscendingScaling(int size)
+gauss::Vector SimpleAscendingScaling(int size)
 {
-    smoothg::Vector scale(size);
+    gauss::Vector scale(size);
 
     for (int i = 0; i < size; i++)
     {
@@ -36,7 +36,7 @@ smoothg::Vector SimpleAscendingScaling(int size)
     return scale;
 }
 
-mfem::PWConstCoefficient InvElemScaleCoefficient(const smoothg::VectorView& elem_scale)
+mfem::PWConstCoefficient InvElemScaleCoefficient(const gauss::VectorView& elem_scale)
 {
     mfem::Vector inverse_elem_scale(elem_scale.size());
 
@@ -47,9 +47,9 @@ mfem::PWConstCoefficient InvElemScaleCoefficient(const smoothg::VectorView& elem
     return mfem::PWConstCoefficient(inverse_elem_scale);
 }
 
-smoothg::MixedMatrix OriginalScaledFineMatrix(mfem::ParFiniteElementSpace& sigmafespace,
-                                              const smoothg::SparseMatrix& vertex_edge,
-                                              const smoothg::VectorView& elem_scale)
+gauss::MixedMatrix OriginalScaledFineMatrix(mfem::ParFiniteElementSpace& sigmafespace,
+                                            const gauss::SparseMatrix& vertex_edge,
+                                            const gauss::VectorView& elem_scale)
 {
     auto inv_scale_coef = InvElemScaleCoefficient(elem_scale);
     mfem::BilinearForm a2(&sigmafespace);
@@ -57,7 +57,7 @@ smoothg::MixedMatrix OriginalScaledFineMatrix(mfem::ParFiniteElementSpace& sigma
 
     int num_elem = sigmafespace.GetMesh()->GetNE();
 
-    std::vector<smoothg::DenseMatrix> M_elem(num_elem);
+    std::vector<gauss::DenseMatrix> M_elem(num_elem);
     mfem::DenseMatrix M_el_i;
 
     for (int i = 0; i < num_elem; ++i)
@@ -73,20 +73,20 @@ smoothg::MixedMatrix OriginalScaledFineMatrix(mfem::ParFiniteElementSpace& sigma
         }
     }
 
-    smoothg::ParMatrix edge_trueedge = ParMatrixToParMatrix(*sigmafespace.Dof_TrueDof_Matrix());
-    smoothg::SparseMatrix D = smoothg::MixedMatrix::MakeLocalD(edge_trueedge, vertex_edge);
-    smoothg::SparseMatrix W;
+    gauss::ParMatrix edge_trueedge = ParMatrixToParMatrix(*sigmafespace.Dof_TrueDof_Matrix());
+    gauss::SparseMatrix D = gauss::MixedMatrix::MakeLocalD(edge_trueedge, vertex_edge);
+    gauss::SparseMatrix W;
 
-    return smoothg::MixedMatrix(std::move(M_elem), vertex_edge,
-                                std::move(D), std::move(W),
-                                std::move(edge_trueedge));
+    return gauss::MixedMatrix(std::move(M_elem), vertex_edge,
+                              std::move(D), std::move(W),
+                              std::move(edge_trueedge));
 }
 
-smoothg::SparseMatrix RescaledFineM(mfem::FiniteElementSpace& sigmafespace,
-                                    const smoothg::VectorView& original_elem_scale,
-                                    const smoothg::VectorView& additional_elem_scale)
+gauss::SparseMatrix RescaledFineM(mfem::FiniteElementSpace& sigmafespace,
+                                  const gauss::VectorView& original_elem_scale,
+                                  const gauss::VectorView& additional_elem_scale)
 {
-    smoothg::Vector new_elem_scale(original_elem_scale);
+    gauss::Vector new_elem_scale(original_elem_scale);
 
     for (int i = 0; i < new_elem_scale.size(); ++i)
     {
@@ -103,19 +103,19 @@ smoothg::SparseMatrix RescaledFineM(mfem::FiniteElementSpace& sigmafespace,
     return SparseToSparse(a1.SpMat());
 }
 
-smoothg::GraphCoarsen BuildCoarsener(const smoothg::Graph& graph,
-                                     const smoothg::MixedMatrix& mixed_matrix)
+gauss::GraphCoarsen BuildCoarsener(const gauss::Graph& graph,
+                                   const gauss::MixedMatrix& mixed_matrix)
 {
-    smoothg::GraphTopology gt(graph);
-    smoothg::GraphSpace graph_space = smoothg::FineGraphSpace(graph);
-    smoothg::Vector constant_rep(graph.vertex_edge_local_.Rows(),
-                                 1.0 / std::sqrt(graph.global_vertices_));
-    smoothg::SpectralPair spect_info{1.0, 3};
+    gauss::GraphTopology gt(graph);
+    gauss::GraphSpace graph_space = gauss::FineGraphSpace(graph);
+    gauss::Vector constant_rep(graph.vertex_edge_local_.Rows(),
+                               1.0 / std::sqrt(graph.global_vertices_));
+    gauss::SpectralPair spect_info{1.0, 3};
 
-    return smoothg::GraphCoarsen(std::move(gt), graph_space, mixed_matrix, constant_rep, spect_info);
+    return gauss::GraphCoarsen(std::move(gt), graph_space, mixed_matrix, constant_rep, spect_info);
 }
 
-double FrobeniusNorm(MPI_Comm comm, const smoothg::SparseMatrix& mat)
+double FrobeniusNorm(MPI_Comm comm, const gauss::SparseMatrix& mat)
 {
     double frob_norm_square_loc = 0.0;
 
@@ -132,16 +132,16 @@ double FrobeniusNorm(MPI_Comm comm, const smoothg::SparseMatrix& mat)
     return std::sqrt(frob_norm_square_global);
 }
 
-double RelativeDiff(MPI_Comm comm, const smoothg::SparseMatrix& M1, const smoothg::SparseMatrix& M2)
+double RelativeDiff(MPI_Comm comm, const gauss::SparseMatrix& M1, const gauss::SparseMatrix& M2)
 {
-    smoothg::SparseMatrix diff = smoothg::Add(1.0, M1, -1.0, M2);
+    gauss::SparseMatrix diff = gauss::Add(1.0, M1, -1.0, M2);
     return FrobeniusNorm(comm, diff) / FrobeniusNorm(comm, M1);
 }
 
 int main(int argc, char* argv[])
 {
     // 1. Initialize MPI
-    smoothg::MpiSession mpi_info(argc, argv);
+    gauss::MpiSession mpi_info(argc, argv);
     MPI_Comm comm = mpi_info.comm_;
     int myid = mpi_info.myid_;
     int num_procs = mpi_info.num_procs_;
@@ -158,31 +158,31 @@ int main(int argc, char* argv[])
     mfem::RT_FECollection sigmafec(0, pmesh.SpaceDimension());
     mfem::ParFiniteElementSpace sigmafespace(&pmesh, &sigmafec);
 
-    smoothg::SparseMatrix vertex_edge = TableToSparse(pmesh.ElementToFaceTable());
-    smoothg::SparseMatrix edge_bdratt = GenerateBoundaryAttributeTable(pmesh);
-    smoothg::ParMatrix edge_trueedge = ParMatrixToParMatrix(*sigmafespace.Dof_TrueDof_Matrix());
+    gauss::SparseMatrix vertex_edge = TableToSparse(pmesh.ElementToFaceTable());
+    gauss::SparseMatrix edge_bdratt = GenerateBoundaryAttributeTable(pmesh);
+    gauss::ParMatrix edge_trueedge = ParMatrixToParMatrix(*sigmafespace.Dof_TrueDof_Matrix());
 
     int coarsening_factor = 8;
-    std::vector<int> partitioning = smoothg::PartitionAAT(vertex_edge, coarsening_factor);
+    std::vector<int> partitioning = gauss::PartitionAAT(vertex_edge, coarsening_factor);
 
     int num_parts = *std::max_element(std::begin(partitioning), std::end(partitioning)) + 1;
 
     //Create simple element and aggregate scaling
-    smoothg::Vector elem_scale = SimpleAscendingScaling(pmesh.GetNE());
-    smoothg::Vector agg_scale = SimpleAscendingScaling(num_parts);
+    gauss::Vector elem_scale = SimpleAscendingScaling(pmesh.GetNE());
+    gauss::Vector agg_scale = SimpleAscendingScaling(num_parts);
 
     // Create a fine level MixedMatrix corresponding to piecewise constant coefficient
-    smoothg::Graph graph(vertex_edge, edge_trueedge, partitioning);
-    smoothg::MixedMatrix fine_mgL = OriginalScaledFineMatrix(sigmafespace, vertex_edge, elem_scale);
+    gauss::Graph graph(vertex_edge, edge_trueedge, partitioning);
+    gauss::MixedMatrix fine_mgL = OriginalScaledFineMatrix(sigmafespace, vertex_edge, elem_scale);
     fine_mgL.AssembleM();
 
     // Create a coarsener to build interpolation matrices and coarse M builder
-    smoothg::GraphCoarsen coarsener = BuildCoarsener(graph, fine_mgL);
+    gauss::GraphCoarsen coarsener = BuildCoarsener(graph, fine_mgL);
     auto coarse_mgL = coarsener.Coarsen(fine_mgL);
 
     // Interpolate agg scaling (coarse level) to elements (fine level)
-    smoothg::SparseMatrix P = smoothg::MakeAggVertex(partitioning);
-    smoothg::Vector interp_agg_scale = P.MultAT(agg_scale);
+    gauss::SparseMatrix P = gauss::MakeAggVertex(partitioning);
+    gauss::Vector interp_agg_scale = P.MultAT(agg_scale);
 
     // Assemble rescaled fine and coarse M through MixedMatrix
     fine_mgL.AssembleM(interp_agg_scale.data());
@@ -196,7 +196,7 @@ int main(int argc, char* argv[])
 
     const auto& Psigma = coarsener.Pedge();
     const auto& Psigma_T = Psigma.Transpose();
-    smoothg::SparseMatrix coarse_M2 = smoothg::Mult(Psigma_T, fine_M2, Psigma);
+    gauss::SparseMatrix coarse_M2 = gauss::Mult(Psigma_T, fine_M2, Psigma);
 
     // Check relative differences measured in Frobenius norm
     double fine_diff = RelativeDiff(comm, fine_M1, fine_M2);

@@ -38,8 +38,8 @@ graph_data = "@PROJECT_SOURCE_DIR@/graphdata"
 
 memorycheck_command = "@MEMORYCHECK_COMMAND@"
 
-test_tol = float("@SMOOTHG_TEST_TOL@")
-num_procs = "@SMOOTHG_TEST_PROCS@"
+test_tol = float("@GAUSS_TEST_TOL@")
+num_procs = "@GAUSS_TEST_PROCS@"
 
 
 def run_test(command, expected={}, verbose=False):

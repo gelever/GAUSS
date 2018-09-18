@@ -31,7 +31,7 @@
 * Each class receives its own file, with an exception for multiple tiny highly-related classes
 * Each file has the same name as the class.
 * The body of a function should fit onto your screen. If it doesn't, split it up into subfunctions.
-* We use 4 space indent (no tabs) and Allman or BSD style braces, as enforced by `make style`. See smoothg.astylerc for details.
+* We use 4 space indent (no tabs) and Allman or BSD style braces, as enforced by `make style`. See GAUSS.astylerc for details.
 
 ## Documentation conventions
 

@@ -24,7 +24,7 @@
 #include "sparsesolve.hpp"
 #include "Utilities.hpp"
 
-namespace smoothg
+namespace gauss
 {
 
 /**
@@ -211,6 +211,6 @@ private:
     mutable BlockVector sol_;
 };
 
-} // namespace smoothg
+} // namespace gauss
 
 #endif /* __GRAPHSOLVER_HPP__ */

@@ -21,7 +21,7 @@
 
 #include "HybridSolver.hpp"
 
-namespace smoothg
+namespace gauss
 {
 
 HybridSolver::HybridSolver(const MixedMatrix& mgl, const GraphSpace& graph_space)
@@ -125,7 +125,7 @@ void HybridSolver::InitSolver(SparseMatrix local_hybrid)
     {
         if (myid_ == 0)
         {
-            // TODO(gelever1): create SMOOTHG_Warn or something of the sort
+            // TODO(gelever1): create GAUSS_Warn or something of the sort
             // to make warnings optional
             printf("Warning: Not using preconditioner for Hybrid Solver!\n");
         }
@@ -527,4 +527,4 @@ void HybridSolver::SetAbsTol(double atol)
     cg_.SetAbsTol(atol_);
 }
 
-} // namespace smoothg
+} // namespace gauss

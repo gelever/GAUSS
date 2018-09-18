@@ -11,10 +11,10 @@
 
 #include "DarcySolver.hpp"
 
-namespace rs2000
+namespace rs2001
 {
 
-DarcySolver::DarcySolver(smoothg::GraphUpscale& upscale)
+DarcySolver::DarcySolver(gauss::GraphUpscale& upscale)
     : upscale_(upscale),
       rhs_(upscale_.GetMLBlockVector()),
       sol_(upscale_.GetMLBlockVector()),
@@ -54,7 +54,7 @@ DarcySolver::DarcySolver(smoothg::GraphUpscale& upscale)
     }
 }
 
-void DarcySolver::SetObsFunc(const smoothg::BlockVector& fine_obs, double area)
+void DarcySolver::SetObsFunc(const gauss::BlockVector& fine_obs, double area)
 {
     size_bndr_ = area;
 
@@ -68,7 +68,7 @@ void DarcySolver::SetObsFunc(const smoothg::BlockVector& fine_obs, double area)
     }
 }
 
-void DarcySolver::SetRHS(const smoothg::BlockVector& fine_rhs)
+void DarcySolver::SetRHS(const gauss::BlockVector& fine_rhs)
 {
     int num_levels = upscale_.NumLevels();
 
@@ -107,12 +107,12 @@ void DarcySolver::SolveFwd(
     Q = linalgcpp::ParMult(comm, obs_[ilevel], sol_[ilevel]) / size_bndr_;
 }
 
-void DarcySolver::InterpolateCoeff(int level, smoothg::Vector& coeff)
+void DarcySolver::InterpolateCoeff(int level, gauss::Vector& coeff)
 {
     int coarse_size = constant_rep_[level].size();
     int fine_size = constant_rep_[0].size();
 
-    smoothg::Vector vect(coarse_size, 0.0);
+    gauss::Vector vect(coarse_size, 0.0);
 
     int coeff_size = coeff_[level].size();
 

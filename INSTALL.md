@@ -13,10 +13,10 @@
  +
  +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ EHEADER -->
 
-Installing smoothG            {#INSTALL}
+Installing GAUSS            {#INSTALL}
 ==========
 
-The following instructions will install smoothG and all of its
+The following instructions will install GAUSS and all of its
 dependencies.
 
 # Dependencies:
@@ -106,11 +106,11 @@ For example the final `LIBRARY_PATH` will look like:
     make
     make install
 
-# Build smoothG
+# Build GAUSS
 
-Clone the smoothG repo and cd into smoothG directory.
+Clone the GAUSS repo and cd into GAUSS directory.
 
-To build smoothG, either copy, modify, and run a config file from config/
+To build GAUSS, either copy, modify, and run a config file from config/
 or pass the parameters directly to cmake:
 
     mkdir -p build

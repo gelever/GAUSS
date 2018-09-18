@@ -1,4 +1,4 @@
-smoothG [![Build Status](https://travis-ci.org/gelever/smoothG.svg?branch=master)](https://travis-ci.org/gelever/smoothG)
+GAUSS [![Build Status](https://travis-ci.org/gelever/smoothG.svg?branch=master)](https://travis-ci.org/gelever/smoothG)
 =================
 
 <!-- BHEADER ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -15,10 +15,7 @@ smoothG [![Build Status](https://travis-ci.org/gelever/smoothG.svg?branch=master
  + Software Foundation) version 2.1 dated February 1999.
  +
  +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ EHEADER -->
-
-<!-- !["smoothG logo](doc/smoothg_logo.png) -->
-
-Mixed graph-Laplacian upscaling and solvers.
+Graph Algebraic Upscaling and Solvers
 
 # Overview
 
@@ -64,7 +61,7 @@ The `GraphUpscale` object handles the coarsening procedure and the application o
 There are several user specified parameters that can control the coarsening process.
 
 For more detailed walkthroughs, see [EXAMPLE.md](doc/EXAMPLE.md) or the [examples directory](examples/).
-See the [miniapps](miniapps) directory for more applications of smoothG.
+See the [miniapps](miniapps) directory for more applications of GAUSS.
 
 # Installation
 Several dependencies are required:
@@ -85,7 +82,7 @@ For more detailed installation instructions, see [INSTALL.md](INSTALL.md).
 
 # Project Structure
 ```sh
-smoothG
+GAUSS
 ├── config    - Configuration and build scripts
 ├── examples  - Graph upscaling examples
 ├── graphdata - Example graphs, partitions, and vectors

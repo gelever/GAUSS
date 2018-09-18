@@ -25,7 +25,7 @@
 
 #include "spe10.hpp"
 
-namespace rs2000
+namespace rs2001
 {
 
 /** @brief Saves output vectors to file as ("prefix" + index + ".txt")
@@ -35,7 +35,7 @@ namespace rs2000
     @param index filename suffix
 */
 template <typename T>
-void SaveOutput(const smoothg::Graph& graph, const T& vect, const std::string& prefix, int index)
+void SaveOutput(const gauss::Graph& graph, const T& vect, const std::string& prefix, int index)
 {
     std::stringstream ss;
     ss << prefix << std::setw(5) << std::setfill('0') << index << ".txt";
@@ -105,7 +105,7 @@ public:
         @param kappa inverse correlation length for Matern covariance
         @param seed seed for random number generator
      */
-    PDESampler(const smoothg::Graph& graph, const smoothg::UpscaleParams& params,
+    PDESampler(const gauss::Graph& graph, const gauss::UpscaleParams& params,
                int dimension, double kappa, double cell_volume, bool lognormal = true);
 
     /** @brief Default Destructor */
@@ -119,11 +119,11 @@ public:
     /** @brief Access the coefficients */
     const std::vector<double>& GetCoefficient(int level) const { return coefficient_.at(level); }
 
-    const std::vector<smoothg::Vector>& GetUpscaledCoefficient() const { return upscaled_coeff_; }
+    const std::vector<gauss::Vector>& GetUpscaledCoefficient() const { return upscaled_coeff_; }
 
 
     /** @brief Access the GraphUpscale object */
-    const smoothg::GraphUpscale& GetUpscale() const { return upscale_; }
+    const gauss::GraphUpscale& GetUpscale() const { return upscale_; }
 
     /** @brief Get the total number of solver iterations. */
     int TotalIters(int level) const { return solve_iters_.at(level); }
@@ -168,12 +168,12 @@ public:
     int GetNumberOfDofs(int level) { return upscale_.GetMatrix(level).Rows(); }
     int GetGlobalNumberOfDofs(int level) { return upscale_.GetMatrix(level).GlobalRows(); }
 
-    smoothg::Vector Interpolate(int level, const mfem::Vector& coeff) const;
+    gauss::Vector Interpolate(int level, const mfem::Vector& coeff) const;
     mfem::Vector Restrict(int level, const mfem::Vector& coeff) const;
 
 
 private:
-    smoothg::GraphUpscale upscale_;
+    gauss::GraphUpscale upscale_;
 
     NormalDistribution normal_dist_;
     double cell_volume_;
@@ -184,16 +184,16 @@ private:
 
     std::vector<std::vector<int>> constant_map_;
 
-    std::vector<smoothg::Vector> rhs_;
-    std::vector<smoothg::Vector> sol_;
+    std::vector<gauss::Vector> rhs_;
+    std::vector<gauss::Vector> sol_;
 
-    std::vector<smoothg::Vector> constant_rep_;
+    std::vector<gauss::Vector> constant_rep_;
     std::unordered_map<int, int> size_to_level_;
 
     std::vector<std::vector<double>> Ws_;
 
     std::vector<std::vector<double>> coefficient_;
-    std::vector<smoothg::Vector> upscaled_coeff_;
+    std::vector<gauss::Vector> upscaled_coeff_;
 
     std::vector<int> solve_iters_;
     std::vector<double> solve_time_;
@@ -203,6 +203,6 @@ private:
     std::vector<int> global_sample_size_;
 };
 
-} // namespace rs2000
+} // namespace rs2001
 
 #endif // __SAMPLER_HPP__

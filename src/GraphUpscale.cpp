@@ -20,7 +20,7 @@
 
 #include "GraphUpscale.hpp"
 
-namespace smoothg
+namespace gauss
 {
 
 GraphUpscale::GraphUpscale(const Graph& graph, const UpscaleParams& params)
@@ -723,7 +723,7 @@ std::vector<double> GraphUpscale::ComputeErrors(const BlockVector& upscaled_sol,
     const SparseMatrix& M = GetMatrix(0).LocalM();
     const SparseMatrix& D = GetMatrix(0).LocalD();
 
-    auto info = smoothg::ComputeErrors(comm_, M, D, upscaled_sol, fine_sol);
+    auto info = gauss::ComputeErrors(comm_, M, D, upscaled_sol, fine_sol);
     info.push_back(OperatorComplexity());
 
     return info;
@@ -736,7 +736,7 @@ void GraphUpscale::ShowErrors(const BlockVector& upscaled_sol,
 
     if (myid_ == 0)
     {
-        smoothg::ShowErrors(info);
+        gauss::ShowErrors(info);
     }
 }
 
@@ -783,4 +783,4 @@ ParMatrix GraphUpscale::ToPrimal() const
     return A;
 }
 
-} // namespace smoothg
+} // namespace gauss

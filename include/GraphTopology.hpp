@@ -24,7 +24,7 @@
 #include "Utilities.hpp"
 #include "MixedMatrix.hpp"
 
-namespace smoothg
+namespace gauss
 {
 
 /**
@@ -125,6 +125,6 @@ private:
 
 };
 
-} // namespace smoothg
+} // namespace gauss
 
 #endif /* __GRAPHTOPOLOGY_HPP__ */

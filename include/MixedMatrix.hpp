@@ -25,7 +25,7 @@
 #include "Graph.hpp"
 #include "GraphSpace.hpp"
 
-namespace smoothg
+namespace gauss
 {
 
 /**
@@ -172,6 +172,6 @@ protected:
     SparseMatrix elem_dof_;
 };
 
-} // namespace smoothg
+} // namespace gauss
 
 #endif /* __MIXEDMATRIX_HPP__ */

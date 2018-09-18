@@ -22,7 +22,7 @@
 
 #include "Utilities.hpp"
 
-namespace smoothg
+namespace gauss
 {
 
 int MyId(MPI_Comm comm)
@@ -1108,4 +1108,4 @@ void ShiftPartition(std::vector<int>& partition)
 
 
 
-} // namespace smoothg
+} // namespace gauss

@@ -20,7 +20,7 @@
 
 #include "Graph.hpp"
 
-namespace smoothg
+namespace gauss
 {
 
 Graph::Graph(MPI_Comm comm, const SparseMatrix& vertex_edge_global,
@@ -186,5 +186,5 @@ void swap(Graph& lhs, Graph& rhs) noexcept
     std::swap(lhs.global_edges_, rhs.global_edges_);
 }
 
-} // namespace smoothg
+} // namespace gauss
 

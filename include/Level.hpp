@@ -30,7 +30,7 @@
 #include "HybridSolver.hpp"
 #include "SPDSolver.hpp"
 
-namespace smoothg
+namespace gauss
 {
 
 /**
@@ -78,6 +78,6 @@ Level::Level(MixedMatrix mm, GraphSpace gs, Vector const_vect,
 }
 
 
-} // namespace smoothg
+} // namespace gauss
 
 #endif /* LEVEL_HPP */

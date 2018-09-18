@@ -16,8 +16,8 @@
 
 
 # This is the path to the root of the git repo
-# the BASE_DIR should contain smoothG_config.h.in
-BASE_DIR=/path/to/the/root/directory/of/smoothG
+# the BASE_DIR should contain config/GAUSS_config.h.in
+BASE_DIR=/path/to/the/root/directory/of/GAUSS
 
 # this is where we actually build binaries and so forth
 BUILD_DIR=${BASE_DIR}/build

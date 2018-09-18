@@ -29,12 +29,12 @@
 
 #include "spe10.hpp"
 
-using namespace rs2000;
+using namespace rs2001;
 
 int main(int argc, char* argv[])
 {
     // 1. Initialize MPI
-    smoothg::MpiSession mpi_info(argc, argv);
+    gauss::MpiSession mpi_info(argc, argv);
     MPI_Comm comm = mpi_info.comm_;
     int myid = mpi_info.myid_;
     int num_procs = mpi_info.num_procs_;
@@ -178,7 +178,7 @@ int main(int argc, char* argv[])
     // Construct vertex_edge table in mfem::SparseMatrix format
     auto& vertex_edge_table = nDimensions == 2 ? pmesh->ElementToEdgeTable()
                               : pmesh->ElementToFaceTable();
-    smoothg::SparseMatrix vertex_edge = TableToSparse(vertex_edge_table);
+    gauss::SparseMatrix vertex_edge = TableToSparse(vertex_edge_table);
 
     // Construct agglomerated topology based on METIS or Cartesion aggloemration
     for (auto&& i : coarseningFactor)
@@ -197,9 +197,9 @@ int main(int argc, char* argv[])
         partitioning = CartPart(num_procs_xyz, *pmesh, coarseningFactor);
     }
 
-    smoothg::ParMatrix edge_d_td = ParMatrixToParMatrix(*sigmafespace.Dof_TrueDof_Matrix());
-    smoothg::SparseMatrix edge_boundary_att = GenerateBoundaryAttributeTable(*pmesh);
-    smoothg::SparseMatrix boundary_att_edge = edge_boundary_att.Transpose();
+    gauss::ParMatrix edge_d_td = ParMatrixToParMatrix(*sigmafespace.Dof_TrueDof_Matrix());
+    gauss::SparseMatrix edge_boundary_att = GenerateBoundaryAttributeTable(*pmesh);
+    gauss::SparseMatrix boundary_att_edge = edge_boundary_att.Transpose();
 
     std::vector<int> elim_edges;
     int num_bdr = boundary_att_edge.Rows();
@@ -223,13 +223,13 @@ int main(int argc, char* argv[])
     }
 
     // Create Upscaler and Solve
-    smoothg::Graph graph(vertex_edge, edge_d_td, partitioning, weight);
-    smoothg::GraphUpscale upscale(graph, {spect_tol, max_evects, hybridization, num_levels, ml_factor, elim_edges});
+    gauss::Graph graph(vertex_edge, edge_d_td, partitioning, weight);
+    gauss::GraphUpscale upscale(graph, {spect_tol, max_evects, hybridization, num_levels, ml_factor, elim_edges});
 
     upscale.ShowSetupTime();
     upscale.PrintInfo();
 
-    smoothg::BlockVector rhs_fine = upscale.GetBlockVector(0);
+    gauss::BlockVector rhs_fine = upscale.GetBlockVector(0);
     rhs_fine.GetBlock(0) = 0.0;
     rhs_fine.GetBlock(1) = VectorToVector(rhs_u_fine);
 

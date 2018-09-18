@@ -29,16 +29,16 @@
 
 #include "spe10.hpp"
 
-using namespace rs2000;
-using smoothg::Timer;
+using namespace rs2001;
+using gauss::Timer;
 
-void ShowAggregates(const std::vector<smoothg::GraphTopology>& graph_topos,
+void ShowAggregates(const std::vector<gauss::GraphTopology>& graph_topos,
                     mfem::ParMesh& pmesh);
 
 int main(int argc, char* argv[])
 {
     // 1. Initialize MPI
-    smoothg::MpiSession mpi_info(argc, argv);
+    gauss::MpiSession mpi_info(argc, argv);
     MPI_Comm comm = mpi_info.comm_;
     int myid = mpi_info.myid_;
     int num_procs = mpi_info.num_procs_;
@@ -124,7 +124,7 @@ int main(int argc, char* argv[])
     // Construct vertex_edge table in mfem::SparseMatrix format
     auto& vertex_edge_table = nDimensions == 2 ? pmesh->ElementToEdgeTable()
                               : pmesh->ElementToFaceTable();
-    smoothg::SparseMatrix vertex_edge = TableToSparse(vertex_edge_table);
+    gauss::SparseMatrix vertex_edge = TableToSparse(vertex_edge_table);
 
     // Construct agglomerated topology based on METIS or Cartesion aggloemration
     for (auto&& i : coarseningFactor)
@@ -143,11 +143,11 @@ int main(int argc, char* argv[])
         partition = CartPart(num_procs_xyz, *pmesh, coarseningFactor);
     }
 
-    smoothg::ParMatrix edge_d_td = ParMatrixToParMatrix(*sigmafespace.Dof_TrueDof_Matrix());
+    gauss::ParMatrix edge_d_td = ParMatrixToParMatrix(*sigmafespace.Dof_TrueDof_Matrix());
 
     // Create Fine Level Topology
-    std::vector<smoothg::GraphTopology> topos;
-    topos.emplace_back(smoothg::Graph(vertex_edge, edge_d_td, partition));
+    std::vector<gauss::GraphTopology> topos;
+    topos.emplace_back(gauss::Graph(vertex_edge, edge_d_td, partition));
 
     // Build multilevel graph topology
     double coarsen_factor = (nDimensions  == 2) ? 8 : 32;
@@ -165,7 +165,7 @@ int main(int argc, char* argv[])
     return EXIT_SUCCESS;
 }
 
-void ShowAggregates(const std::vector<smoothg::GraphTopology>& topos,
+void ShowAggregates(const std::vector<gauss::GraphTopology>& topos,
                     mfem::ParMesh& pmesh)
 {
     mfem::L2_FECollection attr_fec(0, pmesh.SpaceDimension());
@@ -176,20 +176,20 @@ void ShowAggregates(const std::vector<smoothg::GraphTopology>& topos,
 
     for (int i = 0; i < topos.size(); ++i)
     {
-        smoothg::SparseMatrix agg_vertex = topos[0].agg_vertex_local_;
+        gauss::SparseMatrix agg_vertex = topos[0].agg_vertex_local_;
 
         for (int j = 1; j < i + 1; ++j)
         {
             agg_vertex = topos[j].agg_vertex_local_.Mult(agg_vertex);
         }
 
-        smoothg::SparseMatrix vertex_agg = agg_vertex.Transpose();
+        gauss::SparseMatrix vertex_agg = agg_vertex.Transpose();
 
-        const smoothg::SparseMatrix& agg_face = topos[i].agg_face_local_;
-        const smoothg::SparseMatrix& face_agg = topos[i].face_agg_local_;
-        smoothg::SparseMatrix agg_agg = agg_face.Mult(face_agg);
+        const gauss::SparseMatrix& agg_face = topos[i].agg_face_local_;
+        const gauss::SparseMatrix& face_agg = topos[i].face_agg_local_;
+        gauss::SparseMatrix agg_agg = agg_face.Mult(face_agg);
 
-        std::vector<int> color = smoothg::GetElementColoring(agg_agg);
+        std::vector<int> color = gauss::GetElementColoring(agg_agg);
 
         int num_colors = *std::max_element(std::begin(color), std::end(color)) + 1;
         num_colors = std::max(num_colors, pmesh.GetNRanks());

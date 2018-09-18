@@ -21,7 +21,7 @@
 
 #include "LocalEigenSolver.hpp"
 
-#if SMOOTHG_USE_ARPACK
+#if GAUSS_USE_ARPACK
 // arpackpp include
 #define ARPACK_SILENT_MODE
 #include "sparsesolve.hpp"
@@ -58,7 +58,7 @@ extern "C"
                  const int* ldb, int* info);
 }
 
-namespace smoothg
+namespace gauss
 {
 
 LocalEigenSolver::LocalEigenSolver(
@@ -274,7 +274,7 @@ void LocalEigenSolver::DenseBlockCompute(const SparseMatrix& M, const SparseMatr
 }
 
 
-#if SMOOTHG_USE_ARPACK
+#if GAUSS_USE_ARPACK
 /// Adapter for applying the action of a certain operator in ARPACK
 class ARPACK_operator_adapter
 {
@@ -634,11 +634,11 @@ void LocalEigenSolver::Compute(
         EigenPairsSetSizeAndData(n, num_evects, evals, evects);
     }
 }
-#endif // SMOOTHG_USE_ARPACK
+#endif // GAUSS_USE_ARPACK
 
 double LocalEigenSolver::Compute(SparseMatrix& A, DenseMatrix& evects)
 {
-#if SMOOTHG_USE_ARPACK
+#if GAUSS_USE_ARPACK
     if (A.Rows() > size_offset_)
     {
         Compute(A, evals_, evects);
@@ -654,7 +654,7 @@ double LocalEigenSolver::Compute(SparseMatrix& A, DenseMatrix& evects)
 
 double LocalEigenSolver::BlockCompute(SparseMatrix M, SparseMatrix D, DenseMatrix& evects)
 {
-#if SMOOTHG_USE_ARPACK
+#if GAUSS_USE_ARPACK
     if (D.Rows() > size_offset_)
     {
         SparseBlockCompute(std::move(M), std::move(D), evals_, evects);
@@ -671,7 +671,7 @@ double LocalEigenSolver::BlockCompute(SparseMatrix M, SparseMatrix D, DenseMatri
 double LocalEigenSolver::Compute(
     SparseMatrix& A, SparseMatrix& B, DenseMatrix& evects)
 {
-#if SMOOTHG_USE_ARPACK
+#if GAUSS_USE_ARPACK
     if (A.Rows() > size_offset_)
     {
         Compute(A, B, evals_, evects);
@@ -687,6 +687,6 @@ double LocalEigenSolver::Compute(
     return evals_[0];
 }
 
-} // namespace smoothg
+} // namespace gauss
 
 

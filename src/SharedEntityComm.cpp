@@ -39,7 +39,7 @@
 
 #include "SharedEntityComm.hpp"
 
-namespace smoothg
+namespace gauss
 {
 
 template<>
@@ -200,4 +200,4 @@ SparseMatrix SharedEntityComm<SparseMatrix>::ReceiveData(const std::vector<int>&
 }
 
 
-} // namespace smoothg
+} // namespace gauss

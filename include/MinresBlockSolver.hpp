@@ -30,7 +30,7 @@
 #include "MixedMatrix.hpp"
 #include "MGLSolver.hpp"
 
-namespace smoothg
+namespace gauss
 {
 
 /**
@@ -124,6 +124,6 @@ private:
 };
 
 
-} // namespace smoothg
+} // namespace gauss
 
 #endif // MINRESBLOCKSOLVER_HPP

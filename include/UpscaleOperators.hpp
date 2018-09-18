@@ -65,7 +65,7 @@ The user provides both \f$ f \f$ and \f$ g \f$ and is returned \f$ u \f$ and \f$
 #include "Utilities.hpp"
 #include "GraphUpscale.hpp"
 
-namespace smoothg
+namespace gauss
 {
 
 /// UpscaleBlockSolve performs the same thing as GraphUpscale, but in mixed form.
@@ -137,6 +137,6 @@ private:
     int level_;
 };
 
-} // namespace smoothg
+} // namespace gauss
 
 #endif // __UPSCALE_OPERATORS_HPP__

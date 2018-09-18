@@ -36,7 +36,7 @@
 #include "GraphCoarsen.hpp"
 #include "MixedMatrix.hpp"
 
-namespace smoothg
+namespace gauss
 {
 
 /**
@@ -183,6 +183,6 @@ private:
 };
 
 
-} // namespace smoothg
+} // namespace gauss
 
 #endif /* HYBRIDSOLVER_HPP_ */

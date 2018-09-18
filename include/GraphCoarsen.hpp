@@ -31,7 +31,7 @@
 #include "GraphSpace.hpp"
 #include "MinresBlockSolver.hpp"
 
-namespace smoothg
+namespace gauss
 {
 
 /** @brief Coarsens a given graph
@@ -270,6 +270,6 @@ private:
     std::vector<std::vector<double>> D_trace_sum_;
 };
 
-} // namespace smoothg
+} // namespace gauss
 
 #endif /* __GRAPHCOARSEN_HPP__ */
