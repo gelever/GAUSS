@@ -84,7 +84,7 @@ else()
 endif()
 
 if(ARPACK_FOUND)
-    set(ARPACK_LIBRARIES ${ARPACK_LIBRARY})
+    set(ARPACK_LIBRARIES ${ARPACK_LIBRARY} -lgfortran)
     set(ARPACK_INCLUDE_DIRS ${ARPACK_INCLUDE_DIR})
 endif()
 
