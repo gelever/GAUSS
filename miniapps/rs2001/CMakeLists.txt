@@ -59,12 +59,6 @@ add_library(ReservoirSimulator2001
 
 add_dependencies(ReservoirSimulator2001 GAUSS)
 
-set_target_properties(ReservoirSimulator2001 PROPERTIES
-        CXX_STANDARD 11
-        CXX_STANDARD_REQUIRED YES
-        CXX_EXTENSIONS NO
-)
-
 target_compile_options(ReservoirSimulator2001 PRIVATE $<$<CXX_COMPILER_ID:GNU>:-Wall -Wextra -Wpedantic -O2>)
 target_compile_options(ReservoirSimulator2001 PRIVATE $<$<CXX_COMPILER_ID:Clang>:-Wall -Wextra -Wpedantic -O2>)
 

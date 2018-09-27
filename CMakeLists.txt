@@ -49,12 +49,13 @@ enable_testing()
 
 option(GAUSS_USE_ARPACK "Should ARPACK be enabled?" NO)
 
-find_package(linalgcpp REQUIRED)
-
 if (GAUSS_USE_ARPACK)
     list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
     find_package(ARPACK REQUIRED)
+    LIST(REMOVE_AT CMAKE_MODULE_PATH -1)
 endif()
+
+find_package(linalgcpp REQUIRED)
 
 add_library(GAUSS
     src/GraphCoarsen.cpp
@@ -71,12 +72,6 @@ add_library(GAUSS
     src/SharedEntityComm.cpp
     src/SPDSolver.cpp
     src/Utilities.cpp
-)
-
-set_target_properties(GAUSS PROPERTIES
-        CXX_STANDARD 11
-        CXX_STANDARD_REQUIRED YES
-        CXX_EXTENSIONS NO
 )
 
 target_compile_options(GAUSS PRIVATE $<$<CXX_COMPILER_ID:GNU>:-Wall -Wextra -Wpedantic -O2>)
