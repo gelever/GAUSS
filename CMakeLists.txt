@@ -74,14 +74,6 @@ add_library(GAUSS
     src/Utilities.cpp
 )
 
-#set_target_properties(GAUSS PROPERTIES
-#        CXX_STANDARD 11
-#        CXX_STANDARD_REQUIRED YES
-#        CXX_EXTENSIONS NO
-#)
-
-target_compile_features(GAUSS PUBLIC cxx_std_11)
-
 target_compile_options(GAUSS PRIVATE $<$<CXX_COMPILER_ID:GNU>:-Wall -Wextra -Wpedantic -O2>)
 target_compile_options(GAUSS PRIVATE $<$<CXX_COMPILER_ID:Clang>:-Wall -Wextra -Wpedantic -O2>)
 
