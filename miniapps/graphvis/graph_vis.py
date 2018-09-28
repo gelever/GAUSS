@@ -109,7 +109,13 @@ def main(mat_filename, pos_filename, vis_data=[], node_size=40, cols=1, dark=Tru
     print("Input: {0} Nodes, {1} Connections, {2} Positions".format(
         mat.shape[0], len(edges), len(pos)))
 
-    num_data = len(vis_data)
+    if len(data) < 1:
+        data.append(np.zeros(len(pos)))
+        edge_color = compute_edge_color(edges, pos)
+    else:
+        edge_color = "white" if dark else "silver"
+
+    num_data = len(data)
     num_vert = len(pos)
 
     G = nx.Graph()
@@ -119,37 +125,27 @@ def main(mat_filename, pos_filename, vis_data=[], node_size=40, cols=1, dark=Tru
     node_alpha = 1.0
     edge_alpha = 1.0
     edge_width = 0.8
-    edge_color = "white" if dark else "silver"
 
-    if num_data > 0:
-        cols = max(1, min(num_data, cols))
-        rows = int((num_data / float(cols)) + 0.5)
+    cols = max(1, min(num_data, cols))
+    rows = int((num_data / float(cols)) + 0.5)
 
-        f, ax = plt.subplots(rows, cols)
-        plt.set_cmap(color_map)
+    f, ax = plt.subplots(rows, cols)
+    plt.set_cmap(color_map)
 
-        for ax_i in np.ravel(ax):
-            ax_i.axis('off')
+    for i, data_i in enumerate(data):
+        ax_i = np.ravel(ax)[i]
+        ax_i.axis('off')
 
-        for i, data_i in enumerate(data):
-            ax_i = np.ravel(ax)[i]
-            nx.draw_networkx_nodes(G, pos, ax=ax_i, vmin=min(data_i), vmax=max(data_i),
-                                   alpha=node_alpha, node_color=data_i, with_labels=False, node_size=node_size)
-            nx.draw_networkx_edges(
-                G, pos, edges, ax=ax_i, alpha=edge_alpha, width=edge_width, edge_color=edge_color)
+        nx.draw_networkx_nodes(G, pos, ax=ax_i,
+                               vmin=min(data_i), vmax=max(data_i),
+                               alpha=node_alpha, node_color=data_i,
+                               with_labels=False, node_size=node_size)
 
-        plt.show()
+        nx.draw_networkx_edges(G, pos, edges, ax=ax_i,
+                               alpha=edge_alpha, width=edge_width,
+                               edge_color=edge_color)
 
-    else:
-        edge_color = compute_edge_color(edges, pos)
-
-        plt.figure()
-        plt.set_cmap(color_map)
-
-        nx.draw_networkx_edges(
-            G, pos, edges, alpha=edge_alpha, width=edge_width, edge_color=edge_color)
-        plt.axis('off')
-        plt.show()
+    plt.show()
 
 
 def parse_flag_val(argv, flag, dtype=str):
@@ -170,6 +166,7 @@ def parse_flag_val(argv, flag, dtype=str):
     del argv[flag_index]
 
     return dtype(flag_val)
+
 
 if __name__ == "__main__":
     node_size = 40.0
