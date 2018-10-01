@@ -92,8 +92,9 @@ def call_sfdp(filename="graph.dot", remove_overlap=False):
     """
     args = ["sfdp", filename]
     if remove_overlap:
-        args.append("-Goverlap=scale")
+        args.append("-Goverlap=prism")
 
+    print(args)
     p = subprocess.Popen(args, stdout=subprocess.PIPE, universal_newlines=True)
     stdout, stderr = p.communicate()
 

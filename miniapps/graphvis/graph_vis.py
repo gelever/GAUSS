@@ -18,6 +18,8 @@ import subprocess
 import networkx as nx
 import matplotlib.colors as colors
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+
 
 import utilities
 
@@ -132,12 +134,22 @@ def main(mat_filename, pos_filename, vis_data=[], node_size=40, cols=1, dark=Tru
     f, ax = plt.subplots(rows, cols)
     plt.set_cmap(color_map)
 
-    for i, data_i in enumerate(data):
-        ax_i = np.ravel(ax)[i]
+
+    fixed_range = True
+    vmin = min([min(i) for i in data])
+    vmax = max([max(i) for i in data])
+
+    for ax_i in np.ravel(ax):
         ax_i.axis('off')
 
+    for i, data_i in enumerate(data):
+        ax_i = np.ravel(ax)[i]
+
+        if not fixed_range:
+            vmin, vmax = min(data_i), max(data_i)
+
         nx.draw_networkx_nodes(G, pos, ax=ax_i,
-                               vmin=min(data_i), vmax=max(data_i),
+                               vmin=vmin, vmax=vmax,
                                alpha=node_alpha, node_color=data_i,
                                with_labels=False, node_size=node_size)
 
@@ -146,6 +158,21 @@ def main(mat_filename, pos_filename, vis_data=[], node_size=40, cols=1, dark=Tru
                                edge_color=edge_color)
 
     plt.show()
+
+    x = np.zeros(num_vert)
+    y = np.zeros(num_vert)
+
+    for key, value in pos.items():
+        x[key], y[key] = value
+
+    for data_i in data:
+        fig = plt.figure()
+        plt.set_cmap(color_map)
+        ax = fig.add_subplot(111, projection='3d')
+        ax.set_axis_off()
+        #ax.scatter(x, y, z)
+        ax.scatter3D(x, y, data_i)
+        plt.show()
 
 
 def parse_flag_val(argv, flag, dtype=str):

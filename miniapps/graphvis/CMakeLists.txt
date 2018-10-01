@@ -21,5 +21,6 @@ function(copy_python filename)
 endfunction(copy_python)
 
 copy_python(graph_vis.py)
+copy_python(graph_vis_3d.py)
 copy_python(generate_pos.py)
 copy_python(utilities.py)

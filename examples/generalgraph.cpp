@@ -37,6 +37,18 @@ using linalgcpp::BoomerAMG;
 std::vector<int> MetisPart(const SparseMatrix& vertex_edge, int num_parts);
 Vector ComputeFiedlerVector(const MixedMatrix& mgl);
 
+Vector GetRow(const SparseMatrix& PT, int row)
+{
+    Vector v(PT.Cols(), 0.0);
+
+    for (int j = PT.GetIndptr()[row]; j < PT.GetIndptr()[row + 1]; ++j)
+    {
+        v[PT.GetIndices()[j]] = PT.GetData()[j];
+    }
+
+    return v;
+}
+
 int main(int argc, char* argv[])
 {
     // Initialize MPI
@@ -191,6 +203,26 @@ int main(int argc, char* argv[])
         WriteVertexVector(graph, fine_rhs.GetBlock(1), fiedler_filename);
     }
 
+    if (num_procs == 1)
+    {
+        linalgcpp::WriteCooList(vertex_edge_global, "ve_gen.coo");
+        linalgcpp::WriteText(graph.part_local_, "part.txt");
+
+        std::vector<std::vector<double>> P_basis(max_evects);
+        {
+            auto PT = upscale.Coarsener(0).Pvertex().Transpose();
+
+            //int num = std::min(5, PT.Rows());
+            int num = PT.Rows();
+
+            for (int i = 0; i < num; ++i)
+            {
+                auto row_vect = GetRow(PT, i);
+                linalgcpp::WriteText(row_vect, "Pvert" + std::to_string(i) + ".vect");
+            }
+        }
+    }
+
     return EXIT_SUCCESS;
 }
 
@@ -199,7 +231,7 @@ std::vector<int> MetisPart(const SparseMatrix& vertex_edge, int num_parts)
     SparseMatrix edge_vertex = vertex_edge.Transpose();
     SparseMatrix vertex_vertex = vertex_edge.Mult(edge_vertex);
 
-    double ubal_tol = 2.0;
+    double ubal_tol = 1.0;
 
     return Partition(vertex_vertex, num_parts, ubal_tol);
 }
