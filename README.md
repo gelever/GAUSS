@@ -106,4 +106,6 @@ See [doc/CONTRIBUTING.md](doc/CONTRIBUTING.md) for detailed contribution guideli
 Copyright (c) 2018, Lawrence Livermore National Security, LLC.
 This work was performed under the auspices of the U.S. Department of Energy by
 Lawrence Livermore National Laboratory under Contract DE-AC52-07NA27344.
-LLNL-CODE-759464.
+
+# Release
+`LLNL-CODE-759464`
