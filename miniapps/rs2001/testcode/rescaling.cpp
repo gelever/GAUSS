@@ -142,9 +142,9 @@ int main(int argc, char* argv[])
 {
     // 1. Initialize MPI
     gauss::MpiSession mpi_info(argc, argv);
-    MPI_Comm comm = mpi_info.comm_;
-    int myid = mpi_info.myid_;
-    int num_procs = mpi_info.num_procs_;
+    MPI_Comm comm = mpi_info.comm;
+    int myid = mpi_info.myid;
+    int num_procs = mpi_info.num_procs;
 
     // Create a mesh graph, an edge fespace and a partition of the graph
     mfem::Mesh mesh(4, 4, 4, mfem::Element::HEXAHEDRON, 1);

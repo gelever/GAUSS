@@ -28,9 +28,9 @@ int main (int argc, char* argv[])
 {
     // Initialize MPI
     gauss::MpiSession mpi_info(argc, argv);
-    MPI_Comm comm = mpi_info.comm_;
-    int myid = mpi_info.myid_;
-    int num_procs = mpi_info.num_procs_;
+    MPI_Comm comm = mpi_info.comm;
+    int myid = mpi_info.myid;
+    int num_procs = mpi_info.num_procs;
 
     // program options from command line
     bool coarse_sample = false;
