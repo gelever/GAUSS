@@ -29,9 +29,9 @@ int main(int argc, char* argv[])
 {
     // initialize MPI
     MpiSession mpi_info(argc, argv);
-    MPI_Comm comm = mpi_info.comm_;
-    int myid = mpi_info.myid_;
-    int num_procs = mpi_info.num_procs_;
+    MPI_Comm comm = mpi_info.comm;
+    int myid = mpi_info.myid;
+    int num_procs = mpi_info.num_procs;
 
     // program options from command line
     linalgcpp::ArgParser arg_parser(argc, argv);

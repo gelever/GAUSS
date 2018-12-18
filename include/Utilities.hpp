@@ -26,22 +26,9 @@
 #include <map>
 #include <unordered_map>
 
-#include "linalgcpp.hpp"
 #include "parlinalgcpp.hpp"
+#include "sparsesolve.hpp"
 #include "partition.hpp"
-
-/// Call output only on processor 0
-#define ParPrint(myid, output) if (myid == 0) output
-
-#if __cplusplus > 201103L
-using std::make_unique;
-#else
-template<typename T, typename... Ts>
-std::unique_ptr<T> make_unique(Ts&& ... params)
-{
-    return std::unique_ptr<T>(new T(std::forward<Ts>(params)...));
-}
-#endif
 
 namespace gauss
 {
@@ -55,7 +42,14 @@ using DenseMatrix = linalgcpp::DenseMatrix;
 using CooMatrix = linalgcpp::CooMatrix<double>;
 using BlockMatrix = linalgcpp::BlockMatrix<double>;
 using ParMatrix = linalgcpp::ParMatrix;
+using SparseSolver = linalgcpp::SparseSolver;
 using Timer = linalgcpp::Timer;
+using linalgcpp::MpiSession;
+
+using linalgcpp::SparseIdentity;
+using linalgcpp::SetMarker;
+using linalgcpp::ClearMarker;
+using linalgcpp::Add;
 
 /// Paramaters to determine how many eigenvectors to keep
 /// The double is a spectral tolerance threshold
@@ -94,37 +88,6 @@ ParMatrix RemoveLargeEntries(const ParMatrix& mat, double tol = 1.0);
     @return entity_true_entity entity to true entity
 */
 ParMatrix MakeEntityTrueEntity(const ParMatrix& entity_entity);
-
-/** @brief Sparse identity of given size
-    @param size square size of identity
-    @return identity matrix
-*/
-SparseMatrix SparseIdentity(int size);
-
-/** @brief Construct an rectangular identity matrix (as a SparseMatrix)
-    @param rows number of row
-    @param cols number of columns
-    @param row_offset offset row where diagonal identity starts
-    @param col_offset offset column where diagonal identity starts
-*/
-SparseMatrix SparseIdentity(int rows, int cols, int row_offset = 0, int col_offset = 0);
-
-/** @brief Set a global marker with given local indices
-    Such that marker[global_index] = local_index and
-    all other entries are -1
-
-    @param marker global marker to set
-    @param indices local indices
-*/
-void SetMarker(std::vector<int>& marker, const std::vector<int>& indices);
-
-/** @brief Clear a global marker with given local indices
-    Such that marker[global_index] = -1
-
-    @param marker global marker to clear
-    @param indices local indices
-*/
-void ClearMarker(std::vector<int>& marker, const std::vector<int>& indices);
 
 /** @brief Orthogonalize a matrix by a vector
 
@@ -251,41 +214,6 @@ double PowerIterate(MPI_Comm comm, const linalgcpp::Operator& A, VectorView resu
     @param mat matrix to broadcast
 */
 void BroadCast(MPI_Comm comm, SparseMatrix& mat);
-
-/** @brief Adds two sparse matrices C = alpha * A + beta * B
-
-    @param alpha scale for A
-    @param A A matrix
-    @param beta scale for B
-    @param B B matrix
-    @returns C such that C = alpha * A + beta * B
-*/
-SparseMatrix Add(double alpha, const SparseMatrix& A, double beta, const SparseMatrix& B);
-
-/** @brief Handles mpi initialization and finalization */
-struct MpiSession
-{
-    /** @brief Constructor
-
-        @param argc argc from command line
-        @param argv argv from command line
-        @param comm MPI Communicator to use
-    */
-    MpiSession(int argc, char** argv, MPI_Comm comm = MPI_COMM_WORLD)
-        : comm_(comm)
-    {
-        MPI_Init(&argc, &argv);
-        MPI_Comm_size(comm_, &num_procs_);
-        MPI_Comm_rank(comm_, &myid_);
-    }
-
-    /** @brief Destructor */
-    ~MpiSession() { MPI_Finalize(); }
-
-    MPI_Comm comm_;
-    int num_procs_;
-    int myid_;
-};
 
 /** @brief Partitions matrix = A * A^T
 
