@@ -273,11 +273,19 @@ ParMatrix MakeEntityTrueEntity(const ParMatrix& entity_entity)
     {
         select_indptr[i] = num_true_entities;
 
-        int row_size = offd.RowSize(i);
+        bool owner = true;
 
-        if (row_size == 0 || offd_colmap[offd_indices[offd_indptr[i]]] >= last_row )
+        for (int j = offd_indptr[i]; j < offd_indptr[i + 1]; ++j)
         {
-            assert(row_size == 0 || row_size == 1);
+            if (offd_colmap[offd_indices[j]] < last_row)
+            {
+                owner = false;
+                break;
+            }
+        }
+
+        if (owner)
+        {
             num_true_entities++;
         }
     }
@@ -298,62 +306,6 @@ ParMatrix MakeEntityTrueEntity(const ParMatrix& entity_entity)
     ParMatrix select_d(comm, entity_entity.GetRowStarts(), true_starts, std::move(select));
 
     return entity_entity.Mult(select_d);
-}
-
-SparseMatrix SparseIdentity(int size)
-{
-    assert(size >= 0);
-
-    return SparseMatrix(std::vector<double>(size, 1.0));
-}
-
-SparseMatrix SparseIdentity(int rows, int cols, int row_offset, int col_offset)
-{
-    assert(rows >= 0);
-    assert(cols >= 0);
-    assert(row_offset <= rows);
-    assert(row_offset >= 0);
-    assert(col_offset <= cols);
-    assert(col_offset >= 0);
-
-    const int diag_size = std::min(rows - row_offset, cols - col_offset);
-
-    std::vector<int> indptr(rows + 1);
-
-    std::fill(std::begin(indptr), std::begin(indptr) + row_offset, 0);
-    std::iota(std::begin(indptr) + row_offset, std::begin(indptr) + row_offset + diag_size, 0);
-    std::fill(std::begin(indptr) + row_offset + diag_size, std::begin(indptr) + rows + 1, diag_size);
-
-    std::vector<int> indices(diag_size);
-    std::iota(std::begin(indices), std::begin(indices) + diag_size, col_offset);
-
-    std::vector<double> data(diag_size, 1.0);
-
-    return SparseMatrix(std::move(indptr), std::move(indices), std::move(data), rows, cols);
-}
-
-void SetMarker(std::vector<int>& marker, const std::vector<int>& indices)
-{
-    const int size = indices.size();
-
-    for (int i = 0; i < size; ++i)
-    {
-        assert(indices[i] < static_cast<int>(marker.size()));
-
-        marker[indices[i]] = i;
-    }
-}
-
-void ClearMarker(std::vector<int>& marker, const std::vector<int>& indices)
-{
-    const int size = indices.size();
-
-    for (int i = 0; i < size; ++i)
-    {
-        assert(indices[i] < static_cast<int>(marker.size()));
-
-        marker[indices[i]] = -1;
-    }
 }
 
 DenseMatrix Orthogonalize(DenseMatrix& mat, VectorView vect_view, int offset, int max_keep)
@@ -572,7 +524,6 @@ void PrintJSON(const std::map<std::string, double>& values, std::ostream& out,
 
 double Density(const SparseMatrix& A)
 {
-
     double denom = A.Rows() * (double) A.Cols();
     return A.nnz() / denom;
 }
@@ -728,37 +679,6 @@ void BroadCast(MPI_Comm comm, SparseMatrix& mat)
         mat = SparseMatrix(std::move(indptr), std::move(indices), std::move(data),
                            sizes[0], sizes[1]);
     }
-}
-
-//TODO(gelever1): Define this inplace in linalgcpp
-SparseMatrix Add(double alpha, const SparseMatrix& A, double beta, const SparseMatrix& B)
-{
-    assert(A.Rows() == B.Rows());
-    assert(A.Cols() == B.Cols());
-
-    CooMatrix coo(A.Rows(), A.Cols());
-
-    auto add_mat = [&coo](double scale, const SparseMatrix & mat)
-    {
-        const auto& indptr = mat.GetIndptr();
-        const auto& indices = mat.GetIndices();
-        const auto& data = mat.GetData();
-
-        int rows = mat.Rows();
-
-        for (int i = 0; i < rows; ++i)
-        {
-            for (int j = indptr[i]; j < indptr[i + 1]; ++j)
-            {
-                coo.Add(i, indices[j], scale * data[j]);
-            }
-        }
-    };
-
-    add_mat(alpha, A);
-    add_mat(beta, B);
-
-    return coo.ToSparse();
 }
 
 std::vector<int> PartitionAAT(const SparseMatrix& A, double coarsening_factor, double ubal,
