@@ -38,7 +38,15 @@ gauss::SparseMatrix SparseToSparse(const mfem::SparseMatrix& sparse);
 gauss::SparseMatrix TableToSparse(const mfem::Table& table);
 gauss::ParMatrix ParMatrixToParMatrix(const mfem::HypreParMatrix& mat);
 
+gauss::DenseMatrix DenseToDense(const mfem::DenseMatrix& dense);
+void DenseToDense(const mfem::DenseMatrix& dense, gauss::DenseMatrix& output);
+
+mfem::DenseMatrix DenseToDense(const gauss::DenseMatrix& dense);
+void DenseToDense(const gauss::DenseMatrix& dense, mfem::DenseMatrix& output);
+
 gauss::SparseMatrix GenerateBoundaryAttributeTable(const mfem::Mesh& mesh);
+gauss::SparseMatrix GenerateBndrVertex(const mfem::Mesh& mesh,
+                                       const mfem::FiniteElementSpace& fespace);
 
 using VisRange = std::pair<double, double>;
 
@@ -74,6 +82,14 @@ std::vector<int> CartPart(std::vector<int>& num_procs_xyz,
                           mfem::ParMesh& pmesh, mfem::Array<double>& coarsening_factor);
 
 void EliminateEssentialBC(gauss::GraphUpscale& upscale,
+                          const gauss::SparseMatrix& bdr_attr_vertex,
+                          const std::vector<int>& ess_bdr,
+                          const gauss::BlockVector& x,
+                          gauss::BlockVector& b);
+
+void EliminateEssentialBC(gauss::MixedMatrix& mm_0,
+                          gauss::MixedMatrix& mm_1,
+                          const gauss::GraphCoarsen& coarsener,
                           const gauss::SparseMatrix& bdr_attr_vertex,
                           const std::vector<int>& ess_bdr,
                           const gauss::BlockVector& x,

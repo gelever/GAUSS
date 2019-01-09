@@ -15,7 +15,7 @@
 
 /** @file
 
-    @brief GraphTopology class
+    @brief OldGraphTopology class
 */
 
 #include "GraphTopology.hpp"
@@ -23,7 +23,7 @@
 namespace gauss
 {
 
-GraphTopology::GraphTopology(const Graph& graph)
+OldGraphTopology::OldGraphTopology(const OldGraph& graph)
 {
     const auto& vertex_edge = graph.vertex_edge_local_;
     const auto& part = graph.part_local_;
@@ -31,7 +31,7 @@ GraphTopology::GraphTopology(const Graph& graph)
     Init(vertex_edge, part, graph.edge_edge_, graph.edge_true_edge_);
 }
 
-GraphTopology::GraphTopology(const GraphTopology& fine_topology, double coarsening_factor)
+OldGraphTopology::OldGraphTopology(const OldGraphTopology& fine_topology, double coarsening_factor)
 {
     const auto& vertex_edge = fine_topology.agg_face_local_;
     const auto& part = PartitionAAT(vertex_edge, coarsening_factor, 1.2);
@@ -39,7 +39,7 @@ GraphTopology::GraphTopology(const GraphTopology& fine_topology, double coarseni
     Init(vertex_edge, part, fine_topology.face_face_, fine_topology.face_true_face_);
 }
 
-GraphTopology::GraphTopology(const SparseMatrix& vertex_edge,
+OldGraphTopology::OldGraphTopology(const SparseMatrix& vertex_edge,
                              const std::vector<int>& partition,
                              ParMatrix edge_true_edge)
 {
@@ -49,7 +49,7 @@ GraphTopology::GraphTopology(const SparseMatrix& vertex_edge,
     Init(vertex_edge, partition, edge_edge, std::move(edge_true_edge));
 }
 
-void GraphTopology::Init(const SparseMatrix& vertex_edge,
+void OldGraphTopology::Init(const SparseMatrix& vertex_edge,
                          const std::vector<int>& partition,
                          const ParMatrix& edge_edge,
                          ParMatrix edge_true_edge)
@@ -88,8 +88,11 @@ void GraphTopology::Init(const SparseMatrix& vertex_edge,
 
     face_edge_local_ = MakeFaceEdge(agg_agg, edge_agg_ext,
                                     agg_edge_ext, face_int_agg_edge);
+    face_edge_local_ = 1.0;
 
     face_agg_local_ = ExtendFaceAgg(agg_agg, face_int_agg);
+    face_agg_local_ = 1.0;
+
     agg_face_local_ = face_agg_local_.Transpose();
 
     auto face_starts = linalgcpp::GenerateOffsets(comm, face_agg_local_.Rows());
@@ -111,10 +114,10 @@ void GraphTopology::Init(const SparseMatrix& vertex_edge,
     vertex_true_edge = 1.0;
 
     ParMatrix agg_ext_edge_ext = agg_ext_vertex_.Mult(vertex_true_edge);
-    agg_ext_edge_ = RemoveLargeEntries(agg_ext_edge_ext);
+    agg_ext_edge_ = linalgcpp::RemoveLargeEntries(agg_ext_edge_ext, 1.0);
 }
 
-GraphTopology::GraphTopology(const GraphTopology& other) noexcept
+OldGraphTopology::OldGraphTopology(const OldGraphTopology& other) noexcept
     : agg_vertex_local_(other.agg_vertex_local_),
       agg_edge_local_(other.agg_edge_local_),
       face_edge_local_(other.face_edge_local_),
@@ -130,19 +133,19 @@ GraphTopology::GraphTopology(const GraphTopology& other) noexcept
 
 }
 
-GraphTopology::GraphTopology(GraphTopology&& other) noexcept
+OldGraphTopology::OldGraphTopology(OldGraphTopology&& other) noexcept
 {
     swap(*this, other);
 }
 
-GraphTopology& GraphTopology::operator=(GraphTopology other) noexcept
+OldGraphTopology& OldGraphTopology::operator=(OldGraphTopology other) noexcept
 {
     swap(*this, other);
 
     return *this;
 }
 
-void swap(GraphTopology& lhs, GraphTopology& rhs) noexcept
+void swap(OldGraphTopology& lhs, OldGraphTopology& rhs) noexcept
 {
     swap(lhs.agg_vertex_local_, rhs.agg_vertex_local_);
     swap(lhs.agg_edge_local_, rhs.agg_edge_local_);
@@ -158,7 +161,7 @@ void swap(GraphTopology& lhs, GraphTopology& rhs) noexcept
     swap(lhs.edge_true_edge_, rhs.edge_true_edge_);
 }
 
-SparseMatrix GraphTopology::MakeFaceIntAgg(const ParMatrix& agg_agg)
+SparseMatrix OldGraphTopology::MakeFaceIntAgg(const ParMatrix& agg_agg)
 {
     const auto& agg_agg_diag = agg_agg.GetDiag();
 
@@ -201,7 +204,7 @@ SparseMatrix GraphTopology::MakeFaceIntAgg(const ParMatrix& agg_agg)
                         num_faces, num_aggs);
 }
 
-SparseMatrix GraphTopology::MakeFaceEdge(const ParMatrix& agg_agg,
+SparseMatrix OldGraphTopology::MakeFaceEdge(const ParMatrix& agg_agg,
                                          const ParMatrix& edge_ext_agg,
                                          const SparseMatrix& agg_edge_ext,
                                          const SparseMatrix& face_int_agg_edge)
@@ -282,7 +285,7 @@ SparseMatrix GraphTopology::MakeFaceEdge(const ParMatrix& agg_agg,
                         num_faces, num_edges);
 }
 
-SparseMatrix GraphTopology::ExtendFaceAgg(const ParMatrix& agg_agg,
+SparseMatrix OldGraphTopology::ExtendFaceAgg(const ParMatrix& agg_agg,
                                           const SparseMatrix& face_int_agg)
 {
     const auto& agg_agg_offd = agg_agg.GetOffd();

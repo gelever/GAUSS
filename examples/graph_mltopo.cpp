@@ -33,6 +33,7 @@ using namespace gauss;
 
 using linalgcpp::ReadText;
 using linalgcpp::WriteText;
+using linalgcpp::WriteVector;
 using linalgcpp::ReadCSR;
 
 int main(int argc, char* argv[])

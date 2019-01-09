@@ -254,67 +254,17 @@ ParMatrix RemoveLargeEntries(const ParMatrix& mat, double tol)
                      std::move(diag), std::move(offd), std::move(col_map));
 }
 
-ParMatrix MakeEntityTrueEntity(const ParMatrix& entity_entity)
-{
-    const auto& offd = entity_entity.GetOffd();
-
-    const auto& offd_indptr = offd.GetIndptr();
-    const auto& offd_indices = offd.GetIndices();
-    const auto& offd_colmap = entity_entity.GetColMap();
-
-    HYPRE_Int last_row = entity_entity.GetColStarts()[1];
-
-    int num_entities = entity_entity.Rows();
-    std::vector<int> select_indptr(num_entities + 1);
-
-    int num_true_entities = 0;
-
-    for (int i = 0; i < num_entities; ++i)
-    {
-        select_indptr[i] = num_true_entities;
-
-        bool owner = true;
-
-        for (int j = offd_indptr[i]; j < offd_indptr[i + 1]; ++j)
-        {
-            if (offd_colmap[offd_indices[j]] < last_row)
-            {
-                owner = false;
-                break;
-            }
-        }
-
-        if (owner)
-        {
-            num_true_entities++;
-        }
-    }
-
-    select_indptr[num_entities] = num_true_entities;
-
-    std::vector<int> select_indices(num_true_entities);
-    std::iota(std::begin(select_indices), std::end(select_indices), 0);
-
-    std::vector<double> select_data(num_true_entities, 1.0);
-
-    SparseMatrix select(std::move(select_indptr), std::move(select_indices), std::move(select_data),
-                        num_entities, num_true_entities);
-
-    MPI_Comm comm = entity_entity.GetComm();
-    auto true_starts = linalgcpp::GenerateOffsets(comm, num_true_entities);
-
-    ParMatrix select_d(comm, entity_entity.GetRowStarts(), true_starts, std::move(select));
-
-    return entity_entity.Mult(select_d);
-}
-
-DenseMatrix Orthogonalize(DenseMatrix& mat, VectorView vect_view, int offset, int max_keep)
+DenseMatrix Orthogonalize(DenseMatrix& mat, VectorView vect_view, int offset, int max_keep,
+        bool normalize)
 {
     assert(mat.Rows() == vect_view.size());
 
+    if (normalize)
+    {
+        Normalize(vect_view);
+    }
     // If the view is of mat, deflate will destroy it,
     // so copy is needed
-    Normalize(vect_view);
     Vector vect(vect_view);
 
     int sz = 0;
@@ -795,23 +745,6 @@ std::vector<int> PartitionPostIsolate(const SparseMatrix& A, std::vector<int> pa
     return partition;
 }
 
-Vector ReadVector(const std::string& filename,
-                  const std::vector<int>& local_to_global)
-{
-    std::vector<double> global_vect = linalgcpp::ReadText(filename);
-
-    int local_size = local_to_global.size();
-
-    Vector local_vect(local_size);
-
-    for (int i = 0; i < local_size; ++i)
-    {
-        local_vect[i] = global_vect[local_to_global[i]];
-    }
-
-    return local_vect;
-}
-
 std::vector<int> GetElementColoring(const SparseMatrix& el_el)
 {
     int num_el = el_el.Rows();
@@ -1025,7 +958,5 @@ void ShiftPartition(std::vector<int>& partition)
 
     linalgcpp::RemoveEmpty(partition);
 }
-
-
 
 } // namespace gauss

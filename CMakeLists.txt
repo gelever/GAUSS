@@ -55,14 +55,12 @@ if (GAUSS_USE_ARPACK)
     LIST(REMOVE_AT CMAKE_MODULE_PATH -1)
 endif()
 
-find_package(linalgcpp REQUIRED)
+find_package(graphtools REQUIRED)
 
 add_library(GAUSS
     src/GraphCoarsen.cpp
-    src/Graph.cpp
     src/GraphEdgeSolver.cpp
     src/GraphGenerator.cpp
-    src/GraphTopology.cpp
     src/GraphUpscale.cpp
     src/HybridSolver.cpp
     src/LocalEigenSolver.cpp
@@ -79,10 +77,7 @@ target_compile_options(GAUSS PRIVATE $<$<CXX_COMPILER_ID:Clang>:-Wall -Wextra -W
 
 target_link_libraries(GAUSS
     PUBLIC
-        linalgcpp::partition
-        linalgcpp::sparsesolve
-        linalgcpp::parlinalgcpp
-        linalgcpp::linalgcpp
+        linalgcpp::graphtools
         $<$<BOOL:${GAUSS_USE_ARPACK}>:Arpack::Arpack>
 )
 

@@ -15,7 +15,7 @@
 
 /** @file
 
-    @brief GraphTopology class
+    @brief OldGraphTopology class
 */
 
 #ifndef __GRAPHTOPOLOGY_HPP__
@@ -33,27 +33,27 @@ namespace gauss
    Mostly a container for a bunch of topology tables.
 */
 
-class GraphTopology
+class OldGraphTopology
 {
 public:
     /** @brief Default Constructor */
-    GraphTopology() = default;
+    OldGraphTopology() = default;
 
     /**
        @brief Build agglomerated topology relation tables of a given graph
 
        @param graph Distrubted graph information
     */
-    GraphTopology(const Graph& graph);
+    OldGraphTopology(const OldGraph& graph);
 
     /**
         @brief Build agglomerated topology relation tables of the coarse level
-               graph in a given GraphTopology object
+               graph in a given OldGraphTopology object
 
         @param finer_graph_topology finer level graph topology
         @param coarsening_factor intended number of vertices in an aggregate
     */
-    GraphTopology(const GraphTopology& fine_topology, double coarsening_factor);
+    OldGraphTopology(const OldGraphTopology& fine_topology, double coarsening_factor);
 
     /**
        @brief Build agglomerated topology relation tables of a given graph
@@ -63,24 +63,24 @@ public:
        @param partition local vertex partition
        @param edge_true_edge edge to true edge relationship
     */
-    GraphTopology(const SparseMatrix& vertex_edge,
+    OldGraphTopology(const SparseMatrix& vertex_edge,
                   const std::vector<int>& partition,
                   ParMatrix edge_true_edge);
 
     /** @brief Default Destructor */
-    ~GraphTopology() noexcept = default;
+    ~OldGraphTopology() noexcept = default;
 
     /** @brief Copy Constructor */
-    GraphTopology(const GraphTopology& other) noexcept;
+    OldGraphTopology(const OldGraphTopology& other) noexcept;
 
     /** @brief Move Constructor */
-    GraphTopology(GraphTopology&& other) noexcept;
+    OldGraphTopology(OldGraphTopology&& other) noexcept;
 
     /** @brief Assignment Operator */
-    GraphTopology& operator=(GraphTopology other) noexcept;
+    OldGraphTopology& operator=(OldGraphTopology other) noexcept;
 
     /** @brief Swap two topologies */
-    friend void swap(GraphTopology& lhs, GraphTopology& rhs) noexcept;
+    friend void swap(OldGraphTopology& lhs, OldGraphTopology& rhs) noexcept;
 
     int NumAggs() const { return agg_vertex_local_.Rows(); }
     int NumVertices() const { return agg_vertex_local_.Cols(); }

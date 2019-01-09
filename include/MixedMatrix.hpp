@@ -138,6 +138,9 @@ public:
     /* @brief Get Edge True Edge */
     const ParMatrix& EdgeTrueEdge() const { return edge_true_edge_; }
 
+    /* @brief Get Vertex True Vertex */
+    const ParMatrix& VertexTrueVertex() const { return vertex_true_vertex_; }
+
     /* @brief Block offsets */
     const std::vector<int>& Offsets() const { return offsets_; }
 
@@ -153,6 +156,7 @@ protected:
     void Init();
 
     ParMatrix edge_true_edge_;
+    ParMatrix vertex_true_vertex_;
 
     // Local blocks
     SparseMatrix M_local_;

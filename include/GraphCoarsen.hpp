@@ -198,10 +198,12 @@ private:
     SparseMatrix CombineD(const std::vector<SparseMatrix>& face_D, int num_face_edges) const;
     Vector CombineConstant(const std::vector<Vector>& face_rhs) const;
 
+    Vector MakeOneNegOne(const Vector& constant, const std::vector<int>& splits) const;
     Vector MakeOneNegOne(const Vector& constant, int split) const;
     Vector MakeOneNegOne(int size, int split) const;
 
     int GetSplit(int face) const;
+    std::vector<int> GetSplits(int face) const;
 
     void BuildAggFaceM(const MixedMatrix& mgl, int face, int agg,
                        const SparseMatrix& vertex_agg,

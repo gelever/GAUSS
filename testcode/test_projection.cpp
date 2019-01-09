@@ -33,17 +33,15 @@ using namespace gauss;
 int main(int argc, char* argv[])
 {
     // Initialize MPI
-    MpiSession mpi_info(argc, argv);
-    MPI_Comm comm = mpi_info.comm;
-    int myid = mpi_info.myid;
-    int num_procs = mpi_info.num_procs;
+    MpiSession mpi(argc, argv);
 
     // Graph Params
-    int gen_vertices = 400;
-    int mean_degree = 10;
+    //int gen_vertices = 400;
+    int gen_vertices = 30;
+    int mean_degree = 4;
     double beta = 0.15;
     int seed = -1;
-    int coarsen_factor = 40;
+    int coarsen_factor = 8;
 
     // Upscale Params
     int max_evects = 2;
@@ -54,14 +52,15 @@ int main(int argc, char* argv[])
     double test_tol = 1e-10;
 
     /// [Load Input]
-    SparseMatrix vertex_edge_global = GenerateGraph(comm, gen_vertices, mean_degree, beta, seed);
+    SparseMatrix vertex_edge_global = GenerateGraph(mpi.comm, gen_vertices, mean_degree, beta, seed);
     std::vector<int> global_partitioning = PartitionAAT(vertex_edge_global, coarsen_factor);
     /// [Load Input]
 
     // Set up GraphUpscale
     /// [Upscale]
-    Graph graph(comm, vertex_edge_global, global_partitioning);
+    Graph graph(mpi.comm, vertex_edge_global, global_partitioning);
     GraphUpscale upscale(graph, {spect_tol, max_evects});
+
 
     upscale.PrintInfo();
     upscale.ShowSetupTime();
@@ -81,9 +80,9 @@ int main(int argc, char* argv[])
 
     {
         auto D_proj = D.Mult(proj_fine.GetBlock(0));
-        auto D_error = CompareError(comm, D_proj, proj_fine.GetBlock(1));
+        auto D_error = CompareError(mpi.comm, D_proj, proj_fine.GetBlock(1));
 
-        ParPrint(myid, std::cout << "D Projection Error:  " << D_error << "\n");
+        ParPrint(mpi.myid, std::cout << "D Projection Error:  " << D_error << "\n");
 
         failed |= std::fabs(D_error) > test_tol;
     }
@@ -92,9 +91,9 @@ int main(int argc, char* argv[])
         upscale.Project(proj_fine, proj_coarse);
         auto re_proj_fine = upscale.Interpolate(proj_coarse);
 
-        auto reproject_error = CompareError(comm, re_proj_fine, proj_fine);
+        auto reproject_error = CompareError(mpi.comm, re_proj_fine, proj_fine);
 
-        ParPrint(myid, std::cout << "Re Projection Error: " << reproject_error << "\n");
+        ParPrint(mpi.myid, std::cout << "Re Projection Error: " << reproject_error << "\n");
 
         failed |= std::fabs(reproject_error) > test_tol;
     }

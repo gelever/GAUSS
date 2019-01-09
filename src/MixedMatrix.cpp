@@ -210,7 +210,7 @@ ParMatrix MixedMatrix::ToPrimal() const
 
     if (CheckW())
     {
-        A = ParAdd(A, W_global_);
+        A = ParSub(A, W_global_);
     }
 
     return A;

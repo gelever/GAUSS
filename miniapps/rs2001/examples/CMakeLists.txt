@@ -16,6 +16,9 @@ target_link_libraries(MLMC_SPE10 ReservoirSimulator2001)
 add_executable(dirichlet dirichlet.cpp)
 target_link_libraries(dirichlet ReservoirSimulator2001)
 
+add_executable(spectral spectral.cpp)
+target_link_libraries(spectral ReservoirSimulator2001)
+
 configure_file(
   "${PROJECT_SOURCE_DIR}/examples/test.py"
   "${PROJECT_BINARY_DIR}/examples/test.py" @ONLY)

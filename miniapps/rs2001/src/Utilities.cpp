@@ -93,6 +93,52 @@ gauss::ParMatrix ParMatrixToParMatrix(const mfem::HypreParMatrix& mat)
                             std::move(diag), std::move(offd), std::move(col_map));
 }
 
+gauss::DenseMatrix DenseToDense(const mfem::DenseMatrix& dense)
+{
+    gauss::DenseMatrix output;
+    DenseToDense(dense, output);
+    return output;
+}
+
+void DenseToDense(const mfem::DenseMatrix& dense, gauss::DenseMatrix& output)
+{
+    int rows = dense.Height();
+    int cols = dense.Width();
+
+    output.SetSize(rows, cols);
+
+    for (int j = 0; j < cols; ++j)
+    {
+        for (int i = 0; i < rows; ++i)
+        {
+            output(i, j) = dense(i, j);
+        }
+    }
+}
+
+mfem::DenseMatrix DenseToDense(const gauss::DenseMatrix& dense)
+{
+    mfem::DenseMatrix output;
+    DenseToDense(dense, output);
+    return output;
+}
+
+void DenseToDense(const gauss::DenseMatrix& dense, mfem::DenseMatrix& output)
+{
+    int rows = dense.Rows();
+    int cols = dense.Cols();
+
+    output.SetSize(rows, cols);
+
+    for (int j = 0; j < cols; ++j)
+    {
+        for (int i = 0; i < rows; ++i)
+        {
+            output(i, j) = dense(i, j);
+        }
+    }
+}
+
 std::vector<int> MetisPart(const gauss::SparseMatrix& vertex_edge, int num_parts)
 {
     gauss::SparseMatrix edge_vertex = vertex_edge.Transpose();
@@ -282,6 +328,40 @@ gauss::SparseMatrix GenerateBoundaryAttributeTable(const mfem::Mesh& mesh)
                                nedges, nbdr);
 }
 
+gauss::SparseMatrix GenerateBndrVertex(const mfem::Mesh& mesh,
+                                       const mfem::FiniteElementSpace& fespace)
+{
+    int num_vertices = mesh.GetNV();
+    int num_bdr = mesh.bdr_attributes.Max();
+    int nbdr_edges = mesh.GetNBE();
+
+    mfem::Array<int> ess_dofs;
+    mfem::Array<int> bdr_attr_is_ess(num_bdr);
+    bdr_attr_is_ess = 0;
+
+    gauss::CooMatrix bdr_vertex;
+
+    for (int i = 0; i < num_bdr; ++i)
+    {
+        bdr_attr_is_ess[i] = 1;
+        fespace.GetEssentialVDofs(bdr_attr_is_ess, ess_dofs);
+
+        int size = ess_dofs.Size();
+
+        for (int j = 0; j < size; ++j)
+        {
+            if (ess_dofs[j] != 0)
+            {
+                bdr_vertex.Add(i, j, 1.0);
+            }
+        }
+
+        bdr_attr_is_ess[i] = 0;
+    }
+
+    return bdr_vertex.ToSparse();
+}
+
 std::vector<int> MetisPart(mfem::ParFiniteElementSpace& sigmafespace,
                            mfem::ParFiniteElementSpace& ufespace,
                            mfem::Array<double>& coarsening_factor)
@@ -405,6 +485,77 @@ void EliminateEssentialBC(gauss::GraphUpscale& upscale,
     }
 
     upscale.SetOrthogonalize(false);
+}
+
+void EliminateEssentialBC(gauss::MixedMatrix& mm_0,
+                          gauss::MixedMatrix& mm_1,
+                          const gauss::GraphCoarsen& coarsener,
+                          const gauss::SparseMatrix& bdr_attr_vertex,
+                          const std::vector<int>& ess_bdr,
+                          const gauss::BlockVector& x,
+                          gauss::BlockVector& b)
+{
+    int num_bdr = ess_bdr.size();
+    int num_vertices = bdr_attr_vertex.Cols();
+
+    gauss::SparseMatrix DT_elim = mm_0.LocalD().Transpose();
+    gauss::SparseMatrix W_elim;
+
+    if (mm_0.CheckW())
+    {
+        W_elim = mm_0.LocalW();
+        W_elim *= -1.0;
+    }
+    else
+    {
+        W_elim = gauss::SparseMatrix(std::vector<double>(mm_0.LocalD().Rows(), 0.0));
+    }
+
+    std::vector<int> marker(std::max(mm_0.Rows(), mm_0.Cols()), 0);
+
+    for (int i = 0; i < num_bdr; ++i)
+    {
+        if (ess_bdr[i])
+        {
+            auto bdr_vertices = bdr_attr_vertex.GetIndices(i);
+
+            for (auto&& vertex : bdr_vertices)
+            {
+                marker[vertex] = 1;
+                b.GetBlock(1)[vertex] = x.GetBlock(1)[vertex];
+            }
+
+            W_elim.EliminateRowCol(marker);
+            DT_elim.EliminateCol(marker, x.GetBlock(1), b.GetBlock(0));
+
+            for (auto&& vertex : bdr_vertices)
+            {
+                marker[vertex] = 0;
+            }
+        }
+    }
+
+    W_elim *= -1.0;
+    gauss::SparseMatrix D_elim = DT_elim.Transpose();
+
+    gauss::MixedMatrix mm_0_new(mm_0.GetElemM(), mm_0.GetElemDof(),
+                         std::move(D_elim), std::move(W_elim),
+                         mm_0.EdgeTrueEdge());
+    mm_0 = std::move(mm_0_new);
+    mm_0.AssembleM();
+    //swap(mm_0, mm_0_new);
+
+    {
+    auto PT_i = coarsener.Pvertex().Transpose();
+    auto W_elim = PT_i.Mult(mm_0.LocalW()).Mult(coarsener.Pvertex());
+    auto D_elim = PT_i.Mult(mm_0.LocalD()).Mult(coarsener.Pedge());
+
+    gauss::MixedMatrix mm_1_new(mm_1.GetElemM(), mm_1.GetElemDof(),
+            std::move(D_elim), std::move(W_elim), mm_1.EdgeTrueEdge());
+    mm_1 = std::move(mm_1_new);
+    mm_1.AssembleM();
+    }
+
 }
 
 } // namespace rs2001

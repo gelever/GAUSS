@@ -26,7 +26,7 @@
 #include <map>
 #include <unordered_map>
 
-#include "parlinalgcpp.hpp"
+#include "graphtools.hpp"
 #include "sparsesolve.hpp"
 #include "partition.hpp"
 
@@ -50,6 +50,9 @@ using linalgcpp::SparseIdentity;
 using linalgcpp::SetMarker;
 using linalgcpp::ClearMarker;
 using linalgcpp::Add;
+
+using Graph = linalgcpp::Graph<double, double, double>;
+using GraphTopology = linalgcpp::GraphTopology<double>;
 
 /// Paramaters to determine how many eigenvectors to keep
 /// The double is a spectral tolerance threshold
@@ -83,12 +86,6 @@ SparseMatrix RemoveLargeEntries(const SparseMatrix& mat, double tol = 1.0);
 */
 ParMatrix RemoveLargeEntries(const ParMatrix& mat, double tol = 1.0);
 
-/** @brief Create entity to true entity relationship
-    @param entity_entity entity to entity relationship on false dofs
-    @return entity_true_entity entity to true entity
-*/
-ParMatrix MakeEntityTrueEntity(const ParMatrix& entity_entity);
-
 /** @brief Orthogonalize a matrix by a vector
 
     @param mat matrix to orthogonalize
@@ -96,7 +93,7 @@ ParMatrix MakeEntityTrueEntity(const ParMatrix& entity_entity);
     @param offset offset into mat
     @param max_keep maximum number of vectors to keep
 */
-DenseMatrix Orthogonalize(DenseMatrix& mat, VectorView vect, int offset, int max_keep);
+DenseMatrix Orthogonalize(DenseMatrix& mat, VectorView vect, int offset, int max_keep, bool normalize = true);
 
 /** @brief Orthogonalize all column vectors in the matrix from the constant vector.
     This is equivalent to shifting the vector so it has zero mean.
@@ -234,54 +231,6 @@ std::vector<int> PartitionAAT(const SparseMatrix& A, double coarsening_factor,
 std::vector<int> PartitionPostIsolate(const SparseMatrix& A, std::vector<int> partition,
                                       const std::vector<int>& isolated_vertices);
 
-
-/** @brief Read serial vector from file and extract local portion
-
-    @param filename name of vector file
-    @param local_to_global set of local indices to extract
-    @returns local vector
-*/
-Vector ReadVector(const std::string& filename,
-                  const std::vector<int>& local_to_global);
-
-/** @brief Write a serial vector to file, combining local vectors from all processors
-
-    @param vect vector to write
-    @param filename name of vector file
-    @param global_size global size of vector
-    @param local_to_global map of local indices to global indices
-*/
-template <typename T = VectorView>
-void WriteVector(MPI_Comm comm, const T& vect, const std::string& filename, int global_size,
-                 const std::vector<int>& local_to_global)
-{
-    assert(global_size > 0);
-    assert(vect.size() <= global_size);
-
-    int myid;
-    int num_procs;
-    MPI_Comm_size(comm, &num_procs);
-    MPI_Comm_rank(comm, &myid);
-
-    std::vector<double> global_global(global_size, 0.0);
-    std::vector<double> global_local(global_size, 0.0);
-
-    int local_size = local_to_global.size();
-
-    for (int i = 0; i < local_size; ++i)
-    {
-        global_local[local_to_global[i]] = vect[i];
-    }
-
-    MPI_Scan(global_local.data(), global_global.data(), global_size,
-             MPI_DOUBLE, MPI_SUM, comm);
-
-    if (myid == num_procs - 1)
-    {
-        linalgcpp::WriteText(global_global, filename);
-    }
-}
-
 /**
    @brief A SERIAL coloring algorithm marking distinct colors for adjacent elements
 
@@ -291,28 +240,6 @@ void WriteVector(MPI_Comm comm, const T& vect, const std::string& filename, int 
    @returns colors contains colors of all elements
 */
 std::vector<int> GetElementColoring(const SparseMatrix& el_el);
-
-/**
-   @brief Extract a subvector from a vector
-
-   @param global_vect global vector from which to extract
-   @param map indices to extract
-   @returns subvector
-*/
-template <typename T = VectorView>
-T GetSubVector(const T& global_vect, const std::vector<int>& map)
-{
-    int size = map.size();
-
-    T local_vect(size);
-
-    for (int i = 0; i < size; ++i)
-    {
-        local_vect[i] = global_vect[map[i]];
-    }
-
-    return local_vect;
-}
 
 /// Check if sparse matrix is diagonal
 bool IsDiag(const SparseMatrix& mat);

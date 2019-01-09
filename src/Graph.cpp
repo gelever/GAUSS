@@ -15,7 +15,7 @@
 
 /** @file
 
-    @brief Contains Graph class
+    @brief Contains OldGraph class
 */
 
 #include "Graph.hpp"
@@ -23,7 +23,7 @@
 namespace gauss
 {
 
-Graph::Graph(MPI_Comm comm, const SparseMatrix& vertex_edge_global,
+OldGraph::OldGraph(MPI_Comm comm, const SparseMatrix& vertex_edge_global,
              const std::vector<int>& part_global,
              const std::vector<double>& weight_global,
              const SparseMatrix& W_block_global)
@@ -68,7 +68,7 @@ Graph::Graph(MPI_Comm comm, const SparseMatrix& vertex_edge_global,
     MakeLocalW(W_block_global);
 }
 
-void Graph::MakeLocalWeight(const std::vector<int>& edge_map,
+void OldGraph::MakeLocalWeight(const std::vector<int>& edge_map,
                             const std::vector<double>& global_weight)
 {
     int num_edges = vertex_edge_local_.Cols();
@@ -103,7 +103,7 @@ void Graph::MakeLocalWeight(const std::vector<int>& edge_map,
     }
 }
 
-void Graph::MakeLocalW(const SparseMatrix& W_global)
+void OldGraph::MakeLocalW(const SparseMatrix& W_global)
 {
     if (W_global.Rows() > 0)
     {
@@ -112,7 +112,7 @@ void Graph::MakeLocalW(const SparseMatrix& W_global)
     }
 }
 
-Graph::Graph(SparseMatrix vertex_edge_local, ParMatrix edge_true_edge,
+OldGraph::OldGraph(SparseMatrix vertex_edge_local, ParMatrix edge_true_edge,
              std::vector<int> part_local,
              std::vector<double> weight_local,
              SparseMatrix W_block_local)
@@ -144,7 +144,7 @@ Graph::Graph(SparseMatrix vertex_edge_local, ParMatrix edge_true_edge,
     W_local_ *= -1.0;
 }
 
-Graph::Graph(const Graph& other) noexcept
+OldGraph::OldGraph(const OldGraph& other) noexcept
     : vertex_map_(other.vertex_map_),
       part_local_(other.part_local_),
       vertex_edge_local_(other.vertex_edge_local_),
@@ -158,19 +158,19 @@ Graph::Graph(const Graph& other) noexcept
 
 }
 
-Graph::Graph(Graph&& other) noexcept
+OldGraph::OldGraph(OldGraph&& other) noexcept
 {
     swap(*this, other);
 }
 
-Graph& Graph::operator=(Graph other) noexcept
+OldGraph& OldGraph::operator=(OldGraph other) noexcept
 {
     swap(*this, other);
 
     return *this;
 }
 
-void swap(Graph& lhs, Graph& rhs) noexcept
+void swap(OldGraph& lhs, OldGraph& rhs) noexcept
 {
     std::swap(lhs.vertex_map_, rhs.vertex_map_);
     std::swap(lhs.part_local_, rhs.part_local_);
